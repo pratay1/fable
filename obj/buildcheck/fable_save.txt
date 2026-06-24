@@ -1,0 +1,14 @@
+fables=21
+high=1800
+gun=0
+body=0
+acc=0
+gunU=1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+bodyU=1,1,1,0,0,0,0,0
+accU=1,0,0,0,0,0
+upg=0,0,0,0,0,0,0,0
+shake=1
+flash=1
+autofire=1
+firekey=74
+theme=1

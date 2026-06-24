@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "pa1Mg6Pk/0s=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\prata\\fable\\fable.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\prata\\.nuget\\packages\\raylib-cs\\8.0.0\\raylib-cs.8.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
