@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -279,16 +279,138 @@ enum FloorEventType
     CrownCoronation,
     CrownUsurpation,
     CrownReckoning,
+    SallyForth,
+    Portcullis,
+    HeraldsCall,
+}
+
+enum EventFamily
+{
+    General,
+    Tide,
+    Ember,
+    Crypt,
+    Crown,
+}
+
+enum BlessingType
+{
+    None,
+    SwiftMarch,
+    DeepPockets,
+    Stonecraft,
+    LongFuse,
+    ThornVolley,
+    LuckySigil,
+    IronSoles,
+    KeenEye,
+    BannerWard,
+    SiegeRations,
+    LastLight,
+    WindBlessing,
+}
+
+enum OathType
+{
+    None,
+    NoVerdict,
+    NoOath,
+    HeraldryBound,
+    PureNightmare,
+}
+
+enum SiegeObjectiveType
+{
+    None,
+    HoldBanner,
+    ClearBreach,
+    ProtectCorner,
+}
+
+enum GunAffixType
+{
+    None,
+    Volatile,
+    Steady,
+    Leeching,
+    Piercing,
+    Quickdraw,
+    Heavy,
+    Lucky,
+    Ranger,
 }
 
 enum GameState
 {
     MainMenu,
+    DifficultySelect,
     Playing,
     Paused,
     GameOver,
     Customize,
     Settings,
+}
+
+enum Difficulty
+{
+    TotalBeginner,
+    Squire,
+    Knight,
+    Champion,
+    FableNightmare,
+    PracticeHall,
+}
+
+readonly struct DifficultyProfile
+{
+    public readonly string Title;
+    public readonly string Tagline;
+    public readonly string Detail;
+    public readonly Color Accent;
+    public readonly Color AccentHi;
+    public readonly float EnemyHpMult;
+    public readonly float EnemySpeedMult;
+    public readonly float GruntCountMult;
+    public readonly float SwarmCountMult;
+    public readonly int MinWaveForEvents;
+    public readonly float FirstEventCooldown;
+    public readonly float EventCooldownMin;
+    public readonly float EventCooldownMax;
+    public readonly float EventIntensityMult;
+    public readonly float WavePauseMult;
+    public readonly float SwarmIntervalMult;
+    public readonly float EventStackChance;
+    public readonly float EventSurgeChance;
+    public readonly bool EasyEventsOnly;
+    public readonly int GruntMinWaveBonus;
+
+    public DifficultyProfile(string title, string tagline, string detail, Color accent, Color accentHi,
+        float enemyHpMult, float enemySpeedMult, float gruntCountMult, float swarmCountMult,
+        int minWaveForEvents, float firstEventCooldown, float eventCooldownMin, float eventCooldownMax,
+        float eventIntensityMult, float wavePauseMult, float swarmIntervalMult,
+        float eventStackChance, float eventSurgeChance, bool easyEventsOnly, int gruntMinWaveBonus)
+    {
+        Title = title;
+        Tagline = tagline;
+        Detail = detail;
+        Accent = accent;
+        AccentHi = accentHi;
+        EnemyHpMult = enemyHpMult;
+        EnemySpeedMult = enemySpeedMult;
+        GruntCountMult = gruntCountMult;
+        SwarmCountMult = swarmCountMult;
+        MinWaveForEvents = minWaveForEvents;
+        FirstEventCooldown = firstEventCooldown;
+        EventCooldownMin = eventCooldownMin;
+        EventCooldownMax = eventCooldownMax;
+        EventIntensityMult = eventIntensityMult;
+        WavePauseMult = wavePauseMult;
+        SwarmIntervalMult = swarmIntervalMult;
+        EventStackChance = eventStackChance;
+        EventSurgeChance = eventSurgeChance;
+        EasyEventsOnly = easyEventsOnly;
+        GruntMinWaveBonus = gruntMinWaveBonus;
+    }
 }
 
 enum CustomizeTab
@@ -298,6 +420,8 @@ enum CustomizeTab
     Upgrades,
     Abilities,
     Rank,
+    Bestiary,
+    Glossary,
 }
 
 enum AbilityType
@@ -349,6 +473,7 @@ class Enemy
     public int StrikeDepth;
     public float ParalyzeTimer;
     public bool Dead;
+    public bool Elite;
 }
 
 class Program
@@ -411,8 +536,8 @@ class Program
     const float MossRotAreaDecayRate = 11f;
     const int SafeIslandSize = 3;
     const int SafeIslandCount = 4;
-    const float FloorEventCooldownMin = 7f;
-    const float FloorEventCooldownMax = 12f;
+    const float FloorEventCooldownMin = 5f;
+    const float FloorEventCooldownMax = 15f;
     const float SafeRushBandTiles = 5f;
     const float CenterSnareMarginTiles = 3f;
     const float EmberRainColumnInterval = 0.32f;
@@ -464,7 +589,9 @@ class Program
     const int UpPierce = 7;
     const int UpParalyzeReach = 8;
     const int UpParalyzeHold = 9;
-    const int UpgradeCount = 10;
+    const int UpMagazine = 10;
+    const int UpReload = 11;
+    const int UpgradeCount = 12;
     const int UpgradeMax = 6;
 
     static readonly Random Rng = new();
@@ -500,9 +627,9 @@ class Program
 
     static readonly VisualTheme MedievalTheme = new()
     {
-        CanopyTop = new Color(22, 22, 26, 255),
-        CanopyMid = new Color(16, 16, 20, 255),
-        ForestFloor = new Color(8, 8, 10, 255),
+        CanopyTop = new Color(6, 6, 6, 255),
+        CanopyMid = new Color(4, 4, 4, 255),
+        ForestFloor = new Color(2, 2, 2, 255),
         EarthPit = new Color(14, 14, 16, 255),
         ForestShadow = new Color(8, 8, 10, 255),
         MossLight = new Color(80, 78, 74, 255),
@@ -521,7 +648,7 @@ class Program
         SodDark = new Color(20, 20, 24, 255),
         SodMid = new Color(30, 30, 34, 255),
         TileSeam = new Color(16, 16, 18, 255),
-        BgMist = new Color(88, 86, 82, 255),
+        BgMist = new Color(42, 40, 38, 255),
         BgGlow = new Color(140, 138, 132, 255),
         BlightRot = new Color(36, 36, 40, 255),
         BlightSick = new Color(48, 46, 44, 255),
@@ -591,16 +718,32 @@ class Program
         new Color(138, 132, 124, 255),
         new Color(118, 112, 106, 255),
         new Color(158, 152, 144, 255),
+        new Color(148, 38, 42, 255),
+        new Color(42, 68, 118, 255),
+        new Color(48, 92, 58, 255),
+        new Color(178, 142, 38, 255),
+        new Color(92, 42, 98, 255),
+        new Color(118, 28, 38, 255),
+        new Color(62, 112, 152, 255),
+        new Color(158, 82, 38, 255),
+        new Color(88, 38, 52, 255),
+        new Color(38, 38, 44, 255),
+        new Color(122, 98, 72, 255),
+        new Color(72, 118, 108, 255),
     };
     static readonly Color AutoPilotBody = new(168, 42, 38, 255);
     static readonly Color AutoPilotBright = new(220, 72, 58, 255);
     static readonly string[] BodyNames =
     {
         "Ash", "Slate", "Iron", "Parchment", "Marble", "Charcoal", "Silver", "Basalt", "Obsidian", "Ivory",
+        "Gules", "Azure", "Vert", "Or", "Purpure", "Sanguine", "Celeste", "Tenné", "Murrey", "Sable", "Bronze", "Cendrée",
     };
-    static readonly int[] BodyFableCost = { 0, 0, 0, 80, 0, 140, 0, 200, 0, 260 };
-    static readonly int[] BodyLevelReq = { 0, 0, 0, 0, 5, 0, 12, 0, 20, 0 };
-    static readonly int[] BodyWaveReq = { 0, 0, 0, 0, 0, 8, 0, 15, 0, 25 };
+    static readonly int[] BodyFableCost = { 0, 0, 0, 80, 0, 140, 0, 200, 0, 260, 0, 300, 0, 340, 0, 380, 0, 420, 0, 460, 0, 500 };
+    static readonly int[] BodyLevelReq = { 0, 0, 0, 0, 5, 0, 12, 0, 20, 0, 28, 0, 32, 0, 36, 0, 40, 0, 44, 0, 48, 0 };
+    static readonly int[] BodyWaveReq = { 0, 0, 0, 0, 0, 8, 0, 15, 0, 25, 0, 30, 0, 35, 0, 40, 0, 45, 0, 50, 0, 55 };
+
+    const int AccessoryCursorCrown = 36;
+    const string CursorCrownEasterEgg = "cursor";
 
     static readonly string[] AccessoryNames = BuildAccessoryNames();
     static readonly int[] AccessoryFableCost = BuildAccessoryFableCosts();
@@ -610,15 +753,15 @@ class Program
     static readonly string[] UpgradeNames =
     {
         "Swiftness", "Wind Step", "Rapid Fire", "Sharp Thorns", "Split Shot", "Fortune", "Light Feet", "Piercing",
-        "Static Reach", "Lockstep Hold",
+        "Static Reach", "Lockstep Hold", "Deep Magazines", "Quick Hands",
     };
     static readonly string[] UpgradeDesc =
     {
-        "+5% move speed", "-8% dash cooldown", "+12% fire rate", "+0.75 shot damage",
+        "+5% move speed", "-8% dash cooldown", "+14% fire rate", "+0.75 shot damage",
         "+1 projectile", "+15% fable gain", "-8% floor wear", "+1 pierce",
-        "+22 paralyze radius", "+0.4s paralyze duration",
+        "+22 paralyze radius", "+0.4s paralyze duration", "+15% magazine size", "-10% reload time",
     };
-    static readonly int[] UpgradeBaseCost = { 40, 50, 45, 50, 70, 60, 40, 80, 90, 95 };
+    static readonly int[] UpgradeBaseCost = { 40, 50, 45, 50, 70, 60, 40, 80, 90, 95, 55, 50 };
 
     static readonly string[] AbilityNames =
     {
@@ -786,7 +929,6 @@ class Program
     static bool impactFlashSharp;
     static float adrenaline;
     static float glowPulse;
-    static Vector2 motionBlurVel;
     static float cameraDashLean;
     static Vector2 cameraDashLeanDir;
     static RenderTexture2D sceneTarget;
@@ -804,6 +946,15 @@ class Program
     static bool UhdShadersActive => uhdShaderReady && uhdShaders;
     static readonly List<GfxLightPulse> gfxLightPulses = new();
     static float menuTime;
+    static float frameTime;
+    static float aiIntelTimer;
+    static float aiFutureRamTimer;
+    static RenderTexture2D menuCastleBake;
+    static bool menuCastleBakeReady;
+    static int menuCastleBakeW;
+    static int menuCastleBakeH;
+    static MenuCastleLayout menuCastleLayoutCached;
+    static bool menuCastleLayoutValid;
 
     struct GfxLightPulse
     {
@@ -820,6 +971,57 @@ class Program
     static float comboFillVis;
     static float[] shopBarVis = null!;
 
+    // Immersion / meta expansion
+    static float nearDeathPulse;
+    static int lastComboNarrationTier;
+    static float betweenWaveVignetteTimer;
+    static int[] bestiaryKills = null!;
+    static readonly string[] MottoLines =
+    {
+        "Hold the line.", "Stone endures.", "The bailey remembers.",
+        "No retreat but death.", "Crown or crumble.", "Stillness is victory.",
+    };
+    static readonly int[] MottoLevelReq = { 10, 20, 35, 50, 65, 80 };
+    static bool[] mottoUnlocked = null!;
+    static readonly string[] ChronicleBuffer = new string[5];
+    static int chronicleCount;
+    static int chronicleWrite;
+    struct DifficultyRecord { public int BestWave; public int BestScore; public int BestKills; }
+    static DifficultyRecord[] difficultyRecords = null!;
+    static bool heraldryPatterns;
+    static BlessingType[] activeBlessings = new BlessingType[6];
+    static int activeBlessingCount;
+    static bool blessingPickActive;
+    static BlessingType[] blessingChoices = new BlessingType[3];
+    static int runOathFlags;
+    static SiegeObjectiveType siegeObjective;
+    static float siegeObjectiveTimer;
+    static int siegeCornerTx;
+    static int siegeCornerTy;
+    static bool siegeObjectiveDone;
+    static bool siegeObjectiveFailed;
+    static int siegeGruntsSpawned;
+    static int siegeGruntsKilled;
+    static int runLockedBodyIndex = -1;
+    static float reinforceCooldown;
+    static GunAffixType runGunAffix;
+    static bool royalPardonUsed;
+    static bool eventChainActive;
+    static int[] playerTrailTiles = new int[8];
+    static int playerTrailWrite;
+    static bool reverseSiegeActive;
+    static float reverseSiegeTimer;
+    static readonly int[] playerTrailX = new int[8];
+    static readonly int[] playerTrailY = new int[8];
+    const int AccessoryStormGlass = 37;
+    const int AccessoryKeepBanner = 21;
+    const int UpLockstep = 9;
+    const int ReinforceFableBase = 10;
+    const float ReinforceCooldownTime = 4.5f;
+    const float ReinforceFortifiedMult = 1.45f;
+    const float ReinforceFreshTimer = 10f;
+    const int ReinforceRadius = 1;
+
     // Persistent meta
     static int fables;
     static int playerLevel = 1;
@@ -828,6 +1030,9 @@ class Program
     static float levelUpBannerTimer;
     static float customizeScroll;
     static float settingsScroll;
+    static int uiInputBlockFrames;
+    static string settingsTypeBuffer = "";
+    static float settingsEggBannerTimer;
     static float levelBarVis;
     static int equippedGun;
     static bool[] gunUnlocked = null!;
@@ -836,6 +1041,64 @@ class Program
     static int accessoryIndex;
     static bool[] bodyUnlocked = null!;
     static bool[] accessoryUnlocked = null!;
+
+    static Difficulty runDifficulty = Difficulty.Knight;
+    static int difficultyMenuIndex = (int)Difficulty.Knight;
+    static float difficultySelectAnim;
+    static DifficultyProfile activeDifficulty;
+    static float eventSurgeTimer;
+
+    static readonly DifficultyProfile[] DifficultyProfiles =
+    {
+        new("TOTAL BEGINNER", "Learn the stones in peace.",
+            "Fewer foes · gentle swarms · catastrophes arrive very late and stay mild.",
+            new Color(118, 176, 138, 255), new Color(168, 220, 182, 255),
+            0.52f, 0.68f, 0.45f, 0.55f,
+            6, 0f, 10f, 15f, 0.55f, 1.55f, 1.45f, 0f, 0f, true, 4),
+        new("SQUIRE", "A forgiving tour of the siege.",
+            "Reduced pressure · slower catastrophes · room to learn your kit.",
+            new Color(132, 158, 196, 255), new Color(178, 204, 236, 255),
+            0.72f, 0.82f, 0.65f, 0.75f,
+            5, 0f, 8f, 14f, 0.72f, 1.25f, 1.2f, 0f, 0f, false, 2),
+        new("KNIGHT", "The siege as it was meant to be felt.",
+            "Balanced waves · standard arena rhythm · fair but unforgiving.",
+            new Color(196, 168, 108, 255), new Color(228, 206, 156, 255),
+            1f, 1f, 1f, 1f,
+            4, 0f, FloorEventCooldownMin, FloorEventCooldownMax, 1f, 1f, 1f, 0f, 0f, false, 0),
+        new("CHAMPION", "The walls remember every mistake.",
+            "Heavier swarms · faster catastrophes · elite foes arrive sooner.",
+            new Color(196, 128, 72, 255), new Color(236, 176, 108, 255),
+            1.22f, 1.12f, 1.28f, 1.22f,
+            3, 0f, 4f, 10f, 1.22f, 0.82f, 0.82f, 0.15f, 0.18f, false, -1),
+        new("FABLE (NIGHTMARE)", "The story ends in blood and falling stone.",
+            "Events from the first breath · catastrophes stack · the arena never rests.",
+            new Color(132, 10, 22, 255), new Color(210, 34, 48, 255),
+            1.58f, 1.38f, 1.65f, 1.5f,
+            0, 0f, 2f, 6f, 1.65f, 0.58f, 0.62f, 0.42f, 0.35f, false, -3),
+        new("PRACTICE HALL", "Learn catastrophes without the swarm.",
+            "No grunts · gentle event timers · scores stay off the record.",
+            new Color(148, 168, 196, 255), new Color(196, 214, 236, 255),
+            0f, 0f, 0f, 0f,
+            0, 2f, 6f, 12f, 0.45f, 2f, 2.5f, 0f, 0f, true, 99),
+    };
+
+    static readonly FloorEventType[] EasyFloorEventPool =
+    {
+        FloorEventType.MossRot, FloorEventType.ScatterPits, FloorEventType.SafeZoneRush,
+        FloorEventType.StoneIslands, FloorEventType.CenterSnare, FloorEventType.TideBeacon,
+        FloorEventType.EmberGate, FloorEventType.CryptTorch, FloorEventType.CryptLantern,
+        FloorEventType.CryptMist,
+    };
+
+    static DifficultyProfile GetDifficultyProfile(Difficulty d)
+        => DifficultyProfiles[Math.Clamp((int)d, 0, DifficultyProfiles.Length - 1)];
+
+    static float NextEventCooldownSpan()
+    {
+        float min = activeDifficulty.EventCooldownMin;
+        float max = Math.Min(15f, Math.Max(min + 0.01f, activeDifficulty.EventCooldownMax));
+        return min + Rng.NextSingle() * (max - min);
+    }
 
     // Settings
     static float shakeScale = 1f;
@@ -850,12 +1113,35 @@ class Program
     static AbilityType abilitySlot1 = AbilityType.Paralyze;
     static AbilityType abilitySlot2 = AbilityType.WindStep;
     static bool[] abilityUnlocked = null!;
+    static bool showControlLegend = true;
+    static bool floatingTextEnabled = true;
+    static bool reduceMotion = false;
+    static float vignetteScale = 1f;
+    static float particleDensity = 1f;
+    static bool backgroundMotes = true;
+    static bool menuCastleEnabled = true;
+    static bool showFps;
+    static int fpsCap;
+    static bool showTopHud = true;
+    static bool showWeaponHud = true;
+    static bool showAbilityHud = true;
+    static bool showComboMeter = true;
+    static bool showWaveBanner = true;
+    static bool showFloorEventHud = true;
+    static bool showEventWarningBorder = true;
+    static bool showEnemyTelegraphs = true;
+    static bool showEnemyHealthBars = true;
+    static bool showBossHud = true;
+    static bool showLevelUpBanner = true;
+    static bool lockCursorInGame = true;
+    static bool hitStopEnabled = true;
+    static bool pauseOnFocusLoss;
+    static float filmGrainScale = 1f;
+    static float bloomScale = 1f;
+    static bool autoPausedForFocus;
 
     // UI
     static CustomizeTab customizeTab = CustomizeTab.Cosmetics;
-
-    // Diagnostics
-    static bool showFps;
 
     // AI pilot
     static bool aiPilotEnabled;
@@ -869,6 +1155,7 @@ class Program
     static float aiPilotBannerTimer;
     static Vector2 aiAnchorPos;
     static Vector2 aiSteerVel;
+    static Vector2 aiMoveSmoothed;
     static float aiTopBandTimer;
     static float aiCrumbleDashUrgency;
     static bool windowDragging;
@@ -900,11 +1187,16 @@ class Program
         bodyUnlocked[0] = bodyUnlocked[1] = bodyUnlocked[2] = true;
         accessoryUnlocked = new bool[AccessoryNames.Length];
         accessoryUnlocked[0] = true;
+        bestiaryKills = new int[EnemyCatalog.Length];
+        mottoUnlocked = new bool[MottoLines.Length];
+        difficultyRecords = new DifficultyRecord[Enum.GetValues<Difficulty>().Length];
         abilityUnlocked = new bool[AbilityCount];
         abilityUnlocked[(int)AbilityType.Paralyze] = true;
         abilityUnlocked[(int)AbilityType.WindStep] = true;
 
         LoadGame();
+        ApplyFpsCap();
+        activeDifficulty = GetDifficultyProfile(runDifficulty);
         if (ShouldResetProgressOnce())
         {
             ResetProgress();
@@ -954,6 +1246,8 @@ class Program
         equippedGun = 0;
         bodyColorIndex = 0;
         accessoryIndex = 0;
+        runDifficulty = Difficulty.Knight;
+        difficultyMenuIndex = (int)Difficulty.Knight;
         shakeScale = 1f;
         flashEnabled = true;
         uhdEnabled = true;
@@ -964,6 +1258,31 @@ class Program
         abilityKey2 = KeyboardKey.Space;
         abilitySlot1 = AbilityType.Paralyze;
         abilitySlot2 = AbilityType.WindStep;
+        showControlLegend = true;
+        floatingTextEnabled = true;
+        reduceMotion = false;
+        vignetteScale = 1f;
+        particleDensity = 1f;
+        backgroundMotes = true;
+        menuCastleEnabled = true;
+        showFps = false;
+        fpsCap = 0;
+        showTopHud = true;
+        showWeaponHud = true;
+        showAbilityHud = true;
+        showComboMeter = true;
+        showWaveBanner = true;
+        showFloorEventHud = true;
+        showEventWarningBorder = true;
+        showEnemyTelegraphs = true;
+        showEnemyHealthBars = true;
+        showBossHud = true;
+        showLevelUpBanner = true;
+        lockCursorInGame = true;
+        hitStopEnabled = true;
+        pauseOnFocusLoss = false;
+        filmGrainScale = 1f;
+        bloomScale = 1f;
         Array.Fill(abilityUnlocked, false);
         abilityUnlocked[(int)AbilityType.Paralyze] = true;
         abilityUnlocked[(int)AbilityType.WindStep] = true;
@@ -1007,6 +1326,45 @@ class Program
             sb.AppendLine("abslot1=" + (int)abilitySlot1);
             sb.AppendLine("abslot2=" + (int)abilitySlot2);
             sb.AppendLine("abU=" + JoinBools(abilityUnlocked));
+            sb.AppendLine("ctrllegend=" + (showControlLegend ? 1 : 0));
+            sb.AppendLine("floattext=" + (floatingTextEnabled ? 1 : 0));
+            sb.AppendLine("reducemotion=" + (reduceMotion ? 1 : 0));
+            sb.AppendLine("vignette=" + vignetteScale.ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine("partdens=" + particleDensity.ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine("motes=" + (backgroundMotes ? 1 : 0));
+            sb.AppendLine("menucastle=" + (menuCastleEnabled ? 1 : 0));
+            sb.AppendLine("showfps=" + (showFps ? 1 : 0));
+            sb.AppendLine("fpscap=" + fpsCap);
+            sb.AppendLine("hudtop=" + (showTopHud ? 1 : 0));
+            sb.AppendLine("hudwpn=" + (showWeaponHud ? 1 : 0));
+            sb.AppendLine("hudab=" + (showAbilityHud ? 1 : 0));
+            sb.AppendLine("hudcombo=" + (showComboMeter ? 1 : 0));
+            sb.AppendLine("hudwave=" + (showWaveBanner ? 1 : 0));
+            sb.AppendLine("hudevent=" + (showFloorEventHud ? 1 : 0));
+            sb.AppendLine("hudevborder=" + (showEventWarningBorder ? 1 : 0));
+            sb.AppendLine("hudtel=" + (showEnemyTelegraphs ? 1 : 0));
+            sb.AppendLine("hudhp=" + (showEnemyHealthBars ? 1 : 0));
+            sb.AppendLine("hudboss=" + (showBossHud ? 1 : 0));
+            sb.AppendLine("hudlvlup=" + (showLevelUpBanner ? 1 : 0));
+            sb.AppendLine("lockcur=" + (lockCursorInGame ? 1 : 0));
+            sb.AppendLine("hitstop=" + (hitStopEnabled ? 1 : 0));
+            sb.AppendLine("pausefocus=" + (pauseOnFocusLoss ? 1 : 0));
+            sb.AppendLine("filmgrain=" + filmGrainScale.ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine("bloom=" + bloomScale.ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine("difficulty=" + (int)runDifficulty);
+            sb.AppendLine("bestiary=" + JoinInts(bestiaryKills));
+            sb.AppendLine("mottos=" + JoinBools(mottoUnlocked));
+            sb.AppendLine("heraldrypat=" + (heraldryPatterns ? 1 : 0));
+            for (int i = 0; i < difficultyRecords.Length; i++)
+            {
+                ref DifficultyRecord r = ref difficultyRecords[i];
+                sb.AppendLine($"rec{i}={r.BestWave},{r.BestScore},{r.BestKills}");
+            }
+            for (int i = 0; i < ChronicleBuffer.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(ChronicleBuffer[i]))
+                    sb.AppendLine("chron" + i + "=" + ChronicleBuffer[i]);
+            }
             File.WriteAllText(SavePath, sb.ToString());
         }
         catch (IOException)
@@ -1060,7 +1418,60 @@ class Program
                     case "abslot1": if (int.TryParse(val, out int as1)) abilitySlot1 = (AbilityType)Math.Clamp(as1, 0, AbilityCount - 1); break;
                     case "abslot2": if (int.TryParse(val, out int as2)) abilitySlot2 = (AbilityType)Math.Clamp(as2, 0, AbilityCount - 1); break;
                     case "abU": ReadBools(val, abilityUnlocked); break;
-                    default: break;
+                    case "ctrllegend": showControlLegend = val.Trim() == "1"; break;
+                    case "floattext": floatingTextEnabled = val.Trim() == "1"; break;
+                    case "reducemotion": reduceMotion = val.Trim() == "1"; break;
+                    case "vignette": float.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out vignetteScale); break;
+                    case "partdens": float.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out particleDensity); break;
+                    case "motes": backgroundMotes = val.Trim() == "1"; break;
+                    case "menucastle": menuCastleEnabled = val.Trim() == "1"; break;
+                    case "showfps": showFps = val.Trim() == "1"; break;
+                    case "fpscap": int.TryParse(val, out fpsCap); break;
+                    case "hudtop": showTopHud = val.Trim() == "1"; break;
+                    case "hudwpn": showWeaponHud = val.Trim() == "1"; break;
+                    case "hudab": showAbilityHud = val.Trim() == "1"; break;
+                    case "hudcombo": showComboMeter = val.Trim() == "1"; break;
+                    case "hudwave": showWaveBanner = val.Trim() == "1"; break;
+                    case "hudevent": showFloorEventHud = val.Trim() == "1"; break;
+                    case "hudevborder": showEventWarningBorder = val.Trim() == "1"; break;
+                    case "hudtel": showEnemyTelegraphs = val.Trim() == "1"; break;
+                    case "hudhp": showEnemyHealthBars = val.Trim() == "1"; break;
+                    case "hudboss": showBossHud = val.Trim() == "1"; break;
+                    case "hudlvlup": showLevelUpBanner = val.Trim() == "1"; break;
+                    case "lockcur": lockCursorInGame = val.Trim() == "1"; break;
+                    case "hitstop": hitStopEnabled = val.Trim() == "1"; break;
+                    case "pausefocus": pauseOnFocusLoss = val.Trim() == "1"; break;
+                    case "filmgrain": float.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out filmGrainScale); break;
+                    case "bloom": float.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out bloomScale); break;
+                    case "difficulty":
+                        if (int.TryParse(val, out int diffRaw))
+                        {
+                            runDifficulty = (Difficulty)Math.Clamp(diffRaw, 0, DifficultyProfiles.Length - 1);
+                            difficultyMenuIndex = (int)runDifficulty;
+                        }
+                        break;
+                    case "bestiary": ReadInts(val, bestiaryKills); break;
+                    case "mottos": ReadBools(val, mottoUnlocked); break;
+                    case "heraldrypat": heraldryPatterns = val.Trim() == "1"; break;
+                    default:
+                        if (key.StartsWith("rec", StringComparison.Ordinal) && int.TryParse(key.AsSpan(3), out int rdi)
+                            && rdi >= 0 && rdi < difficultyRecords.Length)
+                        {
+                            string[] parts = val.Split(',');
+                            if (parts.Length >= 3)
+                            {
+                                int.TryParse(parts[0], out difficultyRecords[rdi].BestWave);
+                                int.TryParse(parts[1], out difficultyRecords[rdi].BestScore);
+                                int.TryParse(parts[2], out difficultyRecords[rdi].BestKills);
+                            }
+                        }
+                        else if (key.StartsWith("chron", StringComparison.Ordinal) && int.TryParse(key.AsSpan(5), out int ci)
+                            && ci >= 0 && ci < ChronicleBuffer.Length)
+                        {
+                            ChronicleBuffer[ci] = val;
+                            chronicleCount = Math.Max(chronicleCount, ci + 1);
+                        }
+                        break;
                 }
             }
 
@@ -1080,11 +1491,50 @@ class Program
             abilityFillVis[1] = AbilityReadiness(abilitySlot2);
             playerLevel = Math.Max(1, playerLevel);
             shakeScale = Math.Clamp(shakeScale, 0f, 1f);
+            vignetteScale = Math.Clamp(vignetteScale, 0f, 1f);
+            particleDensity = Math.Clamp(particleDensity, 0.15f, 1f);
+            filmGrainScale = Math.Clamp(filmGrainScale, 0f, 1f);
+            bloomScale = Math.Clamp(bloomScale, 0f, 1f);
+            fpsCap = fpsCap switch { 60 or 120 or 144 => fpsCap, _ => 0 };
+            ApplyFpsCap();
+            UnlockMottosForLevel();
         }
         catch (IOException)
         {
             // Corrupt or unreadable save; fall back to defaults already set.
         }
+    }
+
+    static void ApplyFpsCap() => Raylib.SetTargetFPS(fpsCap <= 0 ? TargetFps : fpsCap);
+
+    static int ParticleCap => Math.Max(80, (int)(MaxParticles * particleDensity));
+
+    static void AddParticle(Particle p)
+    {
+        if (particleDensity <= 0.01f) return;
+        if (particleDensity < 0.999f && Rng.NextSingle() > particleDensity) return;
+        particles.Add(p);
+    }
+
+    static string FpsCapLabel() => fpsCap switch
+    {
+        60 => "60 FPS",
+        120 => "120 FPS",
+        144 => "144 FPS",
+        _ => "UNLIMITED",
+    };
+
+    static void CycleFpsCap()
+    {
+        fpsCap = fpsCap switch
+        {
+            0 => 60,
+            60 => 120,
+            120 => 144,
+            _ => 0,
+        };
+        ApplyFpsCap();
+        SaveGame();
     }
 
     static string JoinBools(bool[] a)
@@ -1265,31 +1715,33 @@ class Program
             "Keep Banner", "Dungeon Keys", "Oath Band", "Siege Gloves", "Grave Shawl",
             "Rampart Pin", "Lord's Mask", "Bell Cord", "Stone Rosary", "War Paint",
             "Crown Fragments", "Bastion Wings", "Crypt Lantern", "Throne Chain", "Last Oath",
+            "Cursor Crown", "Storm Glass",
         };
     }
 
     static int[] BuildAccessoryFableCosts()
     {
-        int[] c = new int[36];
+        int[] c = new int[38];
         c[0] = 0; c[4] = 70; c[5] = 0; c[7] = 110; c[8] = 150; c[10] = 180;
         c[12] = 0; c[14] = 220; c[16] = 0; c[19] = 280; c[22] = 320; c[25] = 0;
-        c[28] = 360; c[31] = 0; c[34] = 420;
+        c[28] = 360; c[31] = 0; c[34] = 420; c[37] = 480;
         return c;
     }
 
     static int[] BuildAccessoryLevelReqs()
     {
-        int[] l = new int[36];
+        int[] l = new int[38];
         l[1] = 2; l[2] = 4; l[3] = 0; l[5] = 6; l[6] = 8; l[9] = 10; l[11] = 12;
         l[13] = 14; l[15] = 16; l[17] = 18; l[20] = 20; l[23] = 22; l[26] = 24;
-        l[29] = 26; l[32] = 28; l[35] = 30;
+        l[29] = 26; l[32] = 28; l[35] = 30; l[37] = 32;
         return l;
     }
 
     static int[] BuildAccessoryWaveReqs()
     {
-        int[] w = new int[36];
+        int[] w = new int[38];
         w[3] = 4; w[7] = 0; w[10] = 10; w[18] = 14; w[21] = 18; w[24] = 22; w[27] = 26; w[30] = 30;
+        w[37] = 20;
         return w;
     }
 
@@ -1307,6 +1759,7 @@ class Program
             playerLevel++;
             levelUpBannerTimer = 2.8f;
             ApplyLevelUnlocks();
+            UnlockMottosForLevel();
             SpawnFloatingText(new Vector2(WindowWidth / 2f, 140f), "RANK UP", Gold, 26);
         }
         SaveGame();
@@ -1382,9 +1835,19 @@ class Program
         return true;
     }
 
+    static bool IsSecretAccessory(int i) => i == AccessoryCursorCrown;
+
+    static int ArmoryAccessoryCount()
+    {
+        int n = AccessoryNames.Length;
+        if (!accessoryUnlocked[AccessoryCursorCrown]) n--;
+        return n;
+    }
+
     static bool CanPurchaseAccessory(int i)
     {
         if (accessoryUnlocked[i]) return true;
+        if (IsSecretAccessory(i)) return false;
         if (AccessoryLevelReq[i] > 0 && playerLevel < AccessoryLevelReq[i]) return false;
         if (AccessoryWaveReq[i] > 0 && maxWaveReached < AccessoryWaveReq[i]) return false;
         return AccessoryFableCost[i] <= 0 || fables >= AccessoryFableCost[i];
@@ -1393,10 +1856,50 @@ class Program
     static bool TryUnlockAccessory(int i)
     {
         if (accessoryUnlocked[i]) return true;
+        if (IsSecretAccessory(i)) return false;
         if (!CanPurchaseAccessory(i)) return false;
         if (AccessoryFableCost[i] > 0) fables -= AccessoryFableCost[i];
         accessoryUnlocked[i] = true;
         return true;
+    }
+
+    static void UnlockCursorCrownEasterEgg()
+    {
+        if (accessoryUnlocked[AccessoryCursorCrown]) return;
+        accessoryUnlocked[AccessoryCursorCrown] = true;
+        accessoryIndex = AccessoryCursorCrown;
+        settingsEggBannerTimer = 5f;
+        settingsTypeBuffer = "";
+        SpawnFloatingText(new Vector2(WindowWidth / 2f, 168f), "CURSOR CROWN", Gold, 28);
+        SpawnFloatingText(new Vector2(WindowWidth / 2f, 198f), "A secret fit for the siege", WithAlpha(Color.White, 0.85f), 14);
+        SaveGame();
+    }
+
+    static void UpdateSettingsEasterEggInput()
+    {
+        int ch = Raylib.GetCharPressed();
+        while (ch != 0)
+        {
+            if (ch is >= 32 and < 127)
+            {
+                char c = char.ToLowerInvariant((char)ch);
+                if (char.IsLetter(c))
+                {
+                    settingsTypeBuffer += c;
+                    if (settingsTypeBuffer.Length > 32)
+                    {
+                        settingsTypeBuffer = settingsTypeBuffer[^32..];
+                    }
+
+                    if (settingsTypeBuffer.EndsWith(CursorCrownEasterEgg, StringComparison.Ordinal))
+                    {
+                        UnlockCursorCrownEasterEgg();
+                    }
+                }
+            }
+
+            ch = Raylib.GetCharPressed();
+        }
     }
 
     static string GunLockLabel(int i)
@@ -1442,6 +1945,615 @@ class Program
             accessoryUnlocked = new bool[AccessoryNames.Length];
             Array.Copy(old, accessoryUnlocked, Math.Min(old.Length, AccessoryNames.Length));
             accessoryUnlocked[0] = true;
+        }
+
+        if (bestiaryKills == null || bestiaryKills.Length != EnemyCatalog.Length)
+        {
+            int[] old = bestiaryKills ?? Array.Empty<int>();
+            bestiaryKills = new int[EnemyCatalog.Length];
+            Array.Copy(old, bestiaryKills, Math.Min(old.Length, bestiaryKills.Length));
+        }
+
+        if (mottoUnlocked == null || mottoUnlocked.Length != MottoLines.Length)
+        {
+            bool[] old = mottoUnlocked ?? Array.Empty<bool>();
+            mottoUnlocked = new bool[MottoLines.Length];
+            Array.Copy(old, mottoUnlocked, Math.Min(old.Length, mottoUnlocked.Length));
+        }
+
+        if (difficultyRecords == null || difficultyRecords.Length != Enum.GetValues<Difficulty>().Length)
+        {
+            difficultyRecords = new DifficultyRecord[Enum.GetValues<Difficulty>().Length];
+        }
+    }
+
+    // ---------------------------------------------------------------- Immersion systems
+
+    static Color HeraldryAccent(Color baseCol, float mix = 0.35f)
+        => LerpColor(baseCol, BodyColor(), mix);
+
+    static int GetRunTimePhase() => Math.Clamp(waveNumber / 8, 0, 3);
+
+    static Color GetTimeOfDayTint()
+    {
+        return GetRunTimePhase() switch
+        {
+            0 => new Color(255, 238, 210, 255),
+            1 => new Color(255, 255, 248, 255),
+            2 => new Color(255, 214, 188, 255),
+            _ => new Color(188, 200, 228, 255),
+        };
+    }
+
+    static float GetTimeOfDayStrength() => 0.06f + (waveNumber % 8) / 8f * 0.08f;
+
+    static void ResetImmersionRunState()
+    {
+        nearDeathPulse = 0f;
+        lastComboNarrationTier = 0;
+        betweenWaveVignetteTimer = 0f;
+        activeBlessingCount = 0;
+        Array.Fill(activeBlessings, BlessingType.None);
+        blessingPickActive = false;
+        siegeObjective = SiegeObjectiveType.None;
+        siegeObjectiveDone = false;
+        siegeObjectiveFailed = false;
+        siegeGruntsSpawned = 0;
+        siegeGruntsKilled = 0;
+        runLockedBodyIndex = (runOathFlags & (1 << (int)OathType.HeraldryBound)) != 0 ? bodyColorIndex : -1;
+        reinforceCooldown = 0f;
+        royalPardonUsed = false;
+        eventChainActive = false;
+        reverseSiegeActive = false;
+        reverseSiegeTimer = 0f;
+        playerTrailWrite = 0;
+        Array.Fill(playerTrailTiles, -1);
+        runGunAffix = playerLevel >= 25 ? (GunAffixType)(1 + Rng.Next(8)) : GunAffixType.None;
+    }
+
+    static void RecordPlayerTrailTile()
+    {
+        if (!TryGetTileUnder(playerPos, out int tx, out int ty)) return;
+        int slot = playerTrailWrite % playerTrailTiles.Length;
+        playerTrailTiles[slot] = tx + ty * GridSize;
+        playerTrailX[slot] = tx;
+        playerTrailY[slot] = ty;
+        playerTrailWrite++;
+    }
+
+    static bool PlayerRecentlyOnTile(int tx, int ty)
+    {
+        for (int i = 0; i < playerTrailTiles.Length; i++)
+        {
+            if (playerTrailTiles[i] < 0) continue;
+            if (playerTrailX[i] == tx && playerTrailY[i] == ty) return true;
+        }
+        return false;
+    }
+
+    static bool HasSynergyBannerLockstep() => accessoryIndex == AccessoryKeepBanner && upgradeLevels[UpLockstep] > 0;
+    static bool HasSynergyStormPierce() => accessoryIndex == AccessoryStormGlass && upgradeLevels[UpPierce] > 0;
+    static float EffBannerDuration() => BannerDuration * (HasSynergyBannerLockstep() ? 1.2f : 1f);
+    static int StormGlassPeekCount() => accessoryIndex == AccessoryStormGlass ? 1 + (upgradeLevels[UpPierce] > 0 ? 1 : 0) : 0;
+
+    static Vector2 ApplyFloorStateBias(Vector2 step, in Enemy enemy, EnemyBehavior behavior)
+    {
+        if (!TryGetTileUnder(enemy.Position, out int etx, out int ety)) return step;
+        Vector2 bias = Vector2.Zero;
+
+        if (behavior == EnemyBehavior.Zigzag)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int nx = etx + dx, ny = ety + dy;
+                    if (nx < 0 || nx >= GridSize || ny < 0 || ny >= GridSize) continue;
+                    if (tiles[nx, ny].State == 1)
+                        bias += Vector2.Normalize(TileCenter(nx, ny) - enemy.Position);
+                }
+            }
+        }
+        else if (behavior == EnemyBehavior.TileLeech)
+        {
+            float best = float.MaxValue;
+            Vector2 target = Vector2.Zero;
+            for (int dy = -3; dy <= 3; dy++)
+            {
+                for (int dx = -3; dx <= 3; dx++)
+                {
+                    int nx = etx + dx, ny = ety + dy;
+                    if (nx < 0 || nx >= GridSize || ny < 0 || ny >= GridSize) continue;
+                    ref Tile t = ref tiles[nx, ny];
+                    if (t.State == 2) continue;
+                    if (t.Durability < best)
+                    {
+                        best = t.Durability;
+                        target = TileCenter(nx, ny);
+                    }
+                }
+            }
+            if (best < float.MaxValue) bias = target - enemy.Position;
+        }
+        else if (behavior == EnemyBehavior.CrushTiles)
+        {
+            for (int i = 0; i < playerTrailTiles.Length; i++)
+            {
+                if (playerTrailTiles[i] < 0) continue;
+                bias += Vector2.Normalize(TileCenter(playerTrailX[i], playerTrailY[i]) - enemy.Position);
+            }
+        }
+
+        if (bias.LengthSquared() < 0.01f) return step;
+        Vector2 blended = Vector2.Normalize(step + Vector2.Normalize(bias) * 0.45f);
+        return blended * step.Length();
+    }
+
+    static void TickBossPhases(ref Enemy enemy, ref readonly EnemyDef def)
+    {
+        if (!def.Boss) return;
+        float hpRatio = enemy.Hp / Math.Max(1f, enemy.MaxHp);
+
+        if (def.Behavior == EnemyBehavior.BossBlight && hpRatio < 0.5f && enemy.Phase < 1f)
+        {
+            enemy.Phase = 1f;
+            enemy.AbilityTimer = Math.Min(enemy.AbilityTimer, 3.6f);
+            BlightArea(enemy.Position, 2);
+            SpawnFloatingText(enemy.Position + new Vector2(0, -30f), "THORNS RISE", Danger, 18);
+            AddTrauma(0.28f);
+        }
+        else if (def.Behavior == EnemyBehavior.BossDash && hpRatio < 0.5f && enemy.Phase < 1f)
+        {
+            enemy.Phase = 1f;
+            if (enemy.AbilityTimer > 1.8f) enemy.AbilityTimer = 1.8f;
+            SpawnFloatingText(enemy.Position + new Vector2(0, -30f), "FOX FURY", Danger, 18);
+            AddTrauma(0.22f);
+        }
+        else if (def.Behavior == EnemyBehavior.BossSmash)
+        {
+            if (hpRatio < 0.66f && enemy.Phase < 1f)
+            {
+                enemy.Phase = 1f;
+                enemy.StrikeDepth = Math.Max(enemy.StrikeDepth, 3);
+            }
+            if (hpRatio < 0.33f && enemy.Phase < 2f)
+            {
+                enemy.Phase = 2f;
+                enemy.StrikeDepth = Math.Max(enemy.StrikeDepth, 4);
+                SpawnFloatingText(enemy.Position + new Vector2(0, -36f), "THE KEEP SPLITS", Danger, 20);
+                AddTrauma(0.35f);
+            }
+        }
+    }
+
+    static void UpdateSiegeObjective(float dt)
+    {
+        if (siegeObjective == SiegeObjectiveType.None || siegeObjectiveFailed) return;
+
+        if (siegeObjective == SiegeObjectiveType.ClearBreach)
+        {
+            siegeObjectiveTimer -= dt;
+            if (siegeObjectiveTimer <= 0f && siegeGruntsKilled < siegeGruntsSpawned)
+                siegeObjectiveFailed = true;
+        }
+        else if (siegeObjective == SiegeObjectiveType.ProtectCorner)
+        {
+            if (tiles[siegeCornerTx, siegeCornerTy].State == 2)
+                siegeObjectiveFailed = true;
+        }
+        else if (siegeObjective == SiegeObjectiveType.HoldBanner && waveInProgress
+            && waveSwarmIndex >= waveSwarmTotal - 1 && waveSwarmTotal > 0)
+        {
+            int cx = GridSize / 2;
+            if (!TryGetTileUnder(playerPos, out int px, out int py)
+                || px < cx - 1 || px > cx || py < cx - 1 || py > cx)
+            {
+                siegeObjectiveFailed = true;
+            }
+            else
+            {
+                siegeObjectiveDone = true;
+            }
+        }
+    }
+
+    static void CompleteSiegeObjectiveBonus()
+    {
+        if (siegeObjective == SiegeObjectiveType.None || siegeObjectiveFailed) return;
+        if (siegeObjective == SiegeObjectiveType.ClearBreach && siegeGruntsKilled < siegeGruntsSpawned) return;
+        if (siegeObjective == SiegeObjectiveType.HoldBanner && !siegeObjectiveDone) return;
+
+        siegeObjectiveDone = true;
+        int bonus = 12 + waveNumber * 2;
+        fables += bonus;
+        runFablesEarned += bonus;
+        SpawnFloatingText(playerPos + new Vector2(0, -58f), "+" + bonus + " siege bonus", Gold, 18);
+    }
+
+    static string SiegeObjectiveLabel() => siegeObjective switch
+    {
+        SiegeObjectiveType.HoldBanner => "HOLD THE BANNER TILE",
+        SiegeObjectiveType.ClearBreach => "CLEAR THE BREACH",
+        SiegeObjectiveType.ProtectCorner => "PROTECT THE CORNER",
+        _ => "",
+    };
+
+    static void ApplyCollapseProximityShake(int tileX, int tileY)
+    {
+        if (!TryGetTileUnder(playerPos, out int px, out int py)) return;
+        int dist = Math.Max(Math.Abs(tileX - px), Math.Abs(tileY - py));
+        if (dist <= 2) AddTrauma((3 - dist) * 0.06f * shakeScale);
+    }
+
+    static void SpawnComboNarration(int c)
+    {
+        if (!floatingTextEnabled) return;
+        int tier = c switch { >= 35 => 4, >= 20 => 3, >= 10 => 2, >= 5 => 1, _ => 0 };
+        if (tier <= lastComboNarrationTier) return;
+        lastComboNarrationTier = tier;
+        string msg = tier switch { 1 => "HOLDING THE LINE", 2 => "UNBREAKABLE", 3 => "LEGENDARY STREAK", _ => "THE BAILEY STANDS" };
+        SpawnFloatingText(new Vector2(WindowWidth / 2f, 72f), msg, ComboColor(c), 22);
+    }
+
+    static void TriggerBossHitStop(bool boss)
+    {
+        if (hitStopEnabled && boss) hitstop = Math.Max(hitstop, 0.06f);
+    }
+
+    static void UpdateNearDeathPulse(float dt)
+    {
+        float target = 0f;
+        if (TryGetTileUnder(playerPos, out int tx, out int ty))
+        {
+            ref Tile feet = ref tiles[tx, ty];
+            if (activeEvent != FloorEventType.None && eventCountdown > 0f && feet.EventMarked && eventCountdown < 2f) target = 1f;
+            else if (feet.State != 2 && feet.Durability < MaxDurability * 0.18f) target = 0.75f;
+        }
+        nearDeathPulse = Approach(nearDeathPulse, target, 4f, dt);
+    }
+
+    static void UpdateBetweenWaveAmbience(float dt)
+    {
+        if (waveInProgress) return;
+        betweenWaveVignetteTimer += dt;
+        if (betweenWaveVignetteTimer < 0.35f || Rng.NextSingle() > 0.55f) return;
+        betweenWaveVignetteTimer = 0f;
+        AddParticle(new Particle
+        {
+            Position = new Vector2(Rng.Next(40, WindowWidth - 40), Rng.Next(40, WindowHeight - 40)),
+            Velocity = new Vector2(Rng.NextSingle() * 12f - 6f, -18f - Rng.NextSingle() * 22f),
+            Color = new Color(196, 128, 64, 255),
+            Alpha = 0.55f, Fade = 0.9f, Size = 2.5f, Drag = 1.2f, Glow = true,
+        });
+    }
+
+    static void PushChronicleEntry()
+    {
+        var (cause, _) = GetDeathCauseCopy();
+        ChronicleBuffer[chronicleWrite % ChronicleBuffer.Length] = $"Wave {waveNumber} — {cause} — {activeDifficulty.Title}";
+        chronicleWrite++;
+        chronicleCount = Math.Min(chronicleCount + 1, ChronicleBuffer.Length);
+    }
+
+    static void UnlockMottosForLevel()
+    {
+        for (int i = 0; i < MottoLines.Length; i++)
+        {
+            if (!mottoUnlocked[i] && playerLevel >= MottoLevelReq[i]) mottoUnlocked[i] = true;
+        }
+    }
+
+    static string GetUnlockedMotto()
+    {
+        for (int i = MottoLines.Length - 1; i >= 0; i--)
+            if (mottoUnlocked[i]) return MottoLines[i];
+        return "";
+    }
+
+    static void UpdateDifficultyRecords(bool final)
+    {
+        int di = (int)runDifficulty;
+        if (di < 0 || di >= difficultyRecords.Length) return;
+        ref DifficultyRecord rec = ref difficultyRecords[di];
+        if (waveNumber > rec.BestWave) rec.BestWave = waveNumber;
+        if (score > rec.BestScore) rec.BestScore = score;
+        if (final && runKillCount > rec.BestKills) rec.BestKills = runKillCount;
+    }
+
+    static bool IsPracticeRun() => runDifficulty == Difficulty.PracticeHall;
+
+    static void IncrementBestiary(EnemyType type)
+    {
+        int i = (int)type;
+        if (i >= 0 && i < bestiaryKills.Length) bestiaryKills[i]++;
+    }
+
+    static EventFamily GetEventFamily(FloorEventType ev) => ev switch
+    {
+        FloorEventType.TideSurge or FloorEventType.TideRift or FloorEventType.TideRecede or FloorEventType.TideColumn
+            or FloorEventType.TideEcho or FloorEventType.TideUndertow or FloorEventType.TideCrest or FloorEventType.TideWall
+            or FloorEventType.TideAnchor or FloorEventType.TideFoam or FloorEventType.TideWhirlpool or FloorEventType.TideBeacon
+            or FloorEventType.TideStrike or FloorEventType.SallyForth => EventFamily.Tide,
+        FloorEventType.EmberRain or FloorEventType.EmberGate or FloorEventType.EmberPulse or FloorEventType.EmberCross
+            or FloorEventType.EmberBridge or FloorEventType.EmberFury or FloorEventType.EmberSnake or FloorEventType.EmberHive
+            or FloorEventType.EmberTide or FloorEventType.EmberCage or FloorEventType.EmberQuake or FloorEventType.EmberBloom
+            or FloorEventType.EmberAltar => EventFamily.Ember,
+        FloorEventType.CryptSeal or FloorEventType.CryptWail or FloorEventType.CryptTorch or FloorEventType.CryptChains
+            or FloorEventType.CryptMist or FloorEventType.CryptTomb or FloorEventType.CryptShroud or FloorEventType.CryptGlimpse
+            or FloorEventType.CryptRattle or FloorEventType.CryptEcho or FloorEventType.CryptGrave or FloorEventType.CryptLantern
+            or FloorEventType.CryptVeil or FloorEventType.Portcullis => EventFamily.Crypt,
+        FloorEventType.CrownTrial or FloorEventType.CrownFall or FloorEventType.CrownShard or FloorEventType.CrownThrone
+            or FloorEventType.CrownEdict or FloorEventType.CrownRot or FloorEventType.CrownBolt or FloorEventType.CrownRing
+            or FloorEventType.CrownIsles or FloorEventType.CrownStorm or FloorEventType.CrownCoronation or FloorEventType.CrownUsurpation
+            or FloorEventType.CrownReckoning or FloorEventType.HeraldsCall => EventFamily.Crown,
+        _ => EventFamily.General,
+    };
+
+    static string GetArenaQuadrantName(int tx, int ty)
+    {
+        bool left = tx < GridSize / 2;
+        bool top = ty < GridSize / 2;
+        return (left, top) switch
+        {
+            (true, true) => "NW BAILEY",
+            (false, true) => "NE WATCH",
+            (false, false) => "SE CHAPEL",
+            _ => "SW BREACH",
+        };
+    }
+
+    static string GetEventGlossaryTip(FloorEventType ev) => ev switch
+    {
+        FloorEventType.SafeZoneRush or FloorEventType.TideBeacon or FloorEventType.EmberGate => "Reach the glowing safe band before time runs out.",
+        FloorEventType.CenterSnare or FloorEventType.CryptSeal or FloorEventType.TideWhirlpool => "The center dies — sprint for the rim.",
+        FloorEventType.StoneIslands or FloorEventType.TideAnchor or FloorEventType.CrownIsles => "Find the safe islands; marked stone collapses.",
+        FloorEventType.MarkedStrike or FloorEventType.TideStrike or FloorEventType.CryptGrave => "Leave marked tiles before they fall in sequence.",
+        FloorEventType.MossRot or FloorEventType.CrownRot => "One half of the arena rots faster — stay on the healthy side.",
+        FloorEventType.SallyForth => "The safe rim rotates — keep moving along the wall.",
+        FloorEventType.Portcullis => "Columns fall in order — read the telegraph lanes.",
+        FloorEventType.HeraldsCall => "Only your herald's footing holds — stay on the safe island.",
+        _ => "Unmarked tiles are safe until the countdown ends.",
+    };
+
+    static readonly (FloorEventType Precursor, FloorEventType FollowUp)[] EventChains =
+    {
+        (FloorEventType.CryptMist, FloorEventType.CryptVeil),
+        (FloorEventType.CryptVeil, FloorEventType.CryptEcho),
+        (FloorEventType.TideSurge, FloorEventType.TideCrest),
+        (FloorEventType.EmberRain, FloorEventType.EmberPulse),
+        (FloorEventType.CrownTrial, FloorEventType.CrownStorm),
+    };
+
+    static float BlessingMoveMult()
+    {
+        float m = 1f;
+        for (int i = 0; i < activeBlessingCount; i++)
+            if (activeBlessings[i] == BlessingType.SwiftMarch) m += 0.05f;
+        return m;
+    }
+
+    static float BlessingFableMult()
+    {
+        float m = 1f;
+        for (int i = 0; i < activeBlessingCount; i++)
+        {
+            if (activeBlessings[i] == BlessingType.DeepPockets) m += 0.12f;
+            if (activeBlessings[i] == BlessingType.LuckySigil) m += 0.08f;
+        }
+        return m;
+    }
+
+    static float BlessingTelegraphBonus()
+    {
+        float b = 0f;
+        for (int i = 0; i < activeBlessingCount; i++)
+            if (activeBlessings[i] == BlessingType.LongFuse) b += 0.5f;
+        return b;
+    }
+
+    static float GunAffixDamageMult() => runGunAffix switch
+    {
+        GunAffixType.Steady => 1.12f,
+        GunAffixType.Heavy => 1.2f,
+        GunAffixType.Volatile => 0.92f,
+        _ => 1f,
+    };
+
+    static float GunAffixFireRateMult() => runGunAffix switch
+    {
+        GunAffixType.Volatile => 1.18f,
+        GunAffixType.Quickdraw => 1.1f,
+        GunAffixType.Heavy => 0.88f,
+        _ => 1f,
+    };
+
+    static string GunAffixName() => runGunAffix switch
+    {
+        GunAffixType.Volatile => "Volatile",
+        GunAffixType.Steady => "Steady",
+        GunAffixType.Leeching => "Leeching",
+        GunAffixType.Piercing => "Piercing",
+        GunAffixType.Quickdraw => "Quickdraw",
+        GunAffixType.Heavy => "Heavy",
+        GunAffixType.Lucky => "Lucky",
+        GunAffixType.Ranger => "Ranger",
+        _ => "",
+    };
+
+    static float OathRewardMult()
+    {
+        float m = 1f;
+        if ((runOathFlags & (1 << (int)OathType.NoVerdict)) != 0) m += 0.15f;
+        if ((runOathFlags & (1 << (int)OathType.NoOath)) != 0) m += 0.2f;
+        if ((runOathFlags & (1 << (int)OathType.HeraldryBound)) != 0) m += 0.15f;
+        if ((runOathFlags & (1 << (int)OathType.PureNightmare)) != 0 && runDifficulty == Difficulty.FableNightmare) m += 0.25f;
+        for (int i = 0; i < activeBlessingCount; i++)
+            if (activeBlessings[i] == BlessingType.SiegeRations) m += 0.1f;
+        return m;
+    }
+
+    static bool OathBlocksVerdict() => (runOathFlags & (1 << (int)OathType.NoVerdict)) != 0;
+    static bool OathBlocksOath() => (runOathFlags & (1 << (int)OathType.NoOath)) != 0;
+
+    static void OfferBlessings()
+    {
+        if (waveNumber % 5 != 0 || waveNumber <= 0 || activeBlessingCount >= activeBlessings.Length) return;
+        var pool = new List<BlessingType>();
+        for (int i = 1; i <= (int)BlessingType.WindBlessing; i++) pool.Add((BlessingType)i);
+        for (int i = pool.Count - 1; i > 0; i--)
+        {
+            int j = Rng.Next(i + 1);
+            (pool[i], pool[j]) = (pool[j], pool[i]);
+        }
+        for (int i = 0; i < blessingChoices.Length; i++) blessingChoices[i] = pool[i];
+        blessingPickActive = true;
+        state = GameState.Paused;
+    }
+
+    static void RollSiegeObjective()
+    {
+        siegeObjective = SiegeObjectiveType.None;
+        siegeObjectiveDone = false;
+        siegeObjectiveFailed = false;
+        siegeGruntsSpawned = 0;
+        siegeGruntsKilled = 0;
+        if (IsPracticeRun() || IsBossWave(waveNumber) || Rng.NextSingle() > 0.3f) return;
+        siegeObjective = (SiegeObjectiveType)Rng.Next(1, 4);
+        if (siegeObjective == SiegeObjectiveType.ProtectCorner)
+        {
+            siegeCornerTx = Rng.Next(2) == 0 ? 1 : GridSize - 2;
+            siegeCornerTy = Rng.Next(2) == 0 ? 1 : GridSize - 2;
+        }
+        else if (siegeObjective == SiegeObjectiveType.ClearBreach)
+        {
+            siegeObjectiveTimer = 22f + waveNumber * 0.4f;
+        }
+        waveSubtext = SiegeObjectiveLabel();
+    }
+
+    static int ReinforceFableCost() => Math.Max(5, ReinforceFableBase + waveNumber * 2);
+
+    static bool TryReinforceTile()
+    {
+        if (reinforceCooldown > 0f) return false;
+        if (!TryGetTileUnder(playerPos, out int tx, out int ty)) return false;
+        int cost = ReinforceFableCost();
+        if (fables < cost) return false;
+
+        int fortified = 0;
+        for (int dy = -ReinforceRadius; dy <= ReinforceRadius; dy++)
+        {
+            for (int dx = -ReinforceRadius; dx <= ReinforceRadius; dx++)
+            {
+                int nx = tx + dx, ny = ty + dy;
+                if (nx < 0 || nx >= GridSize || ny < 0 || ny >= GridSize) continue;
+                ref Tile t = ref tiles[nx, ny];
+                if (t.State == 2) continue;
+                fortified++;
+            }
+        }
+        if (fortified == 0) return false;
+
+        fables -= cost;
+        Vector2 epicenter = TileCenter(tx, ty);
+        for (int dy = -ReinforceRadius; dy <= ReinforceRadius; dy++)
+        {
+            for (int dx = -ReinforceRadius; dx <= ReinforceRadius; dx++)
+            {
+                int nx = tx + dx, ny = ty + dy;
+                if (nx < 0 || nx >= GridSize || ny < 0 || ny >= GridSize) continue;
+                ref Tile t = ref tiles[nx, ny];
+                if (t.State == 2) continue;
+                t.State = 0;
+                t.Durability = MaxDurability * ReinforceFortifiedMult;
+                t.Collapse = 0f;
+                t.EventMarked = false;
+                t.RegrowTimer = 0f;
+                t.UntouchedTimer = ReinforceFreshTimer;
+            }
+        }
+
+        reinforceCooldown = ReinforceCooldownTime;
+        abilityIFrameTimer = Math.Max(abilityIFrameTimer, 0.35f);
+        SpawnFloatingText(epicenter, "FORTIFIED", Gold, 20);
+        SpawnFloatingText(epicenter + new Vector2(0, -22f), "+" + (int)(ReinforceFortifiedMult * 100f - 100f) + "% stone", UiAccent, 14);
+        SpawnEventShockwave(epicenter, UiAccent, TileSize * (ReinforceRadius + 1.5f), 0.55f);
+        AddFlash(UiAccent, 0.14f);
+        AddTrauma(0.1f);
+        return true;
+    }
+
+    static bool TryRoyalPardon()
+    {
+        if (royalPardonUsed || activeEvent != FloorEventType.None || verdictHaltTimer > 0f) return false;
+        int cost = 200 + waveNumber * 10;
+        if (fables < cost) return false;
+        fables -= cost;
+        royalPardonUsed = true;
+        nextFloorEventTimer = 0f;
+        StartFloorEvent(PickNextFloorEvent());
+        SpawnFloatingText(new Vector2(WindowWidth / 2f, 100f), "ROYAL PARDON", Gold, 22);
+        return true;
+    }
+
+    static string GetBossBark(EnemyType boss)
+    {
+        int di = Math.Clamp((int)runDifficulty, 0, 4);
+        return boss switch
+        {
+            EnemyType.BrambleLord => di switch { 0 => "Even a beginner smells fear.", 1 => "The thorns remember your name.", 2 => "The marshal rides for the bailey.", 3 => "Champion — the brambles hunger.", _ => "Nightmare or not, you bleed." },
+            EnemyType.FoxWarden => di switch { 0 => "A fox outruns a novice.", 1 => "Scarlet crest — do not blink.", 2 => "The warden tests your nerve.", 3 => "Champion's blood paints the wall.", _ => "Run. You cannot." },
+            EnemyType.GroveTitan => di switch { 0 => "The colossus barely notices you.", 1 => "Stone shakes for the titan.", 2 => "The keep groans under its tread.", 3 => "Champion — the walls split.", _ => "The nightmare walks." },
+            _ => "",
+        };
+    }
+
+    static void BeginReverseSiege()
+    {
+        if (!IsBossWave(waveNumber) || Rng.NextSingle() > 0.25f) return;
+        reverseSiegeActive = true;
+        reverseSiegeTimer = 8f;
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                bool edge = x == 0 || y == 0 || x == GridSize - 1 || y == GridSize - 1;
+                if (!edge) continue;
+                ref Tile t = ref tiles[x, y];
+                if (t.State == 2) { t.State = 0; t.Durability = MaxDurability * 0.7f; t.RegrowTimer = 0f; }
+            }
+        }
+        SpawnFloatingText(new Vector2(WindowWidth / 2f, 140f), "REVERSE SIEGE", Danger, 24);
+    }
+
+    static void UpdateReverseSiege(float dt)
+    {
+        if (!reverseSiegeActive) return;
+        reverseSiegeTimer -= dt;
+        if (reverseSiegeTimer > 0f) return;
+        reverseSiegeActive = false;
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                bool edge = x == 0 || y == 0 || x == GridSize - 1 || y == GridSize - 1;
+                if (!edge) continue;
+                ref Tile t = ref tiles[x, y];
+                if (t.State != 2) CollapseTile(ref t, true, x, y);
+            }
+        }
+    }
+
+    static void DrawHeraldryHatch(Rectangle r, Color color, int index)
+    {
+        if (!heraldryPatterns) return;
+        Color line = WithAlpha(Lighten(color, 0.6f), 0.55f);
+        Vector2 c = new Vector2(r.X + r.Width * 0.5f, r.Y + r.Height * 0.5f);
+        for (int i = -2; i <= 2; i++)
+        {
+            float off = i * 5f;
+            Raylib.DrawLineEx(c + new Vector2(-r.Width * 0.5f, off), c + new Vector2(r.Width * 0.5f, off), 1f, line);
+            Raylib.DrawLineEx(c + new Vector2(off, -r.Height * 0.5f), c + new Vector2(off, r.Height * 0.5f), 1f, line);
         }
     }
 
@@ -1526,8 +2638,11 @@ class Program
         playerInEventSafeZone = false;
         floorRotTimer = 0f;
         floorRotSide = 0f;
-        nextFloorEventTimer = 4f;
-        nextFloorEventCooldown = FloorEventCooldownMin + Rng.NextSingle() * (FloorEventCooldownMax - FloorEventCooldownMin);
+        activeDifficulty = GetDifficultyProfile(runDifficulty);
+        eventSurgeTimer = 0f;
+        ResetImmersionRunState();
+        nextFloorEventCooldown = Math.Max(0.5f, NextEventCooldownSpan());
+        nextFloorEventTimer = nextFloorEventCooldown;
         markedStrikeCount = 0;
         eventPhase = 0;
         eventStartCountdown = 0f;
@@ -1570,7 +2685,6 @@ class Program
         weaponAimDir = Vector2.UnitY;
         weaponAimTarget = playerPos + Vector2.UnitY * 80f;
         weaponRecoil = 0f;
-        motionBlurVel = Vector2.Zero;
         cameraDashLean = 0f;
         cameraDashLeanDir = Vector2.Zero;
         trauma = 0f;
@@ -1584,6 +2698,7 @@ class Program
         aiGameOverTimer = 0f;
         if (aiPilotEnabled) aiPilotBannerTimer = 8f;
         aiSteerVel = Vector2.Zero;
+        aiMoveSmoothed = Vector2.Zero;
         aiTopBandTimer = 0f;
         aiCrumbleDashUrgency = 0f;
         aiDashUrgency = 0f;
@@ -1596,19 +2711,75 @@ class Program
 
     // ---------------------------------------------------------------- AI pilot
 
+    static float AiSteeringUrgency()
+    {
+        float voidUrg = AiVoidDashUrgency(playerPos);
+        float phaseUrg = aiPhase switch
+        {
+            AiSurvivalPhase.LastStand => 1f,
+            AiSurvivalPhase.TileCritical => 0.92f,
+            AiSurvivalPhase.EventActive => 0.82f,
+            AiSurvivalPhase.BossFight => 0.72f,
+            AiSurvivalPhase.Combat => 0.52f,
+            AiSurvivalPhase.EventPrep => 0.46f,
+            AiSurvivalPhase.Patrol => 0.32f,
+            AiSurvivalPhase.Calm => 0.26f,
+            _ => 0.35f,
+        };
+        return Math.Clamp(MathF.Max(phaseUrg, voidUrg * 0.95f) + AiFutureRamUrgencyBoost(), 0f, 1f);
+    }
+
+    static Vector2 AiSmoothMoveDirection(Vector2 target, float dt)
+    {
+        if (target == Vector2.Zero)
+        {
+            aiMoveSmoothed = Vector2.Lerp(aiMoveSmoothed, Vector2.Zero, 1f - MathF.Exp(-9f * dt));
+            return aiMoveSmoothed.LengthSquared() > 0.025f ? SafeNormalize(aiMoveSmoothed) : Vector2.Zero;
+        }
+
+        target = SafeNormalize(target);
+        float urgency = AiSteeringUrgency();
+        if (aiMoveSmoothed.LengthSquared() < 0.025f)
+        {
+            aiMoveSmoothed = target;
+            return target;
+        }
+
+        Vector2 current = SafeNormalize(aiMoveSmoothed);
+        float curAngle = MathF.Atan2(current.Y, current.X);
+        float tgtAngle = MathF.Atan2(target.Y, target.X);
+        float delta = tgtAngle - curAngle;
+        while (delta > MathF.PI) delta -= MathF.PI * 2f;
+        while (delta < -MathF.PI) delta += MathF.PI * 2f;
+
+        float maxTurn = (1.4f + urgency * 4.2f) * dt;
+        delta = Math.Clamp(delta, -maxTurn, maxTurn);
+        float newAngle = curAngle + delta;
+        Vector2 turned = new Vector2(MathF.Cos(newAngle), MathF.Sin(newAngle));
+        float follow = 1f - MathF.Exp(-(3.5f + urgency * 7f) * dt);
+        aiMoveSmoothed = SafeNormalize(Vector2.Lerp(current, turned, follow));
+        return aiMoveSmoothed;
+    }
+
     static void UpdateAiPilot(float dt)
     {
         aiDashRequest = false;
         aiParalyzeRequest = false;
         if (aiPostParalyzeGrace > 0f) aiPostParalyzeGrace -= dt;
 
-        RebuildAiBoardIntel();
+        aiIntelTimer -= dt;
+        if (aiIntelTimer <= 0f)
+        {
+            aiIntelTimer = 0.1f;
+            RebuildAiBoardIntel();
+        }
+
         RunAiGrandmasterBrain(dt);
         UpdateAiZoneTimers(dt);
         aiParalyzeRequest = HasEquippedAbility(AbilityType.Paralyze) && AiShouldParalyze(playerPos);
         ComputeHeuristicPilotMove(dt, out Vector2 move, out float dashUrgency);
         move = AiGrandmasterBlendSteering(playerPos, move, dt);
-        aiMove = move;
+        aiMove = AiSmoothMoveDirection(move, dt);
 
         if (AiShouldDashToHealthyGround(playerPos))
         {
@@ -1764,7 +2935,7 @@ class Program
         }
         else
         {
-            aiSteerVel = Vector2.Lerp(aiSteerVel, desired, 1f - MathF.Exp(-11f * dt));
+            aiSteerVel = Vector2.Lerp(aiSteerVel, desired, 1f - MathF.Exp(-(6.5f + AiSteeringUrgency() * 5f) * dt));
             Vector2 moveDir = aiSteerVel.LengthSquared() > 0.03f ? SafeNormalize(aiSteerVel) : Vector2.Zero;
             move = moveDir != Vector2.Zero ? RefineAiDirection(moveDir, playerPos, threatsNear) : Vector2.Zero;
             if (move != Vector2.Zero) lastMoveDirection = move;
@@ -3239,13 +4410,18 @@ class Program
         float bestScore = float.NegativeInfinity;
         Vector2 best = desired;
         float probeDist = inCombat ? 72f : 98f;
+        float urgency = AiSteeringUrgency();
+        int sweep = urgency > 0.75f ? 5 : 3;
+        float angleStep = urgency > 0.75f ? MathF.PI / 18f : MathF.PI / 28f;
+        Vector2 stick = lastMoveDirection.LengthSquared() > 0.01f ? SafeNormalize(lastMoveDirection) : desired;
 
-        for (int i = -5; i <= 5; i++)
+        for (int i = -sweep; i <= sweep; i++)
         {
-            float angle = baseAngle + i * (MathF.PI / 18f);
+            float angle = baseAngle + i * angleStep;
             Vector2 dir = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
             Vector2 probe = from + dir * probeDist;
             float score = AiScoreProbePosition(probe, from);
+            if (urgency < 0.8f) score += Vector2.Dot(dir, stick) * 55f;
             if (score > bestScore)
             {
                 bestScore = score;
@@ -3750,6 +4926,53 @@ class Program
     static bool aiScenarioHasFast;
     static readonly List<(float F, int X, int Y)> aiPathOpen = new();
 
+    const float AiFutureHorizonSec = 3f;
+    const float AiFutureStepSec = 0.1f;
+    const int AiFutureHorizonSteps = 30;
+
+    struct AiFutureRamEntry
+    {
+        public float TimeFromNow;
+        public FloorEventType Event;
+        public float EventCountdown;
+        public int EventPhase;
+        public bool EventActive;
+        public bool EventIncoming;
+        public bool CollapseActive;
+        public int QueuedCollapseTiles;
+        public float SecondsUntilNextEvent;
+    }
+
+    struct AiFutureSimCtx
+    {
+        public FloorEventType Ev;
+        public float Countdown;
+        public float StartCountdown;
+        public int Phase;
+        public float ActionTimer;
+        public float NextEventTimer;
+        public float NextEventCooldown;
+        public float VerdictHalt;
+        public float WaveBanner;
+        public int EventStep;
+        public int StrikeCount;
+        public Vector2 Epicenter;
+        public int EventSide;
+        public Rectangle SafeRect;
+        public Rectangle DangerRect;
+        public bool IncomingPending;
+        public float IncomingCountdown;
+    }
+
+    static readonly AiFutureRamEntry[] aiFutureEventRam = new AiFutureRamEntry[AiFutureHorizonSteps];
+    static readonly float[,,] aiFutureTileHazardRam = new float[AiFutureHorizonSteps, GridSize, GridSize];
+    static bool aiFutureRamValid;
+    static readonly bool[,] aiFutureSimMarked = new bool[GridSize, GridSize];
+    static readonly bool[,] aiFutureSimCollapsed = new bool[GridSize, GridSize];
+    static readonly List<(int X, int Y)> aiFutureSimQueue = new();
+    static readonly List<(int X, int Y, float Sort)> aiFutureSortScratch = new();
+    static readonly int[] aiFutureSimStrikeOrder = new int[GridSize * GridSize];
+
     static AiBehaviorProfile AiBehaviorProfileFor(EnemyBehavior b) => b switch
     {
         EnemyBehavior.Chase => new() { Behavior = EnemyBehavior.Chase, ZoneMul = 1.0f, PanicMul = 1.1f, TileThreat = 0.6f, Priority = 1.0f, KiteDist = 85f, AvoidLane = false, PreemptDash = false },
@@ -3860,8 +5083,12 @@ class Program
         aiWaveConservatism = 0f;
         aiScenarioScoreCache = 0f;
         aiScenarioFlagsDirty = true;
+        aiMoveSmoothed = Vector2.Zero;
         aiPathNodes.Clear();
         aiPathOpen.Clear();
+        aiFutureRamValid = false;
+        aiFutureSimQueue.Clear();
+        aiFutureSortScratch.Clear();
     }
 
     static void UpdateAiWaveConservatism()
@@ -3872,6 +5099,18 @@ class Program
     static void EvaluateAiSurvivalPhase()
     {
         bool eventLive = activeEvent != FloorEventType.None && eventCountdown > 0f;
+        if (!eventLive && aiFutureRamValid)
+        {
+            for (int s = 0; s < AiFutureHorizonSteps; s++)
+            {
+                ref AiFutureRamEntry entry = ref aiFutureEventRam[s];
+                if (entry.EventActive || entry.CollapseActive)
+                {
+                    eventLive = true;
+                    break;
+                }
+            }
+        }
         bool bossNear = NearestBossDistance(playerPos) < 220f;
         bool combat = AiEnemiesThreatening(playerPos, 190f) >= 1;
         bool tileBad = IsFeetTileWeak() || AiVoidDashUrgency(playerPos) > 0.55f;
@@ -3880,8 +5119,11 @@ class Program
         if (tileBad && combat) next = AiSurvivalPhase.LastStand;
         else if (tileBad) next = AiSurvivalPhase.TileCritical;
         else if (bossNear) next = AiSurvivalPhase.BossFight;
-        else if (eventLive && eventCountdown < AiEventProfileFor(activeEvent).PrepThreshold) next = AiSurvivalPhase.EventActive;
-        else if (eventLive) next = AiSurvivalPhase.EventPrep;
+        else if (eventLive && activeEvent != FloorEventType.None && eventCountdown < AiEventProfileFor(activeEvent).PrepThreshold) next = AiSurvivalPhase.EventActive;
+        else if (eventLive && activeEvent != FloorEventType.None) next = AiSurvivalPhase.EventPrep;
+        else if (eventLive) next = AiSurvivalPhase.EventActive;
+        else if (aiFutureRamValid && aiFutureEventRam[0].EventIncoming) next = AiSurvivalPhase.EventPrep;
+        else if (aiFutureRamValid && aiFutureEventRam[0].SecondsUntilNextEvent < 2.4f && waveNumber >= 3) next = AiSurvivalPhase.EventPrep;
         else if (combat) next = AiSurvivalPhase.Combat;
         else if (waveInProgress) next = AiSurvivalPhase.Patrol;
         else next = AiSurvivalPhase.Calm;
@@ -3934,6 +5176,527 @@ class Program
         }
     }
 
+    static float AiFutureDetSort(int x, int y, int salt)
+    {
+        uint h = (uint)(x * 73856093 ^ y * 19349663 ^ salt * 83492791);
+        return (h & 0xFFFF) / 65535f;
+    }
+
+    static int AiFutureStepIndex(float secondsFromNow)
+        => Math.Clamp((int)(secondsFromNow / AiFutureStepSec), 0, AiFutureHorizonSteps - 1);
+
+    static float AiFutureHazardAtTile(int x, int y, float secondsFromNow)
+    {
+        if (!aiFutureRamValid) return aiPredictedHazard[x, y];
+        return aiFutureTileHazardRam[AiFutureStepIndex(secondsFromNow), x, y];
+    }
+
+    static float AiFutureWorstHazardAtTile(int x, int y, float horizonSec)
+    {
+        if (!aiFutureRamValid) return aiPredictedHazard[x, y];
+        int maxStep = AiFutureStepIndex(horizonSec);
+        float worst = 0f;
+        for (int s = 0; s <= maxStep; s++)
+        {
+            worst = MathF.Max(worst, aiFutureTileHazardRam[s, x, y]);
+        }
+        return worst;
+    }
+
+    static float AiFutureRamUrgencyBoost()
+    {
+        if (!aiFutureRamValid) return 0f;
+        float boost = 0f;
+
+        if (activeEvent == FloorEventType.None)
+        {
+            float until = aiFutureEventRam[0].SecondsUntilNextEvent;
+            if (until > 0f && until < 2.5f)
+            {
+                boost = MathF.Max(boost, (1f - until / 2.5f) * 0.35f);
+            }
+        }
+
+        if (TryGetTileUnder(playerPos, out int px, out int py))
+        {
+            for (int s = 0; s < AiFutureHorizonSteps; s++)
+            {
+                float h = aiFutureTileHazardRam[s, px, py];
+                if (h <= 0.75f) continue;
+                float t = s * AiFutureStepSec;
+                boost = MathF.Max(boost, h * (1f - t / AiFutureHorizonSec) * 0.55f);
+            }
+        }
+
+        if (activeEvent != FloorEventType.None)
+        {
+            if (eventPhase == 0 && eventCountdown > 0f && eventCountdown < 1.2f)
+            {
+                boost = MathF.Max(boost, 0.5f);
+            }
+
+            for (int s = 0; s < AiFutureHorizonSteps; s++)
+            {
+                if (!aiFutureEventRam[s].CollapseActive) continue;
+                boost = MathF.Max(boost, 0.42f + (AiFutureHorizonSteps - s) * 0.018f);
+                break;
+            }
+        }
+
+        return Math.Clamp(boost, 0f, 0.45f);
+    }
+
+    static bool AiFutureUsesStaggeredMarkedCollapse(FloorEventType ev)
+    {
+        if (ev == FloorEventType.None || ev == FloorEventType.CrownThrone) return false;
+        if (AiFutureUsesSequentialStrike(ev)) return false;
+        if (AiFutureUsesSafeRectSurvival(ev)) return false;
+        if (AiFutureUsesCenterSnareSurvival(ev)) return false;
+        return ev is FloorEventType.CrimsonCrumble or FloorEventType.Checkerfall
+            or FloorEventType.RingCollapse or FloorEventType.StoneIslands
+            or FloorEventType.ScatterPits or FloorEventType.BlightStorm
+            or FloorEventType.TideSurge or FloorEventType.TideRift or FloorEventType.TideRecede
+            or FloorEventType.TideColumn or FloorEventType.TideEcho or FloorEventType.TideUndertow
+            or FloorEventType.TideCrest or FloorEventType.TideWall or FloorEventType.TideAnchor
+            or FloorEventType.TideFoam or FloorEventType.EmberRain or FloorEventType.EmberPulse
+            or FloorEventType.EmberCross or FloorEventType.EmberBridge or FloorEventType.EmberHive
+            or FloorEventType.EmberFury or FloorEventType.EmberSnake or FloorEventType.EmberQuake
+            or FloorEventType.EmberBloom or FloorEventType.CrownTrial or FloorEventType.CrownFall
+            or FloorEventType.CrownShard or FloorEventType.CrownRing or FloorEventType.CrownIsles
+            or FloorEventType.CrownCoronation or FloorEventType.CrownUsurpation or FloorEventType.CrownReckoning
+            or FloorEventType.CrownStorm or FloorEventType.CryptSeal or FloorEventType.CryptWail
+            or FloorEventType.CryptTorch or FloorEventType.CryptChains or FloorEventType.CryptGlimpse
+            or FloorEventType.CryptRattle or FloorEventType.CryptEcho or FloorEventType.CryptShroud
+            or FloorEventType.CryptLantern or FloorEventType.CryptTomb or FloorEventType.CryptMist;
+    }
+
+    static bool AiFutureUsesSafeRectSurvival(FloorEventType ev) => ev switch
+    {
+        FloorEventType.CrownThrone => false,
+        FloorEventType.SafeZoneRush or FloorEventType.EmberGate or FloorEventType.EmberTide
+            or FloorEventType.EmberCage or FloorEventType.TideBeacon or FloorEventType.CryptVeil
+            or FloorEventType.CrownEdict or FloorEventType.EmberAltar => true,
+        _ => AiEventProfileFor(ev).UsesSafeRect,
+    };
+
+    static bool AiFutureUsesCenterSnareSurvival(FloorEventType ev) => ev switch
+    {
+        FloorEventType.CenterSnare => true,
+        _ => AiEventProfileFor(ev).UsesCenter && AiEventProfileFor(ev).UsesEdge,
+    };
+
+    static bool AiFutureUsesSequentialStrike(FloorEventType ev) => ev switch
+    {
+        FloorEventType.MarkedStrike or FloorEventType.TideStrike or FloorEventType.CryptGrave
+            or FloorEventType.CrownBolt => true,
+        _ => false,
+    };
+
+    static void AiFutureBuildCollapseQueue(FloorEventType ev, bool[,] marked, List<(int X, int Y)> queue, Vector2 epicenter, int side)
+    {
+        queue.Clear();
+        aiFutureSortScratch.Clear();
+        int salt = (int)ev;
+
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                if (!marked[x, y] || aiFutureSimCollapsed[x, y]) continue;
+                float sort = ev switch
+                {
+                    FloorEventType.CrimsonCrumble => Vector2.DistanceSquared(epicenter, TileCenter(x, y)),
+                    FloorEventType.Checkerfall => x + y + (((x + y) / 2) % 2) * 0.01f,
+                    FloorEventType.RingCollapse => TileEdgeDistance(x, y),
+                    FloorEventType.ScatterPits => AiFutureDetSort(x, y, salt),
+                    FloorEventType.StoneIslands => Vector2.DistanceSquared(TileCenter(x, y), epicenter),
+                    FloorEventType.BlightStorm => MathF.Atan2(y - GridSize / 2f, x - GridSize / 2f),
+                    FloorEventType.TideSurge => Vector2.DistanceSquared(epicenter, TileCenter(x, y)),
+                    FloorEventType.TideRift => MathF.Abs(x - GridSize / 2f) + MathF.Abs(y - GridSize / 2f),
+                    FloorEventType.TideRecede => -TileEdgeDistance(x, y),
+                    FloorEventType.TideColumn => x + AiFutureDetSort(x, y, salt) * 0.01f,
+                    FloorEventType.TideEcho => x - y,
+                    FloorEventType.TideUndertow => MathF.Atan2(y - GridSize / 2f, x - GridSize / 2f) + Vector2.DistanceSquared(TileCenter(x, y), epicenter) * 0.001f,
+                    FloorEventType.TideCrest => y + MathF.Sin(x * 0.4f) * 0.01f,
+                    FloorEventType.TideWall => side switch
+                    {
+                        0 => x,
+                        1 => GridSize - x,
+                        2 => y,
+                        _ => GridSize - y,
+                    },
+                    FloorEventType.TideAnchor => Vector2.DistanceSquared(TileCenter(x, y), epicenter),
+                    FloorEventType.TideFoam => MathF.Atan2(y - GridSize / 2f, x - GridSize / 2f),
+                    FloorEventType.EmberRain => side == 0 ? x : GridSize - 1 - x,
+                    FloorEventType.EmberPulse => Vector2.DistanceSquared(epicenter, TileCenter(x, y)),
+                    FloorEventType.EmberCross => Math.Abs(x - GridSize / 2f) + Math.Abs(y - GridSize / 2f),
+                    FloorEventType.EmberBridge => Math.Min(Math.Abs(y - 5f), Math.Abs(y - (GridSize - 7f))),
+                    FloorEventType.EmberHive => Vector2.DistanceSquared(epicenter, TileCenter(x, y)),
+                    FloorEventType.EmberFury => AiFutureDetSort(x, y, salt + 17),
+                    FloorEventType.EmberQuake => AiFutureDetSort(x, y, salt + 31),
+                    FloorEventType.EmberBloom => EmberBloomSortKey(x, y),
+                    FloorEventType.CryptSeal => GridCenterDistanceSq(x, y),
+                    FloorEventType.CryptWail => side switch
+                    {
+                        0 => x + y * 0.001f,
+                        1 => GridSize - x + y * 0.001f,
+                        2 => y + x * 0.001f,
+                        _ => GridSize - y + x * 0.001f,
+                    },
+                    FloorEventType.CryptTorch => CryptTorchCorridorDistance(x, y),
+                    FloorEventType.CryptChains => x * 1000f + y,
+                    FloorEventType.CryptMist => MathF.Atan2(y - GridSize / 2f, x - GridSize / 2f),
+                    FloorEventType.CryptTomb => Vector2.DistanceSquared(epicenter, TileCenter(x, y)),
+                    FloorEventType.CryptShroud => CryptShroudDiagonalDistance(x, y),
+                    FloorEventType.CryptGlimpse => AiFutureDetSort(x, y, salt + 53),
+                    FloorEventType.CryptRattle => x + y,
+                    FloorEventType.CryptEcho => TileEdgeDistance(x, y) * 2f + (TileEdgeDistance(x, y) % 2) * 0.001f,
+                    FloorEventType.CryptLantern => -GridCenterDistanceSq(x, y),
+                    FloorEventType.CrownTrial => Vector2.DistanceSquared(epicenter, TileCenter(x, y)),
+                    FloorEventType.CrownFall => x + y + (((x + y) / 2) % 2) * 0.01f,
+                    FloorEventType.CrownShard => AiFutureDetSort(x, y, salt + 71),
+                    FloorEventType.CrownRing => TileEdgeDistance(x, y),
+                    FloorEventType.CrownIsles => Vector2.DistanceSquared(TileCenter(x, y), epicenter),
+                    FloorEventType.CrownCoronation => TileEdgeDistance(x, y),
+                    FloorEventType.CrownUsurpation => Math.Min(Math.Abs(x - GridSize / 2f), Math.Abs(y - GridSize / 2f)),
+                    FloorEventType.CrownReckoning => x + y + (x + y) % 3 * 0.001f,
+                    FloorEventType.CrownThrone => TileEdgeDistance(x, y),
+                    _ => Vector2.DistanceSquared(epicenter, TileCenter(x, y)) + AiFutureDetSort(x, y, salt) * 0.001f,
+                };
+                aiFutureSortScratch.Add((x, y, sort));
+            }
+        }
+
+        aiFutureSortScratch.Sort((a, b) => a.Sort.CompareTo(b.Sort));
+        foreach ((int x, int y, _) in aiFutureSortScratch)
+        {
+            queue.Add((x, y));
+        }
+    }
+
+    static void AiFutureSimProcessCollapse(ref AiFutureSimCtx sim, float dt)
+    {
+        sim.ActionTimer -= dt;
+        int burst = EventCollapseBurst(sim.Ev);
+        float interval = EventCollapseInterval(sim.Ev);
+        while (sim.ActionTimer <= 0f && aiFutureSimQueue.Count > 0)
+        {
+            for (int b = 0; b < burst && aiFutureSimQueue.Count > 0; b++)
+            {
+                (int x, int y) = aiFutureSimQueue[0];
+                aiFutureSimQueue.RemoveAt(0);
+                aiFutureSimCollapsed[x, y] = true;
+                aiFutureSimMarked[x, y] = false;
+            }
+            sim.ActionTimer += interval;
+        }
+
+        if (aiFutureSimQueue.Count == 0 && sim.Phase == 1)
+        {
+            sim.Ev = FloorEventType.None;
+            sim.Phase = 0;
+            sim.Countdown = 0f;
+        }
+    }
+
+    static void AiFutureSimTelegraphCollapse(ref AiFutureSimCtx sim, float dt)
+    {
+        if (sim.Phase == 0)
+        {
+            sim.Countdown -= dt;
+            if (sim.Countdown <= 0f)
+            {
+                sim.Phase = 1;
+                sim.ActionTimer = 0f;
+                AiFutureBuildCollapseQueue(sim.Ev, aiFutureSimMarked, aiFutureSimQueue, sim.Epicenter, sim.EventSide);
+            }
+        }
+        else
+        {
+            AiFutureSimProcessCollapse(ref sim, dt);
+        }
+    }
+
+    static void AiFutureSimSequentialStrike(ref AiFutureSimCtx sim, float dt)
+    {
+        if (sim.EventStep >= sim.StrikeCount)
+        {
+            sim.Ev = FloorEventType.None;
+            return;
+        }
+
+        int idx = aiFutureSimStrikeOrder[sim.EventStep];
+        int mx = idx % GridSize;
+        int my = idx / GridSize;
+
+        if (sim.Phase == 0)
+        {
+            sim.Countdown -= dt;
+            if (sim.Countdown <= 0f)
+            {
+                sim.Phase = 1;
+                sim.Countdown = MarkedStrikeFireTime;
+            }
+        }
+        else
+        {
+            sim.Countdown -= dt;
+            if (sim.Countdown <= 0f)
+            {
+                aiFutureSimCollapsed[mx, my] = true;
+                aiFutureSimMarked[mx, my] = false;
+                sim.EventStep++;
+                sim.Phase = 0;
+                sim.Countdown = MarkedStrikeStrikeGap;
+            }
+        }
+    }
+
+    static void AiFutureSimAdvanceActiveEvent(ref AiFutureSimCtx sim, float dt)
+    {
+        if (sim.Ev == FloorEventType.CrownThrone)
+        {
+            if (sim.Phase == 0)
+            {
+                sim.Countdown -= dt;
+                if (sim.Countdown <= 0f)
+                {
+                    sim.Phase = 1;
+                    sim.ActionTimer = 0f;
+                    AiFutureBuildCollapseQueue(sim.Ev, aiFutureSimMarked, aiFutureSimQueue, sim.Epicenter, sim.EventSide);
+                }
+            }
+            else
+            {
+                AiFutureSimProcessCollapse(ref sim, dt);
+            }
+            return;
+        }
+
+        if (AiFutureUsesSequentialStrike(sim.Ev))
+        {
+            AiFutureSimSequentialStrike(ref sim, dt);
+            return;
+        }
+
+        if (AiFutureUsesSafeRectSurvival(sim.Ev) || AiFutureUsesCenterSnareSurvival(sim.Ev))
+        {
+            sim.Countdown -= dt;
+            if (sim.Countdown <= 0f) sim.Ev = FloorEventType.None;
+            return;
+        }
+
+        if (AiFutureUsesStaggeredMarkedCollapse(sim.Ev))
+        {
+            AiFutureSimTelegraphCollapse(ref sim, dt);
+            return;
+        }
+
+        sim.Countdown -= dt;
+        if (sim.Countdown <= 0f) sim.Ev = FloorEventType.None;
+    }
+
+    static void AiFutureSimStep(ref AiFutureSimCtx sim, float dt)
+    {
+        if (sim.VerdictHalt > 0f)
+        {
+            sim.VerdictHalt = Math.Max(0f, sim.VerdictHalt - dt);
+            return;
+        }
+
+        if (sim.WaveBanner > 0f) sim.WaveBanner = Math.Max(0f, sim.WaveBanner - dt);
+
+        if (sim.Ev != FloorEventType.None)
+        {
+            AiFutureSimAdvanceActiveEvent(ref sim, dt);
+            return;
+        }
+
+        if (sim.IncomingPending)
+        {
+            sim.IncomingCountdown -= dt;
+            if (sim.IncomingCountdown <= 0f) sim.IncomingPending = false;
+            return;
+        }
+
+        if (waveNumber < 3) return;
+
+        sim.NextEventTimer += dt;
+        if (sim.NextEventTimer < sim.NextEventCooldown || sim.WaveBanner > 0f) return;
+
+        sim.NextEventTimer = 0f;
+        sim.NextEventCooldown = (FloorEventCooldownMin + FloorEventCooldownMax) * 0.5f;
+        sim.IncomingPending = true;
+        sim.IncomingCountdown = 5.5f;
+    }
+
+    static bool AiFutureTileInAltarSafe(int x, int y, Vector2 epicenter)
+    {
+        int ax = Math.Clamp((int)(epicenter.X / TileSize), 0, GridSize - 1);
+        int ay = Math.Clamp((int)(epicenter.Y / TileSize), 0, GridSize - 1);
+        return Math.Abs(x - ax) <= 1 && Math.Abs(y - ay) <= 1;
+    }
+
+    static void AiFutureWriteTileHazardRam(int step, in AiFutureSimCtx sim)
+    {
+        float telegraphPressure = 0f;
+        if (sim.Ev != FloorEventType.None && sim.Phase == 0 && sim.StartCountdown > 0.05f)
+        {
+            telegraphPressure = 1f - Math.Clamp(sim.Countdown / sim.StartCountdown, 0f, 1f);
+        }
+
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                float hazard = aiTileHazard[x, y];
+
+                if (aiFutureSimCollapsed[x, y] || tiles[x, y].State == 2)
+                {
+                    hazard = 1f;
+                }
+                else if (aiFutureSimMarked[x, y])
+                {
+                    hazard = MathF.Max(hazard, 0.42f + telegraphPressure * 0.5f);
+                    if (sim.Phase == 1) hazard = MathF.Max(hazard, 0.88f);
+                }
+
+                if (sim.Ev != FloorEventType.None && sim.Countdown > 0f)
+                {
+                    if (AiFutureUsesSafeRectSurvival(sim.Ev) && sim.SafeRect.Width > 0f && sim.SafeRect.Height > 0f)
+                    {
+                        Vector2 center = TileCenter(x, y);
+                        bool inSafe = sim.Ev == FloorEventType.EmberAltar
+                            ? AiFutureTileInAltarSafe(x, y, sim.Epicenter)
+                            : Raylib.CheckCollisionPointRec(center, sim.SafeRect);
+                        if (!inSafe)
+                        {
+                            float pressure = 1f - Math.Clamp(sim.Countdown / Math.Max(sim.StartCountdown, 0.5f), 0f, 1f);
+                            hazard = MathF.Max(hazard, 0.38f + pressure * 0.62f);
+                        }
+                    }
+                    else if (AiFutureUsesCenterSnareSurvival(sim.Ev) && sim.DangerRect.Width > 0f && sim.DangerRect.Height > 0f)
+                    {
+                        Vector2 center = TileCenter(x, y);
+                        if (Raylib.CheckCollisionPointRec(center, sim.DangerRect))
+                        {
+                            float pressure = 1f - Math.Clamp(sim.Countdown / Math.Max(sim.StartCountdown, 0.5f), 0f, 1f);
+                            hazard = MathF.Max(hazard, 0.4f + pressure * 0.58f);
+                        }
+                    }
+                }
+
+                if (sim.Ev != FloorEventType.None && AiFutureUsesSequentialStrike(sim.Ev) && sim.EventStep < sim.StrikeCount)
+                {
+                    int idx = aiFutureSimStrikeOrder[sim.EventStep];
+                    int sx = idx % GridSize;
+                    int sy = idx / GridSize;
+                    if (x == sx && y == sy)
+                    {
+                        float strikePressure = sim.Phase == 0
+                            ? 1f - Math.Clamp(sim.Countdown / MarkedStrikeTelegraphTime, 0f, 1f)
+                            : 0.95f;
+                        hazard = MathF.Max(hazard, 0.55f + strikePressure * 0.42f);
+                    }
+                }
+
+                if (sim.IncomingPending)
+                {
+                    hazard = MathF.Max(hazard, (1f - sim.IncomingCountdown / 5.5f) * 0.22f);
+                }
+
+                aiFutureTileHazardRam[step, x, y] = Math.Clamp(hazard, 0f, 1f);
+            }
+        }
+    }
+
+    static void AiFutureWriteEventRam(int step, float timeFromNow, in AiFutureSimCtx sim)
+    {
+        float untilNext = sim.Ev == FloorEventType.None && !sim.IncomingPending
+            ? Math.Max(0f, sim.NextEventCooldown - sim.NextEventTimer)
+            : sim.IncomingPending ? sim.IncomingCountdown : 0f;
+
+        aiFutureEventRam[step] = new AiFutureRamEntry
+        {
+            TimeFromNow = timeFromNow,
+            Event = sim.Ev,
+            EventCountdown = sim.Countdown,
+            EventPhase = sim.Phase,
+            EventActive = sim.Ev != FloorEventType.None,
+            EventIncoming = sim.IncomingPending,
+            CollapseActive = sim.Phase == 1 && sim.Ev != FloorEventType.None,
+            QueuedCollapseTiles = aiFutureSimQueue.Count,
+            SecondsUntilNextEvent = untilNext,
+        };
+    }
+
+    static void RebuildAiFutureRam()
+    {
+        aiFutureRamValid = true;
+
+        var sim = new AiFutureSimCtx
+        {
+            Ev = activeEvent,
+            Countdown = eventCountdown,
+            StartCountdown = eventStartCountdown > 0.01f ? eventStartCountdown : Math.Max(eventCountdown, 5f),
+            Phase = eventPhase,
+            ActionTimer = eventActionTimer,
+            NextEventTimer = nextFloorEventTimer,
+            NextEventCooldown = nextFloorEventCooldown,
+            VerdictHalt = verdictHaltTimer,
+            WaveBanner = waveBannerTimer,
+            EventStep = eventStep,
+            StrikeCount = markedStrikeCount,
+            Epicenter = eventEpicenter,
+            EventSide = eventSide,
+            SafeRect = eventSafeRect,
+            DangerRect = eventDangerRect,
+        };
+
+        aiFutureSimQueue.Clear();
+        if (sim.Phase == 1 && sim.Ev != FloorEventType.None)
+        {
+            foreach ((int x, int y) in eventTileQueue)
+            {
+                aiFutureSimQueue.Add((x, y));
+            }
+        }
+
+        Array.Copy(markedStrikeOrder, aiFutureSimStrikeOrder, markedStrikeCount);
+
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                aiFutureSimMarked[x, y] = tiles[x, y].EventMarked && tiles[x, y].State != 2;
+                aiFutureSimCollapsed[x, y] = tiles[x, y].State == 2;
+            }
+        }
+
+        AiFutureWriteEventRam(0, 0f, sim);
+        AiFutureWriteTileHazardRam(0, sim);
+
+        for (int step = 1; step < AiFutureHorizonSteps; step++)
+        {
+            AiFutureSimStep(ref sim, AiFutureStepSec);
+            AiFutureWriteEventRam(step, step * AiFutureStepSec, sim);
+            AiFutureWriteTileHazardRam(step, sim);
+        }
+
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                float maxFuture = 0f;
+                for (int s = 0; s < AiFutureHorizonSteps; s++)
+                {
+                    maxFuture = MathF.Max(maxFuture, aiFutureTileHazardRam[s, x, y]);
+                }
+                aiPredictedHazard[x, y] = Math.Clamp(MathF.Max(aiPredictedHazard[x, y], maxFuture * 0.88f), 0f, 1f);
+            }
+        }
+    }
+
     static float AiBehaviorTilePressureAt(int x, int y)
     {
         Vector2 c = TileCenter(x, y);
@@ -3956,6 +5719,7 @@ class Program
         if (t.State == 2 || t.EventMarked) return 99999f;
         if (AiIsTileTooDamaged(x, y)) return 99999f;
         float baseCost = 1f + aiPredictedHazard[x, y] * 6f + (1f - t.Durability / MaxDurability) * 4f;
+        if (aiFutureRamValid) baseCost += AiFutureWorstHazardAtTile(x, y, 2.2f) * 8f;
         baseCost += AiVoidNeighborPenalty(x, y);
         if (y < AiTopBandRows) baseCost += 2.5f + aiWaveConservatism;
         if (AiIsNearGridEdge(x, y)) baseCost += 1.8f + aiWaveConservatism * 0.8f;
@@ -4072,7 +5836,7 @@ class Program
         aiPathRecalcTimer -= dt;
         if (aiPathRecalcTimer <= 0f || !aiPathGoalValid)
         {
-            aiPathRecalcTimer = 0.14f;
+            aiPathRecalcTimer = 0.26f + aiWaveConservatism * 0.08f;
             if (AiTryFindStrategicGoal(from, out Vector2 goal))
             {
                 aiPathGoal = goal;
@@ -5248,10 +7012,13 @@ class Program
         if (!TryGetTileUnder(pos, out int tx, out int ty)) return -99999f;
         score += aiPredictedValue[tx, ty];
         score -= aiPredictedHazard[tx, ty] * 320f;
+        float futureHazard = AiFutureWorstHazardAtTile(tx, ty, seconds + 0.12f);
+        score -= futureHazard * 420f;
         score -= AiEnemyZonePenalty(pos);
         score -= NearestBossDistance(pos) * 0.22f;
         score += AiCountViableWalkExits(pos, 64f) * 45f;
         if (activeEvent != FloorEventType.None && eventCountdown > 0f && tiles[tx, ty].EventMarked) score -= 5000f;
+        if (futureHazard > 0.82f) score -= 3200f;
         score -= seconds * 12f;
         return score;
     }
@@ -5259,19 +7026,28 @@ class Program
     static Vector2 AiGrandmasterLookaheadSteer(Vector2 from, Vector2 baseDir)
     {
         if (baseDir == Vector2.Zero) return Vector2.Zero;
+        float urgency = AiSteeringUrgency();
+        if (urgency < 0.35f) return baseDir;
+
         float baseAngle = MathF.Atan2(baseDir.Y, baseDir.X);
         float bestScore = float.NegativeInfinity;
         Vector2 best = baseDir;
         float speed = EffMoveSpeed();
-        for (int i = -7; i <= 7; i++)
+        int sweep = urgency > 0.78f ? 5 : 3;
+        float angleStep = urgency > 0.78f ? MathF.PI / 22f : MathF.PI / 34f;
+
+        for (int i = -sweep; i <= sweep; i++)
         {
-            float angle = baseAngle + i * (MathF.PI / 24f);
+            float angle = baseAngle + i * angleStep;
             Vector2 dir = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
             Vector2 probe = from + dir * speed * 0.35f;
             float s0 = AiGrandmasterLookaheadScore(probe, 0.35f);
             Vector2 probe2 = from + dir * speed * 0.75f;
             float s1 = AiGrandmasterLookaheadScore(probe2, 0.75f);
-            float total = s0 * 0.45f + s1 * 0.55f;
+            Vector2 probe3 = from + dir * speed * 1.35f;
+            float s2 = urgency > 0.62f ? AiGrandmasterLookaheadScore(probe3, 1.35f) : s1;
+            float total = s0 * 0.34f + s1 * 0.42f + s2 * 0.24f;
+            total += Vector2.Dot(dir, baseDir) * (90f - urgency * 40f);
             if (total > bestScore) { bestScore = total; best = dir; }
         }
         return best;
@@ -5306,6 +7082,7 @@ class Program
     static Vector2 AiGrandmasterBlendSteering(Vector2 from, Vector2 baseMove, float dt)
     {
         Vector2 move = baseMove;
+        float urgency = AiSteeringUrgency();
 
         if (bannerActive && IsInBannerZone(from) && aiPhase is not AiSurvivalPhase.EventActive and not AiSurvivalPhase.TileCritical)
         {
@@ -5313,11 +7090,14 @@ class Program
         }
 
         Vector2 eventSteer = AiGrandmasterEventSteer(from);
-        if (eventSteer != Vector2.Zero) move = eventSteer;
+        if (eventSteer != Vector2.Zero)
+        {
+            move = Vector2.Lerp(move, eventSteer, 0.48f + urgency * 0.46f);
+        }
         else
         {
             Vector2 path = AiPathfindSteer(from, dt);
-            if (path != Vector2.Zero) move = Vector2.Lerp(move, path, 0.38f + aiWaveConservatism * 0.18f);
+            if (path != Vector2.Zero) move = Vector2.Lerp(move, path, 0.2f + aiWaveConservatism * 0.1f);
         }
 
         Vector2 behavior = AiGrandmasterBehaviorSteer(from);
@@ -5325,25 +7105,25 @@ class Program
         {
             float behaviorW = aiPhase switch
             {
-                AiSurvivalPhase.BossFight => 0.58f,
-                AiSurvivalPhase.LastStand => 0.52f,
-                AiSurvivalPhase.Combat => 0.42f,
-                _ => 0.34f,
+                AiSurvivalPhase.BossFight => 0.38f + urgency * 0.22f,
+                AiSurvivalPhase.LastStand => 0.34f + urgency * 0.24f,
+                AiSurvivalPhase.Combat => 0.26f + urgency * 0.18f,
+                _ => 0.18f + urgency * 0.12f,
             };
             move = Vector2.Lerp(move, behavior, behaviorW);
         }
 
         Vector2 boss = AiGrandmasterBossSteer(from);
-        if (boss != Vector2.Zero) move = Vector2.Lerp(move, boss, 0.62f);
+        if (boss != Vector2.Zero) move = Vector2.Lerp(move, boss, 0.22f + urgency * 0.38f);
 
         Vector2 retreat = AiGrandmasterCombatRetreat(from, dt);
-        if (retreat != Vector2.Zero) move = Vector2.Lerp(move, retreat, 0.72f);
+        if (retreat != Vector2.Zero) move = Vector2.Lerp(move, retreat, 0.45f + urgency * 0.28f);
 
         float scenarioScore = aiScenarioScoreCache;
         Vector2 scenario = AiScenarioMatrixSteer(from);
         if (scenario != Vector2.Zero)
         {
-            move = Vector2.Lerp(move, scenario, MathF.Min(0.58f, scenarioScore * 0.13f));
+            move = Vector2.Lerp(move, scenario, MathF.Min(0.32f, scenarioScore * 0.08f + urgency * 0.06f));
         }
 
         if (move != Vector2.Zero)
@@ -5369,6 +7149,10 @@ class Program
         if (aiPredictFieldsValid && TryGetTileUnder(playerPos, out int px, out int py))
         {
             if (aiPredictedHazard[px, py] > 0.82f) dashUrgency = MathF.Max(dashUrgency, 0.9f);
+            if (aiFutureRamValid && AiFutureWorstHazardAtTile(px, py, 1.6f) > 0.86f)
+            {
+                dashUrgency = MathF.Max(dashUrgency, 0.94f);
+            }
         }
     }
 
@@ -5376,8 +7160,14 @@ class Program
     {
         aiScenarioFlagsDirty = true;
         UpdateAiWaveConservatism();
-        EvaluateAiSurvivalPhase();
         RebuildAiPredictiveFields(dt);
+        aiFutureRamTimer -= dt;
+        if (aiFutureRamTimer <= 0f)
+        {
+            aiFutureRamTimer = 0.12f;
+            RebuildAiFutureRam();
+        }
+        EvaluateAiSurvivalPhase();
         ResolveAiGrandmasterAbilities(dt);
         AiGrandmasterSelectPriorityTarget();
         aiScenarioScoreCache = AiEvaluateScenarioMatrix(playerPos);
@@ -5550,31 +7340,43 @@ class Program
     }
     // ---------------------------------------------------------------- Upgrade effects
 
-    static float EffMoveSpeed() => PlayerSpeed * (1f + upgradeLevels[UpSwift] * 0.05f);
+    static float EffMoveSpeed() => PlayerSpeed * (1f + upgradeLevels[UpSwift] * 0.05f) * BlessingMoveMult();
     static float EffDashCooldown() => MathF.Max(0.45f, DashCooldown * (1f - upgradeLevels[UpDash] * 0.08f));
     static float FableMult()
     {
         float mult = 1f + upgradeLevels[UpFortune] * 0.15f;
         if (autoFire) mult *= 0.75f;
+        mult *= BlessingFableMult() * OathRewardMult();
         return mult;
     }
     static float EffPlayerDecay() => PlayerDurabilityDecayRate * (1f - upgradeLevels[UpFeet] * 0.08f);
 
-    static float EffFireCooldown(in Gun g)
+    static float CombatFireRateMult()
     {
-        float rate = 1f + upgradeLevels[UpRapid] * 0.12f;
+        float rate = 1.12f + upgradeLevels[UpRapid] * 0.14f;
+        if (runDifficulty == Difficulty.FableNightmare) rate *= 1.28f;
         if (IsInBannerZone(playerPos)) rate *= BannerFireRateMul;
-        return g.FireCooldown / rate;
+        return rate;
     }
-    static float EffDamage(in Gun g) => g.Damage + upgradeLevels[UpThorns] * 0.75f;
+
+    static float EffFireCooldown(in Gun g) => g.FireCooldown / (CombatFireRateMult() * GunAffixFireRateMult());
+    static float EffDamage(in Gun g) => (g.Damage + upgradeLevels[UpThorns] * 0.75f) * GunAffixDamageMult();
     static int EffCount(in Gun g) => g.Count + upgradeLevels[UpSplit];
     static int EffPierce(in Gun g) => g.Pierce + upgradeLevels[UpPierce];
     static float EffParalyzeRadius() => ParalyzeRadiusBase + upgradeLevels[UpParalyzeReach] * 22f;
     static float EffParalyzeDuration() => ParalyzeDurationBase + upgradeLevels[UpParalyzeHold] * 0.4f;
     static float EffParalyzeCooldown() => ParalyzeCooldown;
 
-    static Color BodyColor() => aiPilotEnabled ? AutoPilotBody : BodyPalette[bodyColorIndex];
-    static Color BodyBright() => aiPilotEnabled ? AutoPilotBright : Lighten(BodyPalette[bodyColorIndex], 0.5f);
+    static Color BodyColor()
+    {
+        int idx = runLockedBodyIndex >= 0 ? runLockedBodyIndex : bodyColorIndex;
+        return aiPilotEnabled ? AutoPilotBody : BodyPalette[idx];
+    }
+    static Color BodyBright()
+    {
+        int idx = runLockedBodyIndex >= 0 ? runLockedBodyIndex : bodyColorIndex;
+        return aiPilotEnabled ? AutoPilotBright : Lighten(BodyPalette[idx], 0.5f);
+    }
 
     static int UpgradeCost(int i) => UpgradeBaseCost[i] * (upgradeLevels[i] + 1);
 
@@ -5583,22 +7385,26 @@ class Program
     static void Update()
     {
         float dt = Raylib.GetFrameTime();
+        frameTime = (float)Raylib.GetTime();
         menuTime += dt;
 
         UpdateCursorLock();
         UpdateWindowChrome();
 
-        UpdateMotes(dt);
+        if (backgroundMotes) UpdateMotes(dt);
         scoreDisplay += (score - scoreDisplay) * (1f - MathF.Exp(-10f * dt));
         flash *= MathF.Exp(-6f * dt);
         impactFlash *= MathF.Exp(-32f * dt);
         zoomPunch *= MathF.Exp(-9f * dt);
         UpdateGfx(dt);
         if (levelUpBannerTimer > 0f) levelUpBannerTimer -= dt;
+        if (settingsEggBannerTimer > 0f) settingsEggBannerTimer -= dt;
+        if (uiInputBlockFrames > 0) uiInputBlockFrames--;
 
         if (Raylib.IsKeyPressed(KeyboardKey.F3))
         {
             showFps = !showFps;
+            SaveGame();
         }
 
         if (Raylib.IsKeyPressed(KeyboardKey.Backslash))
@@ -5637,11 +7443,13 @@ class Program
             case GameState.MainMenu:
                 if (Raylib.IsKeyPressed(KeyboardKey.Enter) || Raylib.IsKeyPressed(KeyboardKey.Space))
                 {
-                    ResetGame();
+                    difficultyMenuIndex = (int)runDifficulty;
+                    difficultySelectAnim = difficultyMenuIndex;
+                    state = GameState.DifficultySelect;
                 }
                 else if (Raylib.IsKeyPressed(KeyboardKey.C))
                 {
-                    state = GameState.Customize;
+                    OpenArmory();
                 }
                 else if (Raylib.IsKeyPressed(KeyboardKey.S))
                 {
@@ -5649,10 +7457,21 @@ class Program
                 }
                 break;
 
+            case GameState.DifficultySelect:
+                UpdateDifficultySelect(dt);
+                break;
+
             case GameState.Playing:
                 if (Raylib.IsKeyPressed(KeyboardKey.Escape))
                 {
                     state = GameState.Paused;
+                    autoPausedForFocus = false;
+                    break;
+                }
+                if (pauseOnFocusLoss && !Raylib.IsWindowFocused())
+                {
+                    state = GameState.Paused;
+                    autoPausedForFocus = true;
                     break;
                 }
                 if (ProcessHitStop(dt))
@@ -5687,13 +7506,40 @@ class Program
                 UpdateEnemies(dt);
                 UpdateWeapon(dt);
                 UpdateProjectiles(dt);
+                UpdateNearDeathPulse(dt);
+                UpdateReverseSiege(dt);
+                if (reinforceCooldown > 0f) reinforceCooldown -= dt;
+                if (Raylib.IsKeyDown(KeyboardKey.R)) TryReinforceTile();
+                if (Raylib.IsKeyPressed(KeyboardKey.P)) TryRoyalPardon();
+                RecordPlayerTrailTile();
                 ReapEnemies();
                 break;
 
             case GameState.Paused:
-                if (Raylib.IsKeyPressed(KeyboardKey.Escape) || Raylib.IsKeyPressed(KeyboardKey.Enter))
+                if (blessingPickActive)
+                {
+                    for (int bi = 0; bi < blessingChoices.Length; bi++)
+                    {
+                        if (Raylib.IsKeyPressed((KeyboardKey)((int)KeyboardKey.One + bi)))
+                        {
+                            if (activeBlessingCount < activeBlessings.Length)
+                            {
+                                activeBlessings[activeBlessingCount++] = blessingChoices[bi];
+                            }
+                            blessingPickActive = false;
+                            state = GameState.Playing;
+                        }
+                    }
+                }
+                else if (autoPausedForFocus && pauseOnFocusLoss && Raylib.IsWindowFocused())
                 {
                     state = GameState.Playing;
+                    autoPausedForFocus = false;
+                }
+                else if (Raylib.IsKeyPressed(KeyboardKey.Escape) || Raylib.IsKeyPressed(KeyboardKey.Enter))
+                {
+                    state = GameState.Playing;
+                    autoPausedForFocus = false;
                 }
                 break;
 
@@ -5723,6 +7569,8 @@ class Program
                 else if (Raylib.IsKeyPressed(KeyboardKey.Three)) customizeTab = CustomizeTab.Upgrades;
                 else if (Raylib.IsKeyPressed(KeyboardKey.Four)) customizeTab = CustomizeTab.Abilities;
                 else if (Raylib.IsKeyPressed(KeyboardKey.Five)) customizeTab = CustomizeTab.Rank;
+                else if (Raylib.IsKeyPressed(KeyboardKey.Six)) customizeTab = CustomizeTab.Bestiary;
+                else if (Raylib.IsKeyPressed(KeyboardKey.Seven)) customizeTab = CustomizeTab.Glossary;
                 if (state == GameState.Customize)
                 {
                     float wheel = Raylib.GetMouseWheelMove();
@@ -5750,9 +7598,15 @@ class Program
                         SaveGame();
                     }
                 }
-                else if (Raylib.IsKeyPressed(KeyboardKey.Escape)) { SaveGame(); state = GameState.MainMenu; }
+                else if (Raylib.IsKeyPressed(KeyboardKey.Escape))
+                {
+                    settingsTypeBuffer = "";
+                    SaveGame();
+                    state = GameState.MainMenu;
+                }
                 else
                 {
+                    UpdateSettingsEasterEggInput();
                     float wheel = Raylib.GetMouseWheelMove();
                     if (wheel != 0f)
                     {
@@ -5770,7 +7624,8 @@ class Program
 
     static void UpdateMotes(float dt)
     {
-        float time = (float)Raylib.GetTime();
+        if (!backgroundMotes) return;
+        float time = frameTime > 0f ? frameTime : (float)Raylib.GetTime();
         for (int i = 0; i < motes.Length; i++)
         {
             Mote m = motes[i];
@@ -5874,7 +7729,7 @@ class Program
         for (int i = 0; i < 8; i++)
         {
             float angle = i * MathF.PI * 2f / 8f;
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = pos,
                 Velocity = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * 90f,
@@ -5888,7 +7743,7 @@ class Program
         }
     }
 
-    static void CollapseTile(ref Tile tile, bool regrow = true)
+    static void CollapseTile(ref Tile tile, bool regrow = true, int tileX = -1, int tileY = -1)
     {
         if (tile.State == 2) return;
         tile.Durability = 0f;
@@ -5896,6 +7751,8 @@ class Program
         tile.Collapse = 0f;
         tile.EventMarked = false;
         tile.RegrowTimer = regrow ? TileRegrowTime : 0f;
+        aiIntelTimer = 0f;
+        if (tileX >= 0 && tileY >= 0) ApplyCollapseProximityShake(tileX, tileY);
     }
 
     static float TileDecayMultiplier(int x, int y)
@@ -6079,54 +7936,59 @@ class Program
     {
         int size = g.Style switch
         {
-            GunFireStyle.Laser => 8,
-            GunFireStyle.Sniper => 10,
-            GunFireStyle.Mortar => 12,
-            GunFireStyle.Buckshot => 14,
-            GunFireStyle.Repeater => 40,
-            GunFireStyle.Volley => 20,
-            GunFireStyle.Burst => 28,
-            GunFireStyle.Lance => 16,
-            GunFireStyle.RingPulse => 22,
-            GunFireStyle.CrossBurst => 22,
-            GunFireStyle.Homing => 18,
-            GunFireStyle.FlailArc => 24,
-            GunFireStyle.DriftOrb => 20,
-            GunFireStyle.ArcFan => 25,
-            _ => 25,
+            GunFireStyle.Laser => 11,
+            GunFireStyle.Sniper => 14,
+            GunFireStyle.Mortar => 16,
+            GunFireStyle.Buckshot => 19,
+            GunFireStyle.Repeater => 54,
+            GunFireStyle.Volley => 27,
+            GunFireStyle.Burst => 38,
+            GunFireStyle.Lance => 22,
+            GunFireStyle.RingPulse => 30,
+            GunFireStyle.CrossBurst => 30,
+            GunFireStyle.Homing => 24,
+            GunFireStyle.FlailArc => 32,
+            GunFireStyle.DriftOrb => 27,
+            GunFireStyle.ArcFan => 34,
+            _ => 34,
         };
         if (g.FireCooldown < 0.2f) size = (int)(size * 1.15f);
-        else if (g.FireCooldown > 0.55f) size = Math.Max(6, size - 3);
-        return Math.Clamp(size, 6, 50);
+        else if (g.FireCooldown > 0.55f) size = Math.Max(8, size - 2);
+        float mult = 1.35f + upgradeLevels[UpMagazine] * 0.15f;
+        if (runDifficulty == Difficulty.FableNightmare) mult *= 1.3f;
+        size = (int)MathF.Round(size * mult);
+        return Math.Clamp(size, 8, 72);
     }
 
     static float GetReloadTime(in Gun g)
     {
         float time = g.Style switch
         {
-            GunFireStyle.Laser => 5f,
-            GunFireStyle.Sniper => 4.6f,
-            GunFireStyle.Mortar => 4.8f,
-            GunFireStyle.Buckshot => 4f,
-            GunFireStyle.Repeater => 3.2f,
-            GunFireStyle.Volley => 3.5f,
-            GunFireStyle.Burst => 3.4f,
-            GunFireStyle.Lance => 4.2f,
-            GunFireStyle.RingPulse => 3.6f,
-            GunFireStyle.CrossBurst => 3.6f,
-            GunFireStyle.Homing => 3.8f,
-            GunFireStyle.FlailArc => 3.7f,
-            GunFireStyle.DriftOrb => 3.9f,
-            GunFireStyle.ArcFan => 3.5f,
-            _ => 3.5f,
+            GunFireStyle.Laser => 4.1f,
+            GunFireStyle.Sniper => 3.8f,
+            GunFireStyle.Mortar => 3.9f,
+            GunFireStyle.Buckshot => 3.3f,
+            GunFireStyle.Repeater => 2.6f,
+            GunFireStyle.Volley => 2.9f,
+            GunFireStyle.Burst => 2.8f,
+            GunFireStyle.Lance => 3.5f,
+            GunFireStyle.RingPulse => 3f,
+            GunFireStyle.CrossBurst => 3f,
+            GunFireStyle.Homing => 3.1f,
+            GunFireStyle.FlailArc => 3f,
+            GunFireStyle.DriftOrb => 3.2f,
+            GunFireStyle.ArcFan => 2.9f,
+            _ => 2.9f,
         };
-        time += Math.Clamp(g.FireCooldown - 0.3f, 0f, 0.4f);
-        return Math.Clamp(time, 3f, 5f);
+        time += Math.Clamp(g.FireCooldown - 0.3f, 0f, 0.32f);
+        float mult = 1f - upgradeLevels[UpReload] * 0.10f;
+        if (runDifficulty == Difficulty.FableNightmare) mult *= 0.78f;
+        return Math.Clamp(time * mult, 1.8f, 4.2f);
     }
 
     static void UpdateCursorLock()
     {
-        bool shouldLock = state == GameState.Playing;
+        bool shouldLock = state == GameState.Playing && lockCursorInGame;
         if (shouldLock == cursorLocked) return;
         cursorLocked = shouldLock;
         if (shouldLock) Raylib.DisableCursor();
@@ -6651,6 +8513,9 @@ class Program
         "Only the coronation dais survives the sacred ritual!",
         "Cross-shaped betrayal splits the hall asunder!",
         "Diagonal scars of reckoning tear the floor apart!",
+        "The safe rim marches — keep pace with the rotating band!",
+        "Iron portcullis columns slam down in ordered ruin!",
+        "Your heraldry alone holds — the rest of the stone rots!",
     };
 
     static int TileEdgeDistance(int x, int y)
@@ -7002,7 +8867,7 @@ class Program
     {
         ref Tile tile = ref tiles[x, y];
         if (tile.State == 2) return;
-        CollapseTile(ref tile);
+        CollapseTile(ref tile, true, x, y);
     }
 
     static void BuildEventCollapseQueue(FloorEventType ev)
@@ -7307,7 +9172,7 @@ class Program
         Vector2 dir = SafeNormalize(target - playerPos);
         for (int i = 0; i < 3; i++)
         {
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = playerPos + dir * (PlayerRadius + i * 6f),
                 Velocity = dir * Rng.Next(120, 220) + new Vector2(Rng.NextSingle() - 0.5f, Rng.NextSingle() - 0.5f) * 40f,
@@ -7336,6 +9201,7 @@ class Program
         "CROWN TRIAL", "CROWN FALL", "CROWN SHARD", "CROWN THRONE", "CROWN EDICT",
         "CROWN ROT", "CROWN BOLT", "CROWN RING", "CROWN ISLES", "CROWN STORM",
         "CROWN CORONATION", "CROWN USURPATION", "CROWN RECKONING",
+        "SALLY FORTH", "PORTCULLIS", "HERALD'S CALL",
     };
 
     static readonly FloorEventType[] WiredFloorEventPool =
@@ -7363,7 +9229,8 @@ class Program
         FloorEventType.CrownThrone, FloorEventType.CrownEdict, FloorEventType.CrownRot,
         FloorEventType.CrownBolt, FloorEventType.CrownRing, FloorEventType.CrownIsles,
         FloorEventType.CrownStorm, FloorEventType.CrownCoronation, FloorEventType.CrownUsurpation,
-        FloorEventType.CrownReckoning,
+        FloorEventType.CrownReckoning, FloorEventType.SallyForth, FloorEventType.Portcullis,
+        FloorEventType.HeraldsCall,
     };
 
     static void UpdateFloorEvents(float dt)
@@ -7383,11 +9250,24 @@ class Program
         if (activeEvent != FloorEventType.None)
         {
             eventTimer += dt;
+            if (activeDifficulty.EventSurgeChance > 0.001f)
+            {
+                eventSurgeTimer += dt;
+                if (eventSurgeTimer >= 7f)
+                {
+                    eventSurgeTimer = 0f;
+                    if (Rng.NextSingle() < activeDifficulty.EventSurgeChance)
+                    {
+                        TriggerEventSurge();
+                    }
+                }
+            }
+
             UpdateActiveFloorEvent(dt);
             return;
         }
 
-        if (waveNumber < 3) return;
+        if (waveNumber < activeDifficulty.MinWaveForEvents) return;
 
         nextFloorEventTimer += dt;
         if (nextFloorEventTimer < nextFloorEventCooldown) return;
@@ -7397,8 +9277,25 @@ class Program
         if (waveBannerTimer > 0f) return;
 
         nextFloorEventTimer = 0f;
-        nextFloorEventCooldown = FloorEventCooldownMin + Rng.NextSingle() * (FloorEventCooldownMax - FloorEventCooldownMin);
+        nextFloorEventCooldown = NextEventCooldownSpan();
         StartFloorEvent(PickNextFloorEvent());
+    }
+
+    static void TriggerEventSurge()
+    {
+        MarkRandomTiles(0.12f * activeDifficulty.EventIntensityMult);
+        int extras = Rng.Next(2, 5);
+        float speedBonus = WaveSpeedBonus(waveNumber) * activeDifficulty.EnemySpeedMult;
+        for (int i = 0; i < extras; i++)
+        {
+            EnemyType type = PickGruntType();
+            enemies.Add(CreateEnemy(type, RandomEdgePosition(GetEnemyRadius(type)), speedBonus));
+        }
+
+        eventCountdown = Math.Max(1.6f, eventCountdown * (1f - 0.12f * activeDifficulty.EventIntensityMult));
+        Color surgeCol = activeDifficulty.Accent.A > 0 ? activeDifficulty.Accent : Danger;
+        SpawnFloatingText(new Vector2(WindowWidth / 2f, 96f), "CATASTROPHE STACKS", surgeCol, 22);
+        AddTrauma(0.18f * activeDifficulty.EventIntensityMult);
     }
 
     static void PushFloorEventHistory(FloorEventType ev)
@@ -7424,10 +9321,31 @@ class Program
 
     static FloorEventType PickNextFloorEvent()
     {
-        Span<FloorEventType> candidates = stackalloc FloorEventType[WiredFloorEventPool.Length];
+        ReadOnlySpan<FloorEventType> pool = activeDifficulty.EasyEventsOnly
+            ? EasyFloorEventPool
+            : WiredFloorEventPool;
+
+        if (floorEventHistoryCount > 0)
+        {
+            FloorEventType last = floorEventHistory[0];
+            foreach ((FloorEventType precursor, FloorEventType followUp) in EventChains)
+            {
+                if (precursor != last) continue;
+                foreach (FloorEventType ev in pool)
+                {
+                    if (ev == followUp && Rng.NextSingle() < 0.55f)
+                    {
+                        eventChainActive = true;
+                        return followUp;
+                    }
+                }
+            }
+        }
+
+        Span<FloorEventType> candidates = stackalloc FloorEventType[pool.Length];
         int count = 0;
 
-        foreach (FloorEventType ev in WiredFloorEventPool)
+        foreach (FloorEventType ev in pool)
         {
             if (!WasFloorEventPlayedRecently(ev))
             {
@@ -7437,7 +9355,7 @@ class Program
 
         if (count == 0)
         {
-            return WiredFloorEventPool[Rng.Next(WiredFloorEventPool.Length)];
+            return pool[Rng.Next(pool.Length)];
         }
 
         return candidates[Rng.Next(count)];
@@ -7457,15 +9375,22 @@ class Program
         eventTileQueue.Clear();
         eventShockwaves.Clear();
         eventSkyBeams.Clear();
+        eventSurgeTimer = 0f;
         ClearEventMarks();
         Color accent = EventAccentColor(ev);
-        AddTrauma(0.38f);
-        AddFlash(accent, 0.22f);
+        AddTrauma(0.38f * activeDifficulty.EventIntensityMult);
+        AddFlash(accent, 0.22f * Math.Min(1.2f, activeDifficulty.EventIntensityMult));
         zoomPunch = Math.Max(zoomPunch, 0.055f);
         TriggerImpact(ImpactTier.Medium, accent);
         SpawnEventShockwave(new Vector2(WindowWidth / 2f, WindowHeight / 2f), accent, WindowWidth * 0.45f, 0.85f);
         SpawnFloatingText(new Vector2(WindowWidth / 2f, 88f), FloorEventNames[(int)ev], accent, 26);
-        SpawnFloatingText(new Vector2(WindowWidth / 2f, 118f), FloorEventSubtitles[(int)ev], WithAlpha(Color.White, 0.85f), 15);
+        int qx = Math.Clamp((int)(playerPos.X / TileSize), 0, GridSize - 1);
+        int qy = Math.Clamp((int)(playerPos.Y / TileSize), 0, GridSize - 1);
+        string subtitle = FloorEventSubtitles[(int)ev];
+        if (eventChainActive) subtitle = "THE SIEGE DEEPENS — " + subtitle;
+        subtitle += " — " + GetArenaQuadrantName(qx, qy);
+        SpawnFloatingText(new Vector2(WindowWidth / 2f, 118f), subtitle, WithAlpha(Color.White, 0.85f), 15);
+        eventChainActive = false;
 
         eventEpicenter = new Vector2(
             Rng.Next(2, GridSize - 2) * TileSize + TileSize / 2f,
@@ -7634,7 +9559,7 @@ class Program
                 break;
             case FloorEventType.EmberAltar:
                 MarkEmberAltar();
-                eventCountdown = 3.8f;
+                eventCountdown = 6.2f;
                 break;
             case FloorEventType.CryptSeal:
                 MarkInverseRing(2);
@@ -7751,13 +9676,48 @@ class Program
                 MarkCrownDiagonalBands();
                 eventCountdown = 5f;
                 break;
+            case FloorEventType.SallyForth:
+                eventSide = Rng.Next(4);
+                ConfigureSafeZoneRush();
+                eventActionTimer = 1.2f;
+                eventCountdown = 4.8f;
+                break;
+            case FloorEventType.Portcullis:
+                markedStrikeCount = MarkPortcullisColumns();
+                eventCountdown = MarkedStrikeTelegraphTime + BlessingTelegraphBonus();
+                eventStep = 0;
+                break;
+            case FloorEventType.HeraldsCall:
+                MarkAllActiveTiles();
+                eventEpicenter = playerPos;
+                floorRotSide = Rng.Next(2);
+                floorRotTimer = 8f;
+                eventCountdown = 6f;
+                break;
             case FloorEventType.None:
                 break;
             default:
                 throw new UnreachableException();
         }
 
+        EnsureEventSafeFooting();
+        ApplyDifficultyEventScaling();
         eventStartCountdown = eventCountdown;
+    }
+
+    static void ApplyDifficultyEventScaling()
+    {
+        float intensity = Math.Max(0.35f, activeDifficulty.EventIntensityMult);
+        eventCountdown = Math.Max(2.2f, eventCountdown / intensity);
+        if (eventBlightBoltTimer > 0.01f)
+        {
+            eventBlightBoltTimer = Math.Max(0.08f, eventBlightBoltTimer / intensity);
+        }
+
+        if (eventActionTimer > 0.01f)
+        {
+            eventActionTimer = Math.Max(0.08f, eventActionTimer / intensity);
+        }
     }
 
     static void ClearEventMarks()
@@ -7769,6 +9729,117 @@ class Program
                 tiles[x, y].EventMarked = false;
             }
         }
+    }
+
+    static int CountPlayableUnmarkedTiles()
+    {
+        int count = 0;
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                if (tiles[x, y].State != 2 && !tiles[x, y].EventMarked) count++;
+            }
+        }
+        return count;
+    }
+
+    static void CarveEventSafeFooting(int centerX, int centerY, int radiusTiles = 1)
+    {
+        for (int dy = -radiusTiles; dy <= radiusTiles; dy++)
+        {
+            for (int dx = -radiusTiles; dx <= radiusTiles; dx++)
+            {
+                int x = centerX + dx;
+                int y = centerY + dy;
+                if (x < 0 || x >= GridSize || y < 0 || y >= GridSize) continue;
+                if (tiles[x, y].State == 2) continue;
+                tiles[x, y].EventMarked = false;
+            }
+        }
+    }
+
+    static bool TryCarveSafeIslandBlock(int x, int y, int size)
+    {
+        for (int dy = 0; dy < size; dy++)
+        {
+            for (int dx = 0; dx < size; dx++)
+            {
+                if (tiles[x + dx, y + dy].State == 2) return false;
+            }
+        }
+
+        for (int dy = 0; dy < size; dy++)
+        {
+            for (int dx = 0; dx < size; dx++)
+            {
+                tiles[x + dx, y + dy].EventMarked = false;
+            }
+        }
+
+        return true;
+    }
+
+    static void ForceEventSafeFooting()
+    {
+        int playerX = GridSize / 2;
+        int playerY = GridSize / 2;
+        if (TryGetTileUnder(playerPos, out int px, out int py) && tiles[px, py].State != 2)
+        {
+            playerX = px;
+            playerY = py;
+            CarveEventSafeFooting(px, py, SafeIslandSize / 2);
+            if (CountPlayableUnmarkedTiles() > 0) return;
+        }
+
+        int islandRadius = SafeIslandSize / 2;
+        int originX = Math.Clamp(playerX - islandRadius, 0, GridSize - SafeIslandSize);
+        int originY = Math.Clamp(playerY - islandRadius, 0, GridSize - SafeIslandSize);
+        if (TryCarveSafeIslandBlock(originX, originY, SafeIslandSize)) return;
+
+        for (int y = 0; y <= GridSize - SafeIslandSize; y++)
+        {
+            for (int x = 0; x <= GridSize - SafeIslandSize; x++)
+            {
+                if (TryCarveSafeIslandBlock(x, y, SafeIslandSize)) return;
+            }
+        }
+
+        int bestX = -1;
+        int bestY = -1;
+        int bestScore = int.MinValue;
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                if (tiles[x, y].State == 2) continue;
+                int score = 0;
+                if (x > 0 && tiles[x - 1, y].State != 2) score++;
+                if (x < GridSize - 1 && tiles[x + 1, y].State != 2) score++;
+                if (y > 0 && tiles[x, y - 1].State != 2) score++;
+                if (y < GridSize - 1 && tiles[x, y + 1].State != 2) score++;
+                score -= Math.Abs(x - playerX) + Math.Abs(y - playerY);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestX = x;
+                    bestY = y;
+                }
+            }
+        }
+
+        if (bestX >= 0)
+        {
+            CarveEventSafeFooting(bestX, bestY, islandRadius);
+            if (CountPlayableUnmarkedTiles() > 0) return;
+            tiles[bestX, bestY].EventMarked = false;
+        }
+    }
+
+    static void EnsureEventSafeFooting()
+    {
+        if (CountPlayableUnmarkedTiles() > 0) return;
+        ForceEventSafeFooting();
     }
 
     static void MarkRandomTiles(float ratio)
@@ -7803,6 +9874,7 @@ class Program
         }
 
         int n = Math.Min(count, coords.Count);
+        if (coords.Count > 0 && n >= coords.Count) n = coords.Count - 1;
         for (int i = 0; i < n; i++)
         {
             tiles[coords[i].x, coords[i].y].EventMarked = true;
@@ -7869,6 +9941,42 @@ class Program
 
             placed++;
         }
+
+        if (placed == 0)
+        {
+            int anchorX = GridSize / 2;
+            int anchorY = GridSize / 2;
+            if (TryGetTileUnder(playerPos, out int px, out int py) && tiles[px, py].State != 2)
+            {
+                anchorX = px;
+                anchorY = py;
+            }
+
+            int originX = Math.Clamp(anchorX - SafeIslandSize / 2, 0, GridSize - SafeIslandSize);
+            int originY = Math.Clamp(anchorY - SafeIslandSize / 2, 0, GridSize - SafeIslandSize);
+            if (!TryCarveSafeIslandBlock(originX, originY, SafeIslandSize))
+            {
+                for (int y = 0; y <= GridSize - SafeIslandSize; y++)
+                {
+                    for (int x = 0; x <= GridSize - SafeIslandSize; x++)
+                    {
+                        if (TryCarveSafeIslandBlock(x, y, SafeIslandSize))
+                        {
+                            placed = 1;
+                            break;
+                        }
+                    }
+
+                    if (placed > 0) break;
+                }
+            }
+            else
+            {
+                placed = 1;
+            }
+        }
+
+        EnsureEventSafeFooting();
     }
 
     static bool CanPlaceSafeIsland(int x, int y, int size)
@@ -7956,6 +10064,26 @@ class Program
                 if (tiles[col, y].State != 2) tiles[col, y].EventMarked = true;
             }
         }
+    }
+
+    static int MarkPortcullisColumns()
+    {
+        int cols = 4 + Rng.Next(2);
+        int order = 0;
+        for (int c = 0; c < cols; c++)
+        {
+            int col = Rng.Next(1, GridSize - 1);
+            for (int y = 0; y < GridSize; y++)
+            {
+                if (tiles[col, y].State == 2) continue;
+                tiles[col, y].EventMarked = true;
+                if (order < markedStrikeOrder.Length)
+                {
+                    markedStrikeOrder[order++] = col + y * GridSize;
+                }
+            }
+        }
+        return order;
     }
 
     static void MarkTideEcho()
@@ -8105,7 +10233,7 @@ class Program
             eventSafeRect.X + eventSafeRect.Width * 0.5f,
             eventSafeRect.Y + eventSafeRect.Height * 0.5f);
         Vector2 dir = SafeNormalize(target - playerPos);
-        particles.Add(new Particle
+        AddParticle(new Particle
         {
             Position = playerPos + dir * (PlayerRadius + 4f),
             Velocity = dir * 150f,
@@ -8187,8 +10315,8 @@ class Program
     {
         int ax = EmberEpicenterTx();
         int ay = EmberEpicenterTy();
-        MarkAllThenUnmark((x, y) => x == ax && y == ay);
-        eventSafeRect = new Rectangle(ax * TileSize, ay * TileSize, TileSize, TileSize);
+        MarkAllThenUnmark((x, y) => Math.Abs(x - ax) <= 1 && Math.Abs(y - ay) <= 1);
+        eventSafeRect = new Rectangle((ax - 1) * TileSize, (ay - 1) * TileSize, TileSize * 3f, TileSize * 3f);
     }
 
     static void InitEmberSnakePath()
@@ -8369,7 +10497,9 @@ class Program
     static bool PlayerInEmberAltar()
     {
         if (!TryGetTileUnder(playerPos, out int tx, out int ty)) return false;
-        return tx == EmberEpicenterTx() && ty == EmberEpicenterTy() && !tiles[tx, ty].EventMarked;
+        int ax = EmberEpicenterTx();
+        int ay = EmberEpicenterTy();
+        return Math.Abs(tx - ax) <= 1 && Math.Abs(ty - ay) <= 1 && !tiles[tx, ty].EventMarked;
     }
 
     static void UpdateEmberTelegraphCollapse(float dt, FloorEventType ev)
@@ -8423,6 +10553,7 @@ class Program
             case FloorEventType.RingCollapse:
             case FloorEventType.StoneIslands:
             case FloorEventType.ScatterPits:
+            case FloorEventType.HeraldsCall:
                 if (eventPhase == 0)
                 {
                     eventCountdown -= dt;
@@ -8438,6 +10569,17 @@ class Program
                 break;
 
             case FloorEventType.SafeZoneRush:
+            case FloorEventType.SallyForth:
+                if (activeEvent == FloorEventType.SallyForth)
+                {
+                    eventActionTimer -= dt;
+                    if (eventActionTimer <= 0f)
+                    {
+                        eventSide = (eventSide + 1) % 4;
+                        ConfigureSafeZoneRush();
+                        eventActionTimer = 1.2f;
+                    }
+                }
                 RefreshSafeZoneRushRect();
                 eventCountdown -= dt;
                 playerInEventSafeZone = PlayerInSafeRect(eventSafeRect);
@@ -8478,6 +10620,7 @@ class Program
                 break;
 
             case FloorEventType.MarkedStrike:
+            case FloorEventType.Portcullis:
                 if (eventStep < markedStrikeCount)
                 {
                     int idx = markedStrikeOrder[eventStep];
@@ -9203,6 +11346,7 @@ class Program
         eventTimer = 0f;
         eventPhase = 0;
         eventActionTimer = 0f;
+        eventSurgeTimer = 0f;
         eventTileQueue.Clear();
         eventShockwaves.Clear();
         eventSkyBeams.Clear();
@@ -9210,6 +11354,11 @@ class Program
         emberFuryTileIdx = -1;
         emberFuryStandTimer = 0f;
         ClearEventMarks();
+
+        if (activeDifficulty.EventStackChance > 0f && Rng.NextSingle() < activeDifficulty.EventStackChance)
+        {
+            nextFloorEventTimer = Math.Max(0f, nextFloorEventCooldown - 2.2f);
+        }
     }
 
     static float SafeRushBandPx() => SafeRushBandTiles * TileSize;
@@ -9289,7 +11438,8 @@ class Program
     static void UpdateBlight(float dt)
     {
         blightTimer += dt;
-        if (blightTimer < 10f) return;
+        float blightInterval = 10f * activeDifficulty.WavePauseMult;
+        if (blightTimer < blightInterval) return;
 
         blightTimer = 0f;
         int bx = Rng.Next(1, GridSize - 1);
@@ -9323,22 +11473,29 @@ class Program
     static float WaveSpeedBonus(int wave)
     {
         float eased = MathF.Max(0f, wave - 3f);
-        return eased * 1.35f * WaveEnemyScale(wave);
+        return eased * 1.35f * WaveEnemyScale(wave) * activeDifficulty.EnemySpeedMult;
     }
 
-    static int WaveSwarmCount(int wave) => 1 + Math.Min(6, Math.Max(0, (wave + 2) / 3));
+    static int WaveSwarmCount(int wave)
+    {
+        int baseCount = 1 + Math.Min(6, Math.Max(0, (wave + 2) / 3));
+        return Math.Max(1, (int)MathF.Round(baseCount * activeDifficulty.SwarmCountMult));
+    }
 
     static int WaveGruntsPerSwarm(int wave, int swarmIndex)
     {
+        if (runDifficulty == Difficulty.PracticeHall) return 0;
         int baseCount = 1 + (int)(wave * 0.1f) + swarmIndex / 2;
         int cap = 4 + (int)(wave * 0.08f);
-        return Math.Clamp(baseCount, 1, Math.Min(cap, 14));
+        int count = Math.Clamp(baseCount, 1, Math.Min(cap, 14));
+        return Math.Max(1, (int)MathF.Round(count * activeDifficulty.GruntCountMult));
     }
 
     static void UpdateWaves(float dt)
     {
         if (waveInProgress)
         {
+            UpdateSiegeObjective(dt);
             if (swarmCooldown > 0f)
             {
                 swarmCooldown -= dt;
@@ -9349,7 +11506,7 @@ class Program
                 SpawnWaveSwarm();
                 waveSwarmIndex++;
                 swarmCooldown = SwarmIntervalBase + 1.4f + Rng.NextSingle() * 0.9f - waveNumber * 0.022f;
-                swarmCooldown = MathF.Max(1.35f, swarmCooldown);
+                swarmCooldown = Math.Max(1.35f, swarmCooldown) * activeDifficulty.SwarmIntervalMult;
                 waveSubtext = $"SWARM {waveSwarmIndex}/{waveSwarmTotal}";
             }
             else if (waveSwarmIndex >= waveSwarmTotal && CountLivingEnemies() == 0)
@@ -9361,7 +11518,8 @@ class Program
         }
 
         betweenWaveTimer += dt;
-        float pause = MathF.Max(BetweenWavePause, 5.2f - waveNumber * 0.035f);
+        UpdateBetweenWaveAmbience(dt);
+        float pause = MathF.Max(BetweenWavePause, 5.2f - waveNumber * 0.035f) * activeDifficulty.WavePauseMult;
         if (betweenWaveTimer < pause) return;
 
         betweenWaveTimer = 0f;
@@ -9389,6 +11547,8 @@ class Program
         waveSubtext = IsBossWave(waveNumber)
             ? IsTitanBossWave(waveNumber) ? "THE TITAN WALKS THE WALLS" : "BOSSES AT THE GATE"
             : "FOOTSTEPS ON THE STONE";
+        RollSiegeObjective();
+        BeginReverseSiege();
         AddFlash(UiAccent, 0.10f);
         AddTrauma(0.12f);
     }
@@ -9401,7 +11561,8 @@ class Program
 
         if (waveNumber > 0)
         {
-            maxWaveReached = Math.Max(maxWaveReached, waveNumber);
+            if (!IsPracticeRun()) maxWaveReached = Math.Max(maxWaveReached, waveNumber);
+            UpdateDifficultyRecords(false);
             int reward = (int)MathF.Round((10 + waveNumber * 4) * FableMult());
             fables += reward;
             runFablesEarned += reward;
@@ -9409,7 +11570,10 @@ class Program
             GrantXp(waveXp);
             SpawnFloatingText(playerPos + new Vector2(0, -PlayerRadius - 18f), "+" + reward + " fables", Gold, 20);
             SpawnFloatingText(playerPos + new Vector2(0, -PlayerRadius - 38f), "+" + waveXp + " xp", UiAccent, 16);
+            CompleteSiegeObjectiveBonus();
         }
+
+        OfferBlessings();
     }
 
     static void SpawnWaveSwarm()
@@ -9430,11 +11594,17 @@ class Program
                 EnemyType boss = Rng.Next(2) == 0 ? EnemyType.BrambleLord : EnemyType.FoxWarden;
                 enemies.Add(CreateEnemy(boss, RandomEdgePosition(GetEnemyRadius(boss)), speedBonus));
                 SpawnFloatingText(new Vector2(WindowWidth / 2f, 120f), GetEnemyName(boss).ToUpperInvariant() + "!", Danger, 24);
+                string bark = GetBossBark(boss);
+                if (!string.IsNullOrEmpty(bark))
+                {
+                    SpawnFloatingText(new Vector2(WindowWidth / 2f, 148f), bark, WithAlpha(Color.White, 0.85f), 14);
+                }
                 AddTrauma(0.32f);
             }
         }
 
         int gruntCount = WaveGruntsPerSwarm(waveNumber, waveSwarmIndex);
+        siegeGruntsSpawned += gruntCount;
         for (int i = 0; i < gruntCount; i++)
         {
             EnemyType type = PickGruntType();
@@ -9454,7 +11624,7 @@ class Program
             Position = position,
             Speed = def.Speed + speedBonus,
             Radius = def.Radius,
-            MaxHp = (def.HpBase + def.HpPerWave * waveNumber) * scale,
+            MaxHp = (def.HpBase + def.HpPerWave * waveNumber) * scale * activeDifficulty.EnemyHpMult,
             Wobble = Rng.NextSingle() * MathF.PI * 2f,
             Spawn = 0f,
             AbilityTimer = def.Boss ? 5f : BehaviorCooldown(def.Behavior),
@@ -9473,7 +11643,21 @@ class Program
             e.Speed = MathF.Min(e.Speed, EffMoveSpeed() - cap);
         }
 
+        if (runDifficulty >= Difficulty.Champion && waveNumber >= 15 && !def.Boss && Rng.NextSingle() < 0.12f)
+        {
+            e.Elite = true;
+            e.MaxHp *= 1.25f;
+            e.Hp = e.MaxHp;
+            e.Speed *= 1.08f;
+        }
+
         e.Position = SnapEnemyToValidTile(e.Position, e.Radius);
+        if (IsWithinPlayerSpawnExclusion(e.Position))
+        {
+            e.Position = RandomSpawnPositionAwayFromPlayer(e.Radius);
+            e.Position = SnapEnemyToValidTile(e.Position, e.Radius);
+        }
+
         return e;
     }
 
@@ -9494,7 +11678,7 @@ class Program
     static float EnemyMaxHp(EnemyType type)
     {
         ref readonly EnemyDef def = ref GetDef(type);
-        return (def.HpBase + def.HpPerWave * waveNumber) * WaveEnemyScale(waveNumber);
+        return (def.HpBase + def.HpPerWave * waveNumber) * WaveEnemyScale(waveNumber) * activeDifficulty.EnemyHpMult;
     }
 
     static EnemyType PickGruntType()
@@ -9505,7 +11689,7 @@ class Program
         {
             ref readonly EnemyDef def = ref EnemyCatalog[i];
             if (def.Boss) continue;
-            if (def.MinWave > waveNumber) continue;
+            if (def.MinWave + activeDifficulty.GruntMinWaveBonus > waveNumber) continue;
             count++;
             if (Rng.Next(count) == 0) pick = (EnemyType)i;
         }
@@ -9556,33 +11740,42 @@ class Program
         float dist = toPlayer.Length();
         Vector2 dir = dist > 0.01f ? toPlayer / dist : lastMoveDirection;
         Vector2 perp = new Vector2(-dir.Y, dir.X);
+        Vector2 result;
 
         switch (def.Behavior)
         {
             case EnemyBehavior.Chase:
             case EnemyBehavior.TileLeech:
-                return dir * enemy.Speed;
+                result = dir * enemy.Speed;
+                break;
 
             case EnemyBehavior.FastChase:
-                return dir * enemy.Speed;
+                result = dir * enemy.Speed;
+                break;
 
             case EnemyBehavior.CrushTiles:
-                return dir * enemy.Speed;
+                result = dir * enemy.Speed;
+                break;
 
             case EnemyBehavior.Orbit:
             {
                 float ring = 130f;
-                if (dist > ring + 40f) return dir * enemy.Speed;
-                if (dist < ring - 40f) return -dir * enemy.Speed * 0.85f;
-                float spin = enemy.Wobble > MathF.PI ? 1f : -1f;
-                return perp * enemy.Speed * spin;
+                if (dist > ring + 40f) result = dir * enemy.Speed;
+                else if (dist < ring - 40f) result = -dir * enemy.Speed * 0.85f;
+                else
+                {
+                    float spin = enemy.Wobble > MathF.PI ? 1f : -1f;
+                    result = perp * enemy.Speed * spin;
+                }
+                break;
             }
 
             case EnemyBehavior.Zigzag:
             {
                 float weave = MathF.Sin(time * 7f + enemy.Wobble) * 0.55f;
                 Vector2 step = Vector2.Normalize(dir + perp * weave);
-                return step * enemy.Speed;
+                result = step * enemy.Speed;
+                break;
             }
 
             case EnemyBehavior.Hop:
@@ -9609,18 +11802,21 @@ class Program
                 {
                     enemy.AbilityStep = 0;
                 }
-                return dir * enemy.Speed * 0.35f;
+                result = dir * enemy.Speed * 0.35f;
+                break;
             }
 
             case EnemyBehavior.BlightTrail:
-                return dir * enemy.Speed;
+                result = dir * enemy.Speed;
+                break;
 
             case EnemyBehavior.Kite:
             {
                 float prefer = 168f;
-                if (dist < prefer - 30f) return -dir * enemy.Speed;
-                if (dist > prefer + 40f) return dir * enemy.Speed;
-                return perp * enemy.Speed * 0.7f;
+                if (dist < prefer - 30f) result = -dir * enemy.Speed;
+                else if (dist > prefer + 40f) result = dir * enemy.Speed;
+                else result = perp * enemy.Speed * 0.7f;
+                break;
             }
 
             case EnemyBehavior.Charge:
@@ -9630,7 +11826,8 @@ class Program
                 {
                     enemy.Phase -= dt;
                     enemy.AbilityStep = 3;
-                    return dir * enemy.Speed * 2.1f;
+                    result = dir * enemy.Speed * 2.1f;
+                    break;
                 }
                 if (enemy.AbilityStep == 2)
                 {
@@ -9639,24 +11836,29 @@ class Program
                         enemy.Phase = 0.35f;
                         enemy.AbilityTimer = 2.4f;
                         enemy.AbilityStep = 3;
-                        return dir * enemy.Speed * 2.1f;
+                        result = dir * enemy.Speed * 2.1f;
+                        break;
                     }
-                    return dir * enemy.Speed * 0.28f;
+                    result = dir * enemy.Speed * 0.28f;
+                    break;
                 }
                 if (enemy.AbilityTimer <= 0f && dist < 260f)
                 {
                     enemy.AbilityStep = 2;
                     enemy.AbilityTimer = ChargeTelegraphTime;
-                    return dir * enemy.Speed * 0.28f;
+                    result = dir * enemy.Speed * 0.28f;
+                    break;
                 }
                 enemy.AbilityStep = 0;
-                return dir * enemy.Speed * 0.65f;
+                result = dir * enemy.Speed * 0.65f;
+                break;
             }
 
             case EnemyBehavior.Lurker:
             {
-                if (dist > 200f) return dir * enemy.Speed * 0.45f;
-                return dir * enemy.Speed * 1.35f;
+                if (dist > 200f) result = dir * enemy.Speed * 0.45f;
+                else result = dir * enemy.Speed * 1.35f;
+                break;
             }
 
             case EnemyBehavior.Phaser:
@@ -9682,30 +11884,38 @@ class Program
                 {
                     enemy.AbilityStep = 0;
                 }
-                return dir * enemy.Speed * 0.5f;
+                result = dir * enemy.Speed * 0.5f;
+                break;
             }
 
             case EnemyBehavior.PulseBlight:
             case EnemyBehavior.Sapper:
             case EnemyBehavior.Rotburst:
             case EnemyBehavior.Splitter:
-                return dir * enemy.Speed * 0.8f;
+                result = dir * enemy.Speed * 0.8f;
+                break;
 
             case EnemyBehavior.BossBlight:
             case EnemyBehavior.BossDash:
-                return dir * enemy.Speed;
+                result = dir * enemy.Speed;
+                break;
 
             case EnemyBehavior.BossSmash:
-                return enemy.AbilityStep > 0 ? dir * enemy.Speed * 0.22f : dir * enemy.Speed * 0.62f;
+                result = enemy.AbilityStep > 0 ? dir * enemy.Speed * 0.22f : dir * enemy.Speed * 0.62f;
+                break;
 
             default:
-                return dir * enemy.Speed;
+                result = dir * enemy.Speed;
+                break;
         }
+
+        return ApplyFloorStateBias(result, in enemy, def.Behavior);
     }
 
     static void TickEnemyBehavior(ref Enemy enemy, float dt, float time)
     {
         ref readonly EnemyDef def = ref GetDef(enemy.Type);
+        TickBossPhases(ref enemy, in def);
 
         if (def.Behavior == EnemyBehavior.CrushTiles)
         {
@@ -9800,7 +12010,7 @@ class Program
                 if (enemy.AbilityTimer <= 0f)
                 {
                     enemy.AbilityStep = 1;
-                    enemy.AbilityTimer = BossTelegraphTime;
+                    enemy.AbilityTimer = enemy.Phase >= 1f ? BossTelegraphTime * 0.65f : BossTelegraphTime;
                 }
             }
         }
@@ -10040,6 +12250,12 @@ class Program
         collapsed = true;
     }
 
+    static void CollapseTileAt(int x, int y, bool regrow = true)
+    {
+        if (x < 0 || x >= GridSize || y < 0 || y >= GridSize) return;
+        CollapseTile(ref tiles[x, y], regrow, x, y);
+    }
+
     static void KillRewards(Enemy enemy)
     {
         ref readonly EnemyDef def = ref GetDef(enemy.Type);
@@ -10065,6 +12281,15 @@ class Program
 
         runKillCount++;
         TryUnlockVerdictByKills();
+        IncrementBestiary(enemy.Type);
+        if (!def.Boss) siegeGruntsKilled++;
+        SpawnComboNarration(combo);
+
+        if (runGunAffix == GunAffixType.Leeching && TryGetTileUnder(playerPos, out int ltx, out int lty))
+        {
+            ref Tile lt = ref tiles[ltx, lty];
+            lt.Durability = Math.Min(MaxDurability, lt.Durability + (boss ? 25f : 10f));
+        }
 
         SpawnExplosion(enemy.Position, c, boss ? 72 : big ? 52 : 32);
         SpawnGfxLightPulse(enemy.Position, c, boss ? 320f : big ? 240f : 170f, boss ? 1.85f : 1.15f, boss ? 0.75f : 0.48f);
@@ -10076,6 +12301,7 @@ class Program
 
         AddTrauma(boss ? 0.95f : big ? 0.68f : 0.38f);
         zoomPunch = Math.Max(zoomPunch, boss ? 0.13f : big ? 0.085f : 0.055f);
+        TriggerBossHitStop(boss);
         TriggerImpact(boss ? ImpactTier.Major : big ? ImpactTier.Medium : ImpactTier.Light, c);
     }
 
@@ -10096,10 +12322,13 @@ class Program
         flashColor = Danger;
         SpawnExplosion(playerPos, BodyColor(), 36);
 
-        lastRunNewBest = score > highScore;
-        if (score > highScore) highScore = score;
-        maxWaveReached = Math.Max(maxWaveReached, waveNumber);
-        GrantXp(Math.Max(8, waveNumber * 10));
+        lastRunNewBest = !IsPracticeRun() && score > highScore;
+        if (!IsPracticeRun() && score > highScore) highScore = score;
+        if (!IsPracticeRun()) maxWaveReached = Math.Max(maxWaveReached, waveNumber);
+        UpdateDifficultyRecords(true);
+        int xpGrant = (int)MathF.Round(Math.Max(8, waveNumber * 10) * OathRewardMult());
+        GrantXp(xpGrant);
+        UnlockMottosForLevel();
         SaveGame();
     }
 
@@ -10114,7 +12343,7 @@ class Program
             float angle = Rng.NextSingle() * MathF.PI * 2f;
             float speed = Rng.Next(90, 340);
             bool glow = i % 3 == 0;
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = origin,
                 Velocity = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * speed,
@@ -10135,7 +12364,7 @@ class Program
         for (int i = 0; i < 12; i++)
         {
             float angle = Rng.NextSingle() * MathF.PI * 2f;
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = origin,
                 Velocity = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * Rng.Next(70, 200),
@@ -10302,7 +12531,7 @@ class Program
             float spread = (Hash(i * 991 + (int)(pos.X + pos.Y)) - 0.5f) * 0.55f;
             float a = aim + spread;
             float spd = minSpd + Rng.NextSingle() * (maxSpd - minSpd);
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = pos,
                 Velocity = new Vector2(MathF.Cos(a), MathF.Sin(a)) * spd,
@@ -10319,7 +12548,7 @@ class Program
     static void SpawnSpark(Vector2 pos, float angle, float minSpd, float maxSpd, Color color, float size)
     {
         float spd = minSpd + Rng.NextSingle() * (maxSpd - minSpd);
-        particles.Add(new Particle
+        AddParticle(new Particle
         {
             Position = pos,
             Velocity = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * spd,
@@ -10404,7 +12633,7 @@ class Program
         {
             case GunFireStyle.Buckshot:
                 trail = WithAlpha(p.Color, 0.55f);
-                particles.Add(new Particle
+                AddParticle(new Particle
                 {
                     Position = p.Position,
                     Velocity = -p.Velocity * 0.08f,
@@ -10418,7 +12647,7 @@ class Program
                 break;
             case GunFireStyle.Homing:
             case GunFireStyle.DriftOrb:
-                particles.Add(new Particle
+                AddParticle(new Particle
                 {
                     Position = p.Position,
                     Velocity = Vector2.Zero,
@@ -10431,7 +12660,7 @@ class Program
                 });
                 break;
             case GunFireStyle.FlailArc:
-                particles.Add(new Particle
+                AddParticle(new Particle
                 {
                     Position = p.Position,
                     Velocity = new Vector2(-p.Velocity.Y, p.Velocity.X) * 0.04f,
@@ -10444,7 +12673,7 @@ class Program
                 });
                 break;
             default:
-                particles.Add(new Particle
+                AddParticle(new Particle
                 {
                     Position = p.Position,
                     Velocity = Vector2.Zero,
@@ -10509,7 +12738,7 @@ class Program
         {
             float angle = Rng.NextSingle() * MathF.PI * 2f;
             float speed = Rng.Next(60, 220);
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = playerPos,
                 Velocity = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * speed - lastMoveDirection * 160f,
@@ -10731,7 +12960,7 @@ class Program
             float angle = Rng.NextSingle() * MathF.PI * 2f;
             float speed = Rng.Next(80, 280);
             Vector2 back = lastMoveDirection == Vector2.Zero ? Vector2.Zero : -SafeNormalize(lastMoveDirection);
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = playerPos + back * PlayerRadius * 0.5f,
                 Velocity = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * speed + back * 120f,
@@ -10746,7 +12975,7 @@ class Program
         for (int streak = 0; streak < 5; streak++)
         {
             Vector2 off = new Vector2(-lastMoveDirection.Y, lastMoveDirection.X) * (streak - 2f) * 8f;
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = playerPos + off,
                 Velocity = lastMoveDirection * 420f + off * 2f,
@@ -10775,7 +13004,7 @@ class Program
     static void FinishBannerPlant()
     {
         bannerActive = true;
-        bannerTimer = BannerDuration;
+        bannerTimer = EffBannerDuration();
         bannerCooldown = BannerCooldown;
         SpawnFloatingText(bannerPos + new Vector2(0, -36f), "STILLNESS", AbilityAccent(AbilityType.BannerOfStillness), 22);
         SpawnEventShockwave(bannerPos, AbilityAccent(AbilityType.BannerOfStillness), BannerRadius * 1.35f, 0.75f);
@@ -10786,6 +13015,7 @@ class Program
     static void TryVerdict()
     {
         if (verdictCooldown > 0f || verdictHaltTimer > 0f) return;
+        if (OathBlocksVerdict()) return;
         if (!IsVerdictUnlocked() || !HasEquippedAbility(AbilityType.Verdict)) return;
 
         verdictCooldown = VerdictCooldown;
@@ -10811,7 +13041,7 @@ class Program
     static bool TryOathOfTheBailey(DeathCause cause)
     {
         if (cause != DeathCause.FellThrough && cause != DeathCause.FloorGaveWay) return false;
-        if (!HasEquippedAbility(AbilityType.OathOfTheBailey) || oathUsedThisRun) return false;
+        if (OathBlocksOath() || !HasEquippedAbility(AbilityType.OathOfTheBailey) || oathUsedThisRun) return false;
         if (!TryFindNearestSolidTile(playerPos, out Vector2 snap, out int tx, out int ty)) return false;
 
         oathUsedThisRun = true;
@@ -10835,7 +13065,8 @@ class Program
         SpawnFloatingText(snap + new Vector2(0, -20f), "STONE HOLDS", Color.White, 16);
         AddTrauma(0.55f);
         zoomPunch = Math.Max(zoomPunch, 0.09f);
-        TriggerImpact(ImpactTier.Major, AbilityAccent(AbilityType.OathOfTheBailey));
+        TriggerBossHitStop(true);
+        TriggerImpact(ImpactTier.Major, HeraldryAccent(AbilityAccent(AbilityType.OathOfTheBailey)));
         return true;
     }
 
@@ -10871,7 +13102,7 @@ class Program
         for (int i = 0; i < 22; i++)
         {
             float angle = i * (MathF.PI * 2f / 22f);
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = origin,
                 Velocity = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * Rng.Next(60, 180),
@@ -10892,7 +13123,7 @@ class Program
         for (int ring = 0; ring < 16; ring++)
         {
             float angle = ring * (MathF.PI * 2f / 16f);
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = origin,
                 Velocity = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * 420f,
@@ -10916,7 +13147,7 @@ class Program
         for (int i = 0; i < 36; i++)
         {
             float angle = i * (MathF.PI * 2f / 36f);
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = origin + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * 18f,
                 Velocity = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * Rng.Next(90, 260),
@@ -10980,7 +13211,7 @@ class Program
             Vector2 pos = origin + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * dist;
             Vector2 vel = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * Rng.Next(80, 240);
             bool glow = i % 3 == 0;
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = pos,
                 Velocity = vel,
@@ -10998,7 +13229,7 @@ class Program
         for (int ring = 0; ring < 12; ring++)
         {
             float angle = ring * (MathF.PI * 2f / 12f);
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = origin + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * radius * 0.92f,
                 Velocity = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * 60f,
@@ -11076,7 +13307,7 @@ class Program
     {
         if (!bannerActive && bannerPlantTimer <= 0f) return;
         float time = (float)Raylib.GetTime();
-        Color banner = AbilityAccent(AbilityType.BannerOfStillness);
+        Color banner = HeraldryAccent(AbilityAccent(AbilityType.BannerOfStillness));
         Color rune = new Color(214, 232, 220, 255);
         Vector2 pos = bannerPos;
         float pulse = MathF.Sin(time * 3.2f) * 0.5f + 0.5f;
@@ -11114,7 +13345,7 @@ class Program
         Raylib.DrawLineEx(flagPoleBase, flagTop, 2f, WithAlpha(new Color(148, 132, 108, 255), 0.8f));
         Vector2 flagMid = flagTop + new Vector2(30f + MathF.Sin(time * 4f) * 5f, 12f);
         Vector2 flagBot = flagTop + new Vector2(26f + MathF.Sin(time * 4f + 0.8f) * 4f, 30f);
-        Raylib.DrawTriangle(flagTop, flagMid, flagBot, WithAlpha(banner, 0.92f));
+        Raylib.DrawTriangle(flagTop, flagMid, flagBot, WithAlpha(HeraldryAccent(banner, 0.15f), 0.92f));
         Raylib.DrawTriangle(flagTop, flagMid, flagBot, WithAlpha(Color.White, 0.08f));
         Raylib.DrawLineEx(flagTop, flagMid, 1.5f, WithAlpha(Color.White, 0.5f));
         Raylib.DrawLineEx(flagMid, flagBot, 1.5f, WithAlpha(Color.White, 0.28f));
@@ -11224,7 +13455,7 @@ class Program
 
         stepTimer = 0.07f;
         Vector2 back = playerVel == Vector2.Zero ? Vector2.Zero : -Vector2.Normalize(playerVel);
-        particles.Add(new Particle
+        AddParticle(new Particle
         {
             Position = playerPos + back * PlayerRadius,
             Velocity = back * 30f,
@@ -11244,7 +13475,7 @@ class Program
         {
             float angle = Rng.NextSingle() * MathF.PI * 2f;
             float speed = Rng.Next(20, 70);
-            particles.Add(new Particle
+            AddParticle(new Particle
             {
                 Position = origin + new Vector2(Rng.Next(-20, 20), Rng.Next(-20, 20)),
                 Velocity = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * speed,
@@ -11262,6 +13493,7 @@ class Program
 
     static void SpawnFloatingText(Vector2 pos, string text, Color color, int size)
     {
+        if (!floatingTextEnabled) return;
         floaters.Add(new FloatingText
         {
             Position = pos,
@@ -11278,14 +13510,15 @@ class Program
 
     static void UpdateParticles(float dt)
     {
-        // Cap particle count so heavy combat can't balloon the list and tank frame pacing.
-        if (particles.Count > MaxParticles)
+        if (particles.Count > ParticleCap)
         {
-            particles.RemoveRange(0, particles.Count - MaxParticles);
+            int remove = particles.Count - ParticleCap;
+            particles.RemoveRange(0, remove);
         }
 
-        float time = (float)Raylib.GetTime();
-        for (int i = particles.Count - 1; i >= 0; i--)
+        float time = frameTime > 0f ? frameTime : (float)Raylib.GetTime();
+        int write = 0;
+        for (int i = 0; i < particles.Count; i++)
         {
             Particle p = particles[i];
             p.Velocity *= MathF.Exp(-p.Drag * dt);
@@ -11294,41 +13527,70 @@ class Program
             p.Rotation += p.Spin * dt;
             p.Alpha -= p.Fade * dt;
 
-            if (p.Alpha <= 0f) particles.RemoveAt(i);
-            else particles[i] = p;
+            if (p.Alpha > 0f)
+            {
+                particles[write++] = p;
+            }
+        }
+
+        if (write < particles.Count)
+        {
+            particles.RemoveRange(write, particles.Count - write);
         }
     }
 
     static void UpdateTrails(float dt)
     {
-        for (int i = trails.Count - 1; i >= 0; i--)
+        int write = 0;
+        for (int i = 0; i < trails.Count; i++)
         {
             DashTrail t = trails[i];
             t.Alpha -= dt * 3.2f;
-            if (t.Alpha <= 0f) trails.RemoveAt(i);
-            else trails[i] = t;
+            if (t.Alpha > 0f)
+            {
+                trails[write++] = t;
+            }
+        }
+
+        if (write < trails.Count)
+        {
+            trails.RemoveRange(write, trails.Count - write);
         }
     }
 
     static void UpdateFloaters(float dt)
     {
-        for (int i = floaters.Count - 1; i >= 0; i--)
+        int write = 0;
+        for (int i = 0; i < floaters.Count; i++)
         {
             FloatingText f = floaters[i];
             f.Position += f.Velocity * dt;
             f.Velocity *= MathF.Exp(-2.5f * dt);
             f.Life -= dt;
-            if (f.Life <= 0f) floaters.RemoveAt(i);
-            else floaters[i] = f;
+            if (f.Life > 0f)
+            {
+                floaters[write++] = f;
+            }
+        }
+
+        if (write < floaters.Count)
+        {
+            floaters.RemoveRange(write, floaters.Count - write);
         }
     }
 
-    static void AddTrauma(float amount) => trauma = Math.Clamp(trauma + amount, 0f, 1f);
+    static void AddTrauma(float amount)
+        => trauma = Math.Clamp(trauma + amount * (reduceMotion ? 0.4f : 1f), 0f, 1f);
 
     enum ImpactTier { Light, Medium, Major }
 
     static bool ProcessHitStop(float dt)
     {
+        if (!hitStopEnabled)
+        {
+            hitstop = 0f;
+            return false;
+        }
         if (hitstop <= 0f) return false;
 
         hitstop = Math.Max(0f, hitstop - dt);
@@ -11343,29 +13605,30 @@ class Program
     static void TriggerImpact(ImpactTier tier, Color flashColor)
     {
         impactFlashColor = flashColor;
+        float hitScale = reduceMotion ? 0.35f : 1f;
         switch (tier)
         {
             case ImpactTier.Light:
-                hitstop = Math.Max(hitstop, 0.028f);
+                hitstop = Math.Max(hitstop, 0.028f * hitScale);
                 impactFlash = Math.Max(impactFlash, 0.55f);
                 impactFlashSharp = false;
                 AddFlash(flashColor, 0.13f);
                 break;
             case ImpactTier.Medium:
-                hitstop = Math.Max(hitstop, 0.085f);
+                hitstop = Math.Max(hitstop, 0.085f * hitScale);
                 impactFlash = 1f;
                 impactFlashSharp = true;
                 AddFlash(flashColor, 0.28f);
-                zoomPunch = Math.Max(zoomPunch, 0.065f);
+                if (!reduceMotion) zoomPunch = Math.Max(zoomPunch, 0.065f);
                 SpawnGfxLightPulse(playerPos, flashColor, 180f, 1.15f, 0.38f);
                 break;
             case ImpactTier.Major:
-                hitstop = Math.Max(hitstop, 0.16f);
+                hitstop = Math.Max(hitstop, 0.16f * hitScale);
                 impactFlash = 1f;
                 impactFlashSharp = true;
                 impactFlashColor = Color.White;
                 AddFlash(flashColor, 0.55f);
-                zoomPunch = Math.Max(zoomPunch, 0.12f);
+                if (!reduceMotion) zoomPunch = Math.Max(zoomPunch, 0.12f);
                 SpawnGfxLightPulse(playerPos, flashColor, 360f, 1.85f, 0.68f);
                 break;
             default:
@@ -11417,7 +13680,30 @@ class Program
         return tileX >= 0 && tileX < GridSize && tileY >= 0 && tileY < GridSize;
     }
 
+    static bool IsWithinPlayerSpawnExclusion(int tileX, int tileY)
+    {
+        if (!TryGetTileUnder(playerPos, out int playerTileX, out int playerTileY)) return false;
+        return Math.Abs(tileX - playerTileX) <= 1 && Math.Abs(tileY - playerTileY) <= 1;
+    }
+
+    static bool IsWithinPlayerSpawnExclusion(Vector2 position)
+    {
+        return TryGetTileUnder(position, out int tileX, out int tileY) && IsWithinPlayerSpawnExclusion(tileX, tileY);
+    }
+
     static Vector2 RandomEdgePosition(float radius)
+    {
+        const int maxAttempts = 48;
+        for (int attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            Vector2 pos = PickRandomEdgePosition(radius);
+            if (!IsWithinPlayerSpawnExclusion(pos)) return pos;
+        }
+
+        return RandomSpawnPositionAwayFromPlayer(radius);
+    }
+
+    static Vector2 PickRandomEdgePosition(float radius)
     {
         int edge = Rng.Next(4);
         return edge switch
@@ -11428,6 +13714,31 @@ class Program
             3 => new Vector2(WindowWidth - radius, Rng.Next((int)radius, WindowHeight - (int)radius)),
             _ => throw new UnreachableException(),
         };
+    }
+
+    static Vector2 RandomSpawnPositionAwayFromPlayer(float radius)
+    {
+        int bestX = -1;
+        int bestY = -1;
+        int bestScore = int.MinValue;
+        for (int y = 0; y < GridSize; y++)
+        {
+            for (int x = 0; x < GridSize; x++)
+            {
+                if (!IsTileViable(x, y) || IsWithinPlayerSpawnExclusion(x, y)) continue;
+                int edgeDist = Math.Min(Math.Min(x, GridSize - 1 - x), Math.Min(y, GridSize - 1 - y));
+                int score = edgeDist * 10 + Rng.Next(8);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestX = x;
+                    bestY = y;
+                }
+            }
+        }
+
+        Vector2 fallback = bestX >= 0 ? TileCenter(bestX, bestY) : new Vector2(WindowWidth / 2f, radius);
+        return ClampToArena(fallback, radius);
     }
 
     static float GetEnemyRadius(EnemyType type) => GetDef(type).Radius;
@@ -11733,6 +14044,7 @@ class Program
 
     static void Draw()
     {
+        frameTime = (float)Raylib.GetTime();
         Raylib.BeginDrawing();
         Raylib.ClearBackground(ForestShadow);
 
@@ -11742,6 +14054,9 @@ class Program
         {
             case GameState.MainMenu:
                 DrawMainMenu();
+                break;
+            case GameState.DifficultySelect:
+                DrawDifficultySelect();
                 break;
             case GameState.Playing:
                 DrawPlayScene();
@@ -11848,23 +14163,24 @@ class Program
 
     static void DrawForestBackground()
     {
-        Raylib.DrawRectangleGradientV(0, 0, WindowWidth, WindowHeight, CanopyTop, ForestFloor);
+        Raylib.DrawRectangle(0, 0, WindowWidth, WindowHeight, new Color(1, 1, 1, 255));
+        Raylib.DrawRectangleGradientV(0, 0, WindowWidth, WindowHeight, new Color(2, 2, 2, 255), new Color(6, 5, 5, 255));
 
         Raylib.DrawRectangleGradientV(0, WindowHeight / 2, WindowWidth, WindowHeight / 2,
-            WithAlpha(ActiveTheme.BgMist, 0f),
-            WithAlpha(ActiveTheme.BgMist, 0.06f));
+            WithAlpha(new Color(10, 9, 8, 255), 0f),
+            WithAlpha(new Color(10, 9, 8, 255), 0.04f));
 
         float time = (float)Raylib.GetTime();
 
         if (state == GameState.MainMenu)
         {
-            DrawMenuCastleFraming(time);
-            DrawMotes(0.32f);
+            if (menuCastleEnabled) DrawMenuCastleFraming(time);
+            if (backgroundMotes) DrawMotes(0.32f);
         }
         else
         {
             DrawEdgeCastle(time, 0.55f);
-            DrawMotes();
+            if (backgroundMotes) DrawMotes();
         }
     }
 
@@ -11939,23 +14255,277 @@ class Program
 
         public static MenuCastlePalette Default => new()
         {
-            Stone = new Color(62, 60, 58, 255),
-            StoneMid = new Color(48, 46, 44, 255),
-            StoneDark = new Color(32, 30, 28, 255),
-            StoneDeep = new Color(20, 18, 18, 255),
-            StoneLight = new Color(98, 96, 92, 255),
-            StoneHi = new Color(128, 126, 120, 255),
-            Mortar = new Color(28, 26, 26, 255),
-            TorchWarm = new Color(196, 188, 168, 255),
-            MoonGlow = new Color(198, 200, 212, 255),
-            Iron = new Color(54, 52, 50, 255),
-            Moss = new Color(58, 62, 54, 255),
-            Lichen = new Color(72, 78, 64, 255),
-            WetSheen = new Color(88, 86, 82, 255),
+            Stone = new Color(68, 64, 58, 255),
+            StoneMid = new Color(54, 50, 46, 255),
+            StoneDark = new Color(36, 34, 32, 255),
+            StoneDeep = new Color(22, 20, 19, 255),
+            StoneLight = new Color(102, 98, 90, 255),
+            StoneHi = new Color(138, 132, 122, 255),
+            Mortar = new Color(26, 24, 23, 255),
+            TorchWarm = new Color(210, 168, 108, 255),
+            MoonGlow = new Color(184, 182, 176, 255),
+            Iron = new Color(48, 46, 44, 255),
+            Moss = new Color(54, 58, 48, 255),
+            Lichen = new Color(68, 74, 58, 255),
+            WetSheen = new Color(82, 80, 74, 255),
         };
     }
 
     static MenuCastlePalette MenuPalette => MenuCastlePalette.Default;
+
+    readonly struct MenuCastleLayout
+    {
+        public float WallY { get; init; }
+        public float WallH { get; init; }
+        public float ParapetY { get; init; }
+        public float ForecourtY { get; init; }
+        public float ForecourtH { get; init; }
+        public float GatehouseW { get; init; }
+        public float GatehouseH { get; init; }
+        public float GatehouseX { get; init; }
+        public float GatehouseTop { get; init; }
+        public float GatehouseBottom { get; init; }
+        public float BattlementsY { get; init; }
+        public Rectangle GatehouseRect { get; init; }
+        public float GateW { get; init; }
+        public float GateH { get; init; }
+        public float GateX { get; init; }
+        public float GateY { get; init; }
+        public Rectangle GateRect { get; init; }
+        public Vector2 LeftTowerOrigin { get; init; }
+        public Vector2 RightTowerOrigin { get; init; }
+        public float TowerW { get; init; }
+        public float TowerH { get; init; }
+        public float BarbicanX { get; init; }
+        public float BarbicanY { get; init; }
+        public float BarbicanW { get; init; }
+        public float BarbicanH { get; init; }
+        public float MoatY { get; init; }
+        public float CenterX => WindowWidth / 2f;
+        public float GatehouseLeft => GatehouseX;
+        public float GatehouseRight => GatehouseX + GatehouseW;
+
+        public static MenuCastleLayout Compute()
+        {
+            const float forecourtH = 40f;
+            float forecourtY = WindowHeight - forecourtH;
+            float wallH = (WindowHeight - forecourtH) * 0.50f;
+            float wallY = forecourtY - wallH;
+            float parapetY = wallY - 10f;
+
+            float gatehouseW = MathF.Min(208f, WindowWidth * 0.26f);
+            float gatehouseTop = wallY + wallH * 0.05f;
+            float gatehouseBottom = forecourtY;
+            float gatehouseH = gatehouseBottom - gatehouseTop;
+            float gatehouseX = WindowWidth / 2f - gatehouseW / 2f;
+            float battlementsY = gatehouseTop - 30f;
+
+            float gateW = gatehouseW * 0.52f;
+            float gateH = gatehouseH * 0.60f;
+            float gateX = WindowWidth / 2f - gateW / 2f;
+            float gateY = gatehouseBottom - gateH;
+
+            float towerW = MathF.Min(172f, WindowWidth * 0.215f);
+            float towerH = wallH + 58f;
+            float towerY = wallY - 42f;
+
+            float barbW = gateW + 76f;
+            float barbH = gateH * 0.32f;
+            float barbX = gateX - (barbW - gateW) / 2f;
+            float barbY = gateY - barbH + 6f;
+
+            return new MenuCastleLayout
+            {
+                WallY = wallY,
+                WallH = wallH,
+                ParapetY = parapetY,
+                ForecourtY = forecourtY,
+                ForecourtH = forecourtH,
+                GatehouseW = gatehouseW,
+                GatehouseH = gatehouseH,
+                GatehouseX = gatehouseX,
+                GatehouseTop = gatehouseTop,
+                GatehouseBottom = gatehouseBottom,
+                BattlementsY = battlementsY,
+                GatehouseRect = new Rectangle(gatehouseX, gatehouseTop, gatehouseW, gatehouseH),
+                GateW = gateW,
+                GateH = gateH,
+                GateX = gateX,
+                GateY = gateY,
+                GateRect = new Rectangle(gateX, gateY, gateW, gateH),
+                LeftTowerOrigin = new Vector2(-2f, towerY),
+                RightTowerOrigin = new Vector2(WindowWidth - towerW + 2f, towerY),
+                TowerW = towerW,
+                TowerH = towerH,
+                BarbicanX = barbX,
+                BarbicanY = barbY,
+                BarbicanW = barbW,
+                BarbicanH = barbH,
+                MoatY = forecourtY - 16f,
+            };
+        }
+    }
+
+    static MenuCastleLayout MenuCastleLayoutCurrent;
+
+    static MenuCastleLayout GetMenuCastleLayout()
+    {
+        if (!menuCastleLayoutValid)
+        {
+            menuCastleLayoutCached = MenuCastleLayout.Compute();
+            menuCastleLayoutValid = true;
+        }
+
+        return menuCastleLayoutCached;
+    }
+
+    static void InvalidateMenuCastleLayout() => menuCastleLayoutValid = false;
+
+    static void UnloadMenuCastleBake()
+    {
+        if (!menuCastleBakeReady) return;
+        Raylib.UnloadRenderTexture(menuCastleBake);
+        menuCastleBakeReady = false;
+        menuCastleBakeW = 0;
+        menuCastleBakeH = 0;
+    }
+
+    static void EnsureMenuCastleBake(MenuCastleLayout L, MenuCastlePalette p)
+    {
+        if (menuCastleBakeReady && menuCastleBakeW == WindowWidth && menuCastleBakeH == WindowHeight) return;
+
+        UnloadMenuCastleBake();
+        menuCastleBake = Raylib.LoadRenderTexture(WindowWidth, WindowHeight);
+        menuCastleBakeW = WindowWidth;
+        menuCastleBakeH = WindowHeight;
+
+        Raylib.BeginTextureMode(menuCastleBake);
+        Raylib.ClearBackground(new Color(0, 0, 0, 0));
+        DrawMenuCastleStructuralPass(0f, L, p);
+        Raylib.EndTextureMode();
+        menuCastleBakeReady = true;
+    }
+
+    static void DrawMenuCastleStructuralPass(float time, MenuCastleLayout L, MenuCastlePalette p)
+    {
+        DrawMenuCastleHorizonMist(L.WallY, p, time);
+        DrawMenuCastleForestTreeline(L.WallY, p, time);
+        DrawMenuCastleSilhouetteLayer(L.WallY, L.WallH, p, time);
+        DrawMenuCastleMoatReflection(L.WallY, L.WallH, p, time);
+        DrawMenuCastleProductionMasterPass(MenuCastleProductionPhase.Backdrop, time, p);
+
+        Raylib.DrawRectangleGradientV(0, (int)(L.WallY - 110f), WindowWidth, 90,
+            WithAlpha(p.StoneDeep, 0f), WithAlpha(new Color(18, 17, 16, 255), 0.28f));
+        Raylib.DrawRectangleGradientV(0, (int)(L.WallY - 90f), WindowWidth, 120,
+            WithAlpha(p.StoneDeep, 0f), WithAlpha(p.StoneDeep, 0.42f));
+
+        var curtain = new Rectangle(40f, L.WallY - 18f, WindowWidth - 80f, L.WallH + 18f);
+        Raylib.DrawRectangleRounded(curtain, 0.02f, 6, WithAlpha(p.StoneDeep, 0.55f));
+        Raylib.DrawRectangleRoundedLines(curtain, 0.02f, 6, WithAlpha(p.StoneLight, 0.12f));
+
+        Raylib.DrawRectangle(0, (int)L.WallY, WindowWidth, (int)L.WallH, p.StoneDark);
+        Raylib.DrawRectangleGradientV(0, (int)L.WallY, WindowWidth, (int)(L.WallH * 0.35f),
+            WithAlpha(p.StoneMid, 0.35f), WithAlpha(p.StoneDark, 0f));
+        Raylib.DrawRectangleGradientV(0, (int)(L.WallY + L.WallH * 0.55f), WindowWidth, (int)(L.WallH * 0.45f),
+            WithAlpha(p.StoneDark, 0f), WithAlpha(p.StoneDeep, 0.85f));
+
+        DrawMenuMasonryUltra(new Rectangle(0f, L.WallY, WindowWidth, L.WallH), p, 11, 20);
+        DrawMenuCastleCurtainWallRelief(L.WallY, L.WallH, p, time);
+        DrawMenuCastleIvyPatches(L.WallY, L.WallH, time, p);
+        DrawMenuCastleTowerBasePlinths(L.WallY, L.WallH, p);
+        DrawMenuCastleFoundationCourse(L.WallY, L.WallH, p);
+        DrawMenuCastleAmbientMoonlight(L.WallY, L.WallH, p);
+        DrawMenuCastleCurtainBattlements(L, p, time);
+
+        DrawButtress(new Vector2(0f, L.WallY), 62f, L.WallH, p.Stone, p.StoneDark, p.StoneLight, true);
+        DrawButtress(new Vector2(WindowWidth - 62f, L.WallY), 62f, L.WallH, p.Stone, p.StoneDark, p.StoneLight, false);
+
+        DrawMenuCastleTower(L.LeftTowerOrigin, L.TowerW, L.TowerH, p, time, true, 0f);
+        DrawMenuCastleTower(L.RightTowerOrigin, L.TowerW, L.TowerH, p, time, false, 0.9f);
+        DrawMenuCastleIntervalTowers(L.WallY, L.WallH, L.GatehouseX, L.GatehouseW, p, time);
+        DrawMenuCastleChapelSpire(L.GatehouseX, L.GatehouseW, L.GatehouseTop, time, p);
+
+        var gatehouse = L.GatehouseRect;
+        Raylib.DrawRectangleRounded(gatehouse, 0.04f, 8, p.StoneMid);
+        Raylib.DrawRectangleRoundedLines(gatehouse, 0.04f, 8, WithAlpha(p.StoneLight, 0.7f));
+        DrawMenuMasonryUltra(gatehouse, p, 8, 7);
+        DrawQuoinStripes(gatehouse, p.StoneLight, p.StoneHi);
+        DrawMenuCastleShieldEmblem(new Vector2(L.CenterX, L.GatehouseTop + L.GatehouseH * 0.12f), time, p);
+        DrawMenuCastleGatehouseWindows(gatehouse, p, time);
+        DrawMenuCastleLintelShadows(gatehouse, p);
+        DrawMenuCastleIronworkDetail(gatehouse, p, 42);
+
+        var cornice = new Rectangle(L.GatehouseX - 4f, L.BattlementsY + 22f, L.GatehouseW + 8f, 10f);
+        Raylib.DrawRectangleRounded(cornice, 0.08f, 3, WithAlpha(p.StoneDark, 0.9f));
+        Raylib.DrawLineEx(new Vector2(cornice.X + 4f, cornice.Y + 2f), new Vector2(cornice.X + cornice.Width - 4f, cornice.Y + 2f),
+            1.5f, WithAlpha(p.StoneHi, 0.22f));
+
+        DrawBattlements(new Rectangle(L.GatehouseX - 8f, L.BattlementsY, L.GatehouseW + 16f, 30f),
+            p.StoneDark, p.StoneLight, p.StoneHi, 1.1f, time, true);
+
+        float turretH = MathF.Min(112f, L.GatehouseH * 0.34f);
+        float turretW = 42f;
+        DrawMenuCastleTurret(new Vector2(L.GatehouseX - turretW + 6f, L.GatehouseTop + L.GatehouseH * 0.42f), turretW, turretH, p, time, 1.3f);
+        DrawMenuCastleTurret(new Vector2(L.GatehouseX + L.GatehouseW - 6f, L.GatehouseTop + L.GatehouseH * 0.42f), turretW, turretH, p, time, 2.1f);
+
+        DrawMenuCastleBarbican(L, time, p);
+        DrawMenuCastleCourtyardDepth(L.GateX, L.GateW, L.GateY, L.GateH, p, time);
+        DrawMenuCastleGate(new Vector2(L.GateX, L.GateY), L.GateW, L.GateH, p, time);
+        DrawMenuCastlePortcullisShadow(new Vector2(L.GateX, L.GateY), L.GateW, L.GateH, p);
+
+        float bridgeSpan = L.ForecourtY - (L.GateY + L.GateH);
+        DrawMenuCastleDrawbridge(new Vector2(L.GateX, L.GateY + L.GateH), L.GateW, bridgeSpan, time, p);
+        DrawMenuCastleDrawbridgeShadow(L.GateX, L.GateW, L.GateY, L.GateH, p);
+
+        DrawMenuCastleWallWalkway(L, p);
+        DrawMenuCastleWalkwayParapetDetail(L, p, time);
+        DrawMenuCastleProductionMasterPass(MenuCastleProductionPhase.Architecture, time, p);
+
+        Raylib.DrawRectangle(0, (int)(L.ParapetY + 6f), WindowWidth, 4, WithAlpha(p.StoneDeep, 0.9f));
+        Raylib.DrawLine(0, (int)(L.ParapetY + 6f), WindowWidth, (int)(L.ParapetY + 6f), WithAlpha(p.StoneHi, 0.25f));
+        Raylib.DrawLine(0, (int)(L.ParapetY + 5f), WindowWidth, (int)(L.ParapetY + 5f), WithAlpha(p.StoneLight, 0.08f));
+
+        DrawMenuCurtainWallArrowSlits(L, p);
+        DrawMenuCastleEpicCobbles(new Rectangle(0f, L.ForecourtY, WindowWidth, L.ForecourtH), p, time, L.CenterX, L.GateW);
+    }
+
+    static void DrawMenuCastleOblivionEnhancements(float time, MenuCastleLayout L, MenuCastlePalette p)
+    {
+        Vector2 moon = MenuCastleMoonPosition;
+        float pulse = MathF.Sin(time * 0.55f) * 0.5f + 0.5f;
+
+        for (int beam = 0; beam < 5; beam++)
+        {
+            float bx = 80f + beam * ((WindowWidth - 160f) / 4f);
+            float sway = MathF.Sin(time * 0.22f + beam * 1.4f) * 18f;
+            Vector2 top = moon + new Vector2((bx - moon.X) * 0.08f, 40f);
+            Vector2 foot = new Vector2(bx + sway, L.ForecourtY + 6f);
+            Raylib.DrawLineEx(top, foot, 1.2f + beam * 0.15f, WithAlpha(p.MoonGlow, 0.018f + pulse * 0.012f));
+        }
+
+        for (int fly = 0; fly < 28; fly++)
+        {
+            float life = (time * (0.35f + Hash(fly * 11) * 0.25f) + fly * 0.37f) % 1f;
+            float fx = Hash(fly * 19) * WindowWidth;
+            float fy = L.WallY + 20f + life * (L.ForecourtY - L.WallY - 30f);
+            fx += MathF.Sin(time * 2.4f + fly) * 14f;
+            Color flyCol = Hash(fly * 7) > 0.5f ? p.TorchWarm : p.MoonGlow;
+            Raylib.DrawCircleV(new Vector2(fx, fy), 1.1f + (1f - life) * 0.8f, WithAlpha(flyCol, (1f - life) * 0.42f));
+        }
+
+        for (int frost = 0; frost < 16; frost++)
+        {
+            float fx = 36f + frost * ((WindowWidth - 72f) / 15f);
+            if (fx > L.GatehouseLeft - 12f && fx < L.GatehouseRight + 12f) continue;
+            float fy = L.ParapetY - 4f + Hash(frost * 23) * 8f;
+            Raylib.DrawCircleV(new Vector2(fx, fy), 1.2f, WithAlpha(p.MoonGlow, 0.12f + MathF.Sin(time * 3f + frost) * 0.06f));
+        }
+
+        DrawEllipticalGlow(moon, 92f + pulse * 16f, 92f + pulse * 16f, 0f, p.MoonGlow, 0.045f + pulse * 0.02f, 4);
+        DrawEllipticalGlow(new Vector2(L.CenterX, L.GateY + L.GateH * 0.35f), L.GateW * 0.75f, L.GateH * 0.55f, 0f,
+            p.TorchWarm, 0.035f + MathF.Sin(time * 3.1f) * 0.015f, 4);
+    }
+
     // -------------------------------------------------------------------------
     // Shaped glow system (non-circular)
     // -------------------------------------------------------------------------
@@ -12081,89 +14651,187 @@ class Program
     {
         int skyH = (int)(WindowHeight * 0.58f);
 
-        // Rich deep-space gradient at the top, fading to neutral charcoal at the
-        // horizon so the castle wall below stays dark grey — not blue.
-        Color skyTop = new Color(4, 5, 18, 255);
-        Color skyUpper = new Color(10, 12, 32, 255);
-        Color skyMid = new Color(14, 14, 22, 255);
-        Color skyHorizon = new Color(11, 10, 12, 255);
+        // Obsidian night: true black zenith, charcoal horizon — zero blue cast.
+        Color zenith = new Color(0, 0, 0, 255);
+        Color upperDeep = new Color(2, 2, 2, 255);
+        Color upperMid = new Color(4, 3, 3, 255);
+        Color midSky = new Color(6, 5, 5, 255);
+        Color lowerSky = new Color(8, 7, 7, 255);
+        Color horizon = new Color(10, 9, 8, 255);
+        Color groundHaze = new Color(7, 6, 6, 255);
 
-        Raylib.DrawRectangleGradientV(0, 0, WindowWidth, skyH / 2, skyTop, skyUpper);
-        Raylib.DrawRectangleGradientV(0, skyH / 2, WindowWidth, skyH / 2, skyUpper, skyMid);
-        Raylib.DrawRectangleGradientV(0, skyH - 120, WindowWidth, 120, WithAlpha(skyMid, 0f), WithAlpha(skyHorizon, 0.95f));
-        Raylib.DrawRectangleGradientV(0, skyH - 36, WindowWidth, 36, WithAlpha(skyHorizon, 0f), WithAlpha(new Color(8, 7, 8, 255), 0.9f));
+        Raylib.DrawRectangle(0, 0, WindowWidth, skyH, zenith);
+        Raylib.DrawRectangleGradientV(0, 0, WindowWidth, skyH / 4, zenith, upperDeep);
+        Raylib.DrawRectangleGradientV(0, skyH / 4, WindowWidth, skyH / 4, upperDeep, upperMid);
+        Raylib.DrawRectangleGradientV(0, skyH / 2, WindowWidth, skyH / 4, upperMid, midSky);
+        Raylib.DrawRectangleGradientV(0, skyH * 3 / 4, WindowWidth, skyH / 4, midSky, lowerSky);
+        Raylib.DrawRectangleGradientV(0, skyH - 140, WindowWidth, 100, WithAlpha(lowerSky, 0f), WithAlpha(horizon, 0.92f));
+        Raylib.DrawRectangleGradientV(0, skyH - 48, WindowWidth, 48, WithAlpha(horizon, 0f), WithAlpha(groundHaze, 0.88f));
 
+        DrawMenuCastleSkyAtmosphereLayers(time, skyH);
         DrawMenuCastleSkyNebula(time, skyH);
-        DrawMenuCastleMoonSkyScatter(time);
+        DrawMenuCastleMilkyWay(time);
 
         DrawMenuCastleStarField(time);
-        DrawMenuCastleMilkyWay(time);
+        DrawMenuCastleMoonSkyScatter(time);
         DrawMenuCastleShootingStar(time);
 
+        DrawMenuCastleSkyCirrus(time, skyH);
         DrawMenuCastleDistantMountains(time);
         DrawMenuCastleCloudWisps(time);
         DrawMenuCastleNightSkyExtras(time);
+        DrawMenuCastleAuroraVeil(time);
+        DrawMenuCastleGodRays(time);
+        DrawMenuCastleSkyHorizonGlow(time, skyH);
+    }
+
+    static void DrawMenuCastleSkyAtmosphereLayers(float time, int skyH)
+    {
+        // Zenith pole darkening — real night skies are darkest straight overhead.
+        int zenithR = (int)(MathF.Min(WindowWidth, skyH) * 0.72f);
+        Vector2 zenith = new Vector2(WindowWidth * 0.5f, skyH * 0.12f);
+        for (int ring = 8; ring >= 1; ring--)
+        {
+            float t = ring / 8f;
+            float rx = zenithR * (0.35f + t * 0.65f);
+            float ry = zenithR * (0.28f + t * 0.52f);
+            DrawEllipticalGlow(zenith, rx, ry, -6f, new Color(0, 0, 0, 255), 0.045f * t, 3);
+        }
+
+        // High-altitude neutral haze bands (subtle, not blue).
+        for (int band = 0; band < 5; band++)
+        {
+            float by = skyH * (0.08f + band * 0.07f);
+            float drift = MathF.Sin(time * 0.04f + band * 1.1f) * 6f;
+            Color haze = new Color(12, 11, 10, 255);
+            Raylib.DrawRectangleGradientV(0, (int)(by - 8f), WindowWidth, 16,
+                WithAlpha(haze, 0f), WithAlpha(haze, 0.06f + band * 0.012f));
+            DrawEllipticalGlow(new Vector2(WindowWidth * 0.5f + drift, by), WindowWidth * 0.55f, 10f, 0f,
+                haze, 0.004f + band * 0.0015f, 2);
+        }
+
+        // Aerial perspective — stars and sky fade toward the horizon.
+        Raylib.DrawRectangleGradientV(0, (int)(skyH * 0.34f), WindowWidth, (int)(skyH * 0.28f),
+            WithAlpha(new Color(0, 0, 0, 255), 0f), WithAlpha(new Color(0, 0, 0, 255), 0.22f));
+        Raylib.DrawRectangleGradientV(0, (int)(skyH * 0.52f), WindowWidth, (int)(skyH * 0.18f),
+            WithAlpha(new Color(8, 7, 6, 255), 0f), WithAlpha(new Color(8, 7, 6, 255), 0.14f));
+    }
+
+    static void DrawMenuCastleSkyHorizonGlow(float time, int skyH)
+    {
+        float pulse = 0.92f + MathF.Sin(time * 0.08f) * 0.08f;
+        int bandY = (int)(skyH * 0.44f);
+        Color warmDust = new Color(14, 12, 10, 255);
+        Color coldVoid = new Color(4, 4, 4, 255);
+        Raylib.DrawRectangleGradientV(0, bandY - 24, WindowWidth, 48,
+            WithAlpha(coldVoid, 0f), WithAlpha(warmDust, 0.18f * pulse));
+        Raylib.DrawRectangleGradientV(0, bandY + 8, WindowWidth, 36,
+            WithAlpha(warmDust, 0.12f * pulse), WithAlpha(new Color(6, 5, 5, 255), 0.28f));
+        for (int glow = 0; glow < 4; glow++)
+        {
+            float gx = WindowWidth * (0.15f + glow * 0.22f) + MathF.Sin(time * 0.06f + glow) * 20f;
+            DrawEllipticalGlow(new Vector2(gx, bandY + 10f), 120f + glow * 30f, 14f, glow * 5f,
+                new Color(18, 16, 14, 255), 0.006f * pulse, 2);
+        }
+    }
+
+    static void DrawMenuCastleSkyCirrus(float time, int skyH)
+    {
+        Color cirrus = new Color(22, 21, 20, 255);
+        Color cirrusHi = new Color(32, 30, 28, 255);
+        for (int cloud = 0; cloud < 7; cloud++)
+        {
+            float drift = time * (2.5f + cloud * 0.6f);
+            float cx = (Hash(cloud * 91) * WindowWidth + drift) % (WindowWidth + 220f) - 110f;
+            float cy = skyH * (0.06f + Hash(cloud * 73) * 0.22f) + MathF.Sin(time * 0.11f + cloud) * 4f;
+            for (int w = 0; w < 6; w++)
+            {
+                float wx = cx + (w - 2.5f) * 38f;
+                float wy = cy + Hash(cloud * 17 + w) * 6f - 3f;
+                float rx = 52f + w * 14f + cloud * 4f;
+                float ry = 5f + w * 1.2f;
+                float rot = Hash(cloud + w * 3) * 10f - 5f;
+                Color c = LerpColor(cirrus, cirrusHi, Hash(cloud * 29 + w) * 0.45f);
+                DrawEllipticalGlow(new Vector2(wx, wy), rx, ry, rot, c, 0.007f + Hash(cloud * 31 + w) * 0.006f, 2);
+            }
+        }
     }
 
     static void DrawMenuCastleSkyNebula(float time, int skyH)
     {
-        float pulse = 0.85f + MathF.Sin(time * 0.2f) * 0.15f;
+        float pulse = 0.88f + MathF.Sin(time * 0.16f) * 0.12f;
         DrawEllipticalGlow(new Vector2(WindowWidth * 0.32f, skyH * 0.16f), WindowWidth * 0.34f, 72f, -18f,
-            new Color(52, 40, 78, 255), 0.020f * pulse, 4);
+            new Color(14, 12, 12, 255), 0.012f * pulse, 4);
         DrawEllipticalGlow(new Vector2(WindowWidth * 0.58f, skyH * 0.24f), WindowWidth * 0.26f, 48f, 10f,
-            new Color(34, 44, 72, 255), 0.014f * pulse, 3);
+            new Color(10, 10, 9, 255), 0.009f * pulse, 3);
         DrawEllipticalGlow(new Vector2(WindowWidth * 0.12f, skyH * 0.30f), 90f, 36f, -32f,
-            new Color(28, 32, 58, 255), 0.010f * pulse, 2);
+            new Color(8, 8, 7, 255), 0.007f * pulse, 2);
+        DrawEllipticalGlow(new Vector2(WindowWidth * 0.78f, skyH * 0.11f), 110f, 28f, 14f,
+            new Color(12, 11, 10, 255), 0.008f * pulse, 2);
     }
 
     static void DrawMenuCastleMoonSkyScatter(float time)
     {
         Vector2 moon = MenuCastleMoonPosition;
         float pulse = MathF.Sin(time * 0.35f) * 0.5f + 0.5f;
+        Color silver = new Color(156, 154, 148, 255);
+        Color ash = new Color(72, 70, 66, 255);
         DrawEllipticalGlow(new Vector2(moon.X, moon.Y + 36f), 130f, 82f, 0f,
-            new Color(176, 184, 206, 255), 0.026f + pulse * 0.008f, 5);
+            silver, 0.022f + pulse * 0.006f, 5);
         DrawEllipticalGlow(new Vector2(moon.X - 55f, moon.Y + 72f), 200f, 44f, -10f,
-            new Color(118, 124, 142, 255), 0.011f, 3);
+            ash, 0.009f, 3);
     }
 
     static void DrawMenuCastleStarField(float time)
     {
+        float horizonFadeStart = WindowHeight * 0.34f;
+        float horizonFadeEnd = WindowHeight * 0.50f;
+
         // Far field — tiny, dense, slow twinkle
-        const int farCount = 180;
+        const int farCount = 320;
         for (int i = 0; i < farCount; i++)
         {
             float sx = Hash(i * 41 + 7) * WindowWidth;
             float sy = Hash(i * 19 + 3) * WindowHeight * 0.50f;
-            float twinkle = MathF.Sin(time * (0.4f + Hash(i * 5) * 1.2f) + i * 0.9f) * 0.5f + 0.5f;
-            float alpha = 0.04f + twinkle * (0.06f + Hash(i * 31) * 0.10f);
-            Raylib.DrawCircleV(new Vector2(sx, sy), 0.5f + Hash(i * 11) * 0.6f, WithAlpha(new Color(210, 214, 228, 255), alpha));
+            float horizonMul = sy < horizonFadeStart ? 1f
+                : sy > horizonFadeEnd ? 0.08f
+                : 1f - (sy - horizonFadeStart) / (horizonFadeEnd - horizonFadeStart) * 0.92f;
+            float twinkle = MathF.Sin(time * (0.35f + Hash(i * 5) * 0.9f) + i * 0.9f) * 0.5f + 0.5f;
+            float alpha = (0.025f + twinkle * (0.05f + Hash(i * 31) * 0.08f)) * horizonMul;
+            Color star = LerpColor(new Color(180, 178, 174, 255), new Color(220, 218, 212, 255), Hash(i * 67));
+            Raylib.DrawCircleV(new Vector2(sx, sy), 0.4f + Hash(i * 11) * 0.5f, WithAlpha(star, alpha));
         }
 
-        // Mid field — varied color temperature
-        const int midCount = 72;
+        // Mid field — varied color temperature (warm/neutral, no blue bias)
+        const int midCount = 96;
         for (int i = 0; i < midCount; i++)
         {
             float sx = Hash(i * 53 + 11) * WindowWidth;
             float sy = Hash(i * 29 + 5) * WindowHeight * 0.48f;
+            float horizonMul = sy < horizonFadeStart ? 1f
+                : sy > horizonFadeEnd ? 0.06f
+                : 1f - (sy - horizonFadeStart) / (horizonFadeEnd - horizonFadeStart) * 0.94f;
             float temp = Hash(i * 37);
-            Color starCol = temp < 0.18f
-                ? new Color(196, 208, 255, 255)
-                : temp < 0.52f
-                    ? new Color(220, 220, 230, 255)
-                    : new Color(255, 244, 220, 255);
-            float twinkle = MathF.Sin(time * (0.9f + Hash(i * 7) * 2.2f) + i * 1.1f) * 0.5f + 0.5f;
-            float r = 0.7f + Hash(i * 13) * 1.2f;
-            float alpha = 0.08f + twinkle * (0.14f + Hash(i * 43) * 0.18f);
+            Color starCol = temp < 0.12f
+                ? new Color(255, 210, 180, 255)
+                : temp < 0.28f
+                    ? new Color(210, 208, 202, 255)
+                    : temp < 0.72f
+                        ? new Color(228, 226, 220, 255)
+                        : new Color(255, 248, 232, 255);
+            float twinkle = MathF.Sin(time * (0.85f + Hash(i * 7) * 2f) + i * 1.1f) * 0.5f + 0.5f;
+            float r = 0.6f + Hash(i * 13) * 1.1f;
+            float alpha = (0.07f + twinkle * (0.12f + Hash(i * 43) * 0.16f)) * horizonMul;
             Raylib.DrawCircleV(new Vector2(sx, sy), r, WithAlpha(starCol, alpha));
-            if (Hash(i * 71) > 0.88f && twinkle > 0.72f)
+            if (Hash(i * 71) > 0.90f && twinkle > 0.74f && horizonMul > 0.35f)
             {
-                float spark = 1.5f + Hash(i * 73) * 2f;
-                Raylib.DrawLine((int)sx - (int)spark, (int)sy, (int)sx + (int)spark, (int)sy, WithAlpha(starCol, alpha * 0.65f));
-                Raylib.DrawLine((int)sx, (int)sy - (int)spark, (int)sx, (int)sy + (int)spark, WithAlpha(starCol, alpha * 0.65f));
+                float spark = 1.2f + Hash(i * 73) * 1.8f;
+                Raylib.DrawLine((int)sx - (int)spark, (int)sy, (int)sx + (int)spark, (int)sy, WithAlpha(starCol, alpha * 0.55f));
+                Raylib.DrawLine((int)sx, (int)sy - (int)spark, (int)sx, (int)sy + (int)spark, WithAlpha(starCol, alpha * 0.55f));
             }
         }
 
-        // Bright anchors — a handful of prominent stars
+        // Bright anchors — prominent stars with soft neutral halos
         ReadOnlySpan<(float x, float y, float size, float phase)> anchors =
         [
             (0.14f, 0.08f, 1.8f, 0.0f),
@@ -12173,33 +14841,35 @@ class Program
             (0.84f, 0.22f, 1.4f, 3.1f),
             (0.22f, 0.28f, 1.3f, 1.9f),
             (0.91f, 0.09f, 1.7f, 2.7f),
+            (0.55f, 0.11f, 1.2f, 4.2f),
+            (0.08f, 0.19f, 1.1f, 1.4f),
         ];
         for (int a = 0; a < anchors.Length; a++)
         {
             var (nx, ny, size, phase) = anchors[a];
             Vector2 pos = new Vector2(WindowWidth * nx, WindowHeight * ny);
             float tw = MathF.Sin(time * 1.4f + phase) * 0.5f + 0.5f;
-            Color col = new Color(240, 244, 255, 255);
-            Raylib.DrawCircleV(pos, size, WithAlpha(col, 0.22f + tw * 0.18f));
-            DrawEllipticalGlow(pos, size * 3.5f, size * 3f, 0f, col, 0.012f + tw * 0.008f, 2);
+            Color col = new Color(236, 234, 228, 255);
+            Raylib.DrawCircleV(pos, size, WithAlpha(col, 0.20f + tw * 0.16f));
+            DrawEllipticalGlow(pos, size * 3.2f, size * 2.8f, 0f, col, 0.009f + tw * 0.006f, 2);
         }
     }
 
     static void DrawMenuCastleMilkyWay(float time)
     {
-        float pulse = 0.88f + MathF.Sin(time * 0.15f) * 0.12f;
-        const int segments = 16;
+        float pulse = 0.90f + MathF.Sin(time * 0.12f) * 0.10f;
+        const int segments = 20;
         for (int s = 0; s < segments; s++)
         {
             float t = s / (float)(segments - 1);
-            float cx = WindowWidth * (0.06f + t * 0.78f);
-            float cy = WindowHeight * (0.05f + t * 0.24f) + MathF.Sin(t * MathF.PI) * 20f;
-            float rx = 88f + Hash(s * 53) * 48f;
-            float ry = 16f + Hash(s * 59) * 12f;
-            float rot = -30f + t * 10f;
-            float envelope = 0.55f + MathF.Sin(t * MathF.PI) * 0.55f;
-            float inten = (0.010f + Hash(s * 61) * 0.014f) * pulse * envelope;
-            Color band = LerpColor(new Color(132, 140, 174, 255), new Color(196, 192, 218, 255), Hash(s * 67));
+            float cx = WindowWidth * (0.04f + t * 0.82f);
+            float cy = WindowHeight * (0.04f + t * 0.26f) + MathF.Sin(t * MathF.PI) * 18f;
+            float rx = 92f + Hash(s * 53) * 52f;
+            float ry = 14f + Hash(s * 59) * 10f;
+            float rot = -32f + t * 12f;
+            float envelope = 0.50f + MathF.Sin(t * MathF.PI) * 0.50f;
+            float inten = (0.006f + Hash(s * 61) * 0.009f) * pulse * envelope;
+            Color band = LerpColor(new Color(88, 86, 82, 255), new Color(132, 130, 124, 255), Hash(s * 67));
             DrawEllipticalGlow(new Vector2(cx, cy), rx, ry, rot, band, inten, 4);
         }
     }
@@ -12217,7 +14887,7 @@ class Program
         float ang = MathF.PI * 0.72f + Hash(13) * 0.18f;
         Vector2 head = new Vector2(startX + MathF.Cos(ang) * len * t, startY + MathF.Sin(ang) * len * t);
         Vector2 tail = new Vector2(head.X - MathF.Cos(ang) * len * 0.35f, head.Y - MathF.Sin(ang) * len * 0.35f);
-        Color streak = new Color(230, 238, 255, 255);
+        Color streak = new Color(228, 226, 220, 255);
         float fade = 1f - t;
         Raylib.DrawLineEx(tail, head, 1.2f, WithAlpha(streak, fade * 0.55f));
         Raylib.DrawCircleV(head, 1.4f, WithAlpha(streak, fade * 0.75f));
@@ -12226,9 +14896,9 @@ class Program
 
     static void DrawMenuCastleDistantMountains(float time)
     {
-        Color ridge = new Color(10, 9, 12, 255);
-        Color ridgeHi = new Color(18, 17, 22, 255);
-        Color ridgeMoon = new Color(28, 28, 34, 255);
+        Color ridge = new Color(4, 4, 4, 255);
+        Color ridgeHi = new Color(8, 7, 7, 255);
+        Color ridgeMoon = new Color(14, 13, 12, 255);
         int baseY = (int)(WindowHeight * 0.48f);
         float moonX = WindowWidth * 0.76f;
         for (int m = 0; m < 9; m++)
@@ -12250,14 +14920,15 @@ class Program
 
         // Soft ground haze where mountains meet the sky
         Raylib.DrawRectangleGradientV(0, baseY - 8, WindowWidth, 48,
-            WithAlpha(new Color(14, 13, 16, 255), 0f), WithAlpha(new Color(14, 13, 16, 255), 0.35f));
+            WithAlpha(new Color(6, 5, 5, 255), 0f), WithAlpha(new Color(6, 5, 5, 255), 0.32f));
     }
 
     static void DrawMenuCastleCloudWisps(float time)
     {
         Vector2 moon = MenuCastleMoonPosition;
-        Color silver = new Color(188, 194, 210, 255);
-        Color shadow = new Color(72, 74, 82, 255);
+        Color silver = new Color(28, 27, 26, 255);
+        Color shadow = new Color(8, 7, 7, 255);
+        Color rim = new Color(42, 40, 38, 255);
         for (int c = 0; c < 10; c++)
         {
             float drift = time * (4f + c * 1.8f);
@@ -12272,8 +14943,10 @@ class Program
                 float rx = 34f + w * 10f + c * 3f;
                 float ry = 9f + w * 2.5f;
                 float rot = Hash(c + w) * 14f - 7f;
-                DrawEllipticalGlow(new Vector2(wx, wy + 2f), rx * 1.05f, ry * 1.1f, rot, shadow, 0.008f * moonLit, 2);
-                DrawEllipticalGlow(new Vector2(wx, wy), rx, ry, rot, silver, 0.016f * moonLit, 3);
+                DrawEllipticalGlow(new Vector2(wx, wy + 2f), rx * 1.05f, ry * 1.1f, rot, shadow, 0.010f * moonLit, 2);
+                DrawEllipticalGlow(new Vector2(wx, wy), rx, ry, rot, silver, 0.012f * moonLit, 3);
+                if (moonLit > 0.55f)
+                    DrawEllipticalGlow(new Vector2(wx, wy - 1f), rx * 0.72f, ry * 0.55f, rot, rim, 0.006f * moonLit, 2);
             }
         }
     }
@@ -12288,8 +14961,8 @@ class Program
         Vector2 moon = MenuCastleMoonPosition;
         float pulse = MathF.Sin(time * 0.35f) * 0.5f + 0.5f;
         Color lit = MenuPalette.MoonGlow;
-        Color darkSide = new Color(28, 30, 38, 255);
-        Color maria = new Color(72, 74, 82, 255);
+        Color darkSide = new Color(18, 18, 18, 255);
+        Color maria = new Color(52, 50, 48, 255);
 
         DrawMoonCorona(moon, time);
 
@@ -12332,6 +15005,17 @@ class Program
             Vector2 lp = new Vector2(moon.X + MathF.Cos(ang) * 19f, moon.Y + MathF.Sin(ang) * 17f);
             Raylib.DrawCircleV(lp, 1.2f, WithAlpha(Color.White, 0.2f));
         }
+
+        // Soft landscape earth-glow beneath moon
+        DrawEllipticalGlow(new Vector2(moon.X, moon.Y + 120f), 160f, 28f, 0f, lit, 0.022f + pulse * 0.008f, 4);
+
+        for (int ring = 0; ring < 3; ring++)
+        {
+            float rr = 30f + ring * 10f + pulse * 5f;
+            Raylib.DrawCircleLinesV(moon, rr, WithAlpha(lit, 0.07f - ring * 0.018f));
+        }
+
+        DrawEllipticalGlow(moon, 48f + pulse * 8f, 48f + pulse * 8f, 0f, Color.White, 0.028f + pulse * 0.012f, 3);
     }
 
 
@@ -12350,20 +15034,28 @@ class Program
             for (int col = -1; col < cols + 1; col++)
             {
                 float x = region.X + col * colW + offset;
-                var brick = new Rectangle(x + 1.2f, y + 1.2f, colW - 2.4f, rowH - 2.4f);
+                float inset = 1f + Hash(row * 97 + col * 53) * 1.8f;
+                var brick = new Rectangle(x + inset, y + inset, colW - inset * 2f, rowH - inset * 2f);
                 if (brick.X + brick.Width < region.X || brick.X > region.X + region.Width) continue;
                 int seed = (int)(x * 3.1f) ^ (int)(y * 7.3f) ^ row * 131 ^ col * 97;
                 float n = Hash(seed);
                 float n2 = Hash(seed + 17);
                 Color brickColor = LerpColor(palette.StoneMid, palette.Stone, n * 0.45f + 0.2f);
-                brickColor = LerpColor(brickColor, palette.StoneLight, n2 * 0.18f);
-                if (n > 0.82f) brickColor = Darken(brickColor, 0.12f);
-                Raylib.DrawRectangleRounded(brick, 0.07f + n * 0.04f, 4, WithAlpha(brickColor, 0.38f + n2 * 0.12f));
-                // Highlight edge (top-left catch light)
-                Raylib.DrawLine((int)brick.X, (int)brick.Y, (int)(brick.X + brick.Width * 0.7f), (int)brick.Y,
-                    WithAlpha(palette.StoneHi, 0.08f + n2 * 0.1f));
-                Raylib.DrawLine((int)brick.X, (int)brick.Y, (int)brick.X, (int)(brick.Y + brick.Height * 0.6f),
-                    WithAlpha(palette.StoneHi, 0.06f + n * 0.08f));
+                brickColor = LerpColor(brickColor, palette.StoneLight, n2 * 0.22f);
+                if (n > 0.82f) brickColor = Darken(brickColor, 0.14f);
+                if (n < 0.18f) brickColor = Lighten(brickColor, 0.06f);
+                float faceAlpha = 0.58f + n2 * 0.28f;
+                Raylib.DrawRectangleRounded(brick, 0.06f + n * 0.05f, 4, WithAlpha(brickColor, faceAlpha));
+                // Top-left catch light
+                Raylib.DrawLine((int)brick.X, (int)brick.Y, (int)(brick.X + brick.Width * 0.72f), (int)brick.Y,
+                    WithAlpha(palette.StoneHi, 0.12f + n2 * 0.14f));
+                Raylib.DrawLine((int)brick.X, (int)brick.Y, (int)brick.X, (int)(brick.Y + brick.Height * 0.55f),
+                    WithAlpha(palette.StoneHi, 0.08f + n * 0.1f));
+                // Bottom/right ambient occlusion on each block
+                Raylib.DrawLine((int)brick.X, (int)(brick.Y + brick.Height - 1f), (int)(brick.X + brick.Width), (int)(brick.Y + brick.Height - 1f),
+                    WithAlpha(palette.StoneDeep, 0.18f + n * 0.12f));
+                Raylib.DrawLine((int)(brick.X + brick.Width - 1f), (int)brick.Y, (int)(brick.X + brick.Width - 1f), (int)(brick.Y + brick.Height),
+                    WithAlpha(palette.StoneDeep, 0.12f + n2 * 0.1f));
                 // Chips and breaks
                 if (Hash(seed + 3) > 0.78f)
                 {
@@ -12456,11 +15148,7 @@ int corbels = Math.Max(6, (int)(width / 12f));
 
     static void DrawMenuTowerGargoyle(Vector2 pos, bool facingLeft, MenuCastlePalette p)
     {
-float dir = facingLeft ? -1f : 1f;
-        Raylib.DrawCircleV(pos, 4f, WithAlpha(p.StoneDeep, 0.9f));
-        Vector2 snout = new Vector2(pos.X + dir * 8f, pos.Y + 2f);
-        Raylib.DrawTriangle(pos, new Vector2(pos.X + dir * 3f, pos.Y - 3f), snout, WithAlpha(p.StoneDark, 0.85f));
-        Raylib.DrawCircleV(new Vector2(pos.X - dir, pos.Y - 1f), 1f, WithAlpha(p.StoneHi, 0.4f));
+        DrawMenuCastleSculptedGargoyle(pos, facingLeft, p, 0f);
     }
 
     static void DrawMenuTowerIronRing(Vector2 pos, float radius, MenuCastlePalette p)
@@ -12506,6 +15194,11 @@ for (int i = 0; i < density; i++)
     static void DrawMenuCastleTower(Vector2 origin, float width, float height, MenuCastlePalette p,
         float time, bool left, float phase)
     {
+        // Slight batter — walls widen toward the base like real keep towers
+        var batter = new Rectangle(origin.X - 4f, origin.Y + height * 0.72f, width + 8f, height * 0.28f);
+        Raylib.DrawRectangleRounded(batter, 0.04f, 6, WithAlpha(p.StoneDark, 0.92f));
+        Raylib.DrawLineEx(new Vector2(batter.X + 2f, batter.Y), new Vector2(batter.X + 2f, batter.Y + batter.Height), 1.5f, WithAlpha(p.StoneHi, 0.12f));
+
         var body = new Rectangle(origin.X, origin.Y, width, height);
         Raylib.DrawRectangleRounded(body, 0.06f, 10, p.StoneMid);
         Raylib.DrawRectangleRoundedLines(body, 0.06f, 10, WithAlpha(p.StoneLight, 0.75f));
@@ -12538,10 +15231,12 @@ for (int i = 0; i < density; i++)
         DrawWindowInteriorGlow(window, time, phase);
         Raylib.DrawRectangleRounded(window, 0.2f, 4, WithAlpha(p.StoneDeep, 0.95f));
         Raylib.DrawRectangleRoundedLines(window, 0.2f, 4, WithAlpha(p.StoneHi, 0.5f));
+        var winInner = new Rectangle(window.X + 3f, window.Y + 4f, window.Width - 6f, window.Height - 8f);
+        DrawMenuCastleStainedGlass(winInner, time, phase);
         Raylib.DrawLine((int)(window.X + window.Width / 2f), (int)window.Y, (int)(window.X + window.Width / 2f), (int)(window.Y + window.Height), WithAlpha(p.StoneDeep, 0.6f));
         Raylib.DrawLine((int)window.X, (int)(window.Y + window.Height * 0.55f), (int)(window.X + window.Width), (int)(window.Y + window.Height * 0.55f), WithAlpha(p.StoneDeep, 0.6f));
         Vector2 gargoylePos = new Vector2(left ? origin.X + width + 4f : origin.X - 4f, origin.Y + height * 0.22f);
-        DrawMenuTowerGargoyle(gargoylePos, !left, p);
+        DrawMenuCastleSculptedGargoyle(gargoylePos, !left, p, time);
         DrawMenuTowerIronRing(new Vector2(origin.X + width * 0.5f, origin.Y + height * 0.08f), 5f, p);
         DrawMenuTowerDrainSpout(new Vector2(left ? origin.X + width - 10f : origin.X + 2f, origin.Y + height * 0.78f), left, p);
         DrawMenuTowerJointMoss(body, p, 18);
@@ -12570,16 +15265,25 @@ for (int i = 0; i < density; i++)
 
     static void DrawMenuCastleShieldEmblem(Vector2 center, float time, MenuCastlePalette p)
     {
-float pulse = MathF.Sin(time * 1.8f) * 0.5f + 0.5f;
-        var shield = new Rectangle(center.X - 16f, center.Y - 20f, 32f, 36f);
-        Raylib.DrawRectangleRounded(shield, 0.35f, 6, WithAlpha(Darken(p.StoneLight, 0.25f), 0.6f));
-        Raylib.DrawRectangleRoundedLines(shield, 0.35f, 6, WithAlpha(p.StoneHi, 0.45f + pulse * 0.15f));
-        for (int i = 0; i < 3; i++)
+        float pulse = MathF.Sin(time * 1.8f) * 0.5f + 0.5f;
+        var shield = new Rectangle(center.X - 18f, center.Y - 22f, 36f, 40f);
+        Raylib.DrawRectangleRounded(shield, 0.35f, 6, WithAlpha(Darken(p.StoneLight, 0.25f), 0.68f));
+        Raylib.DrawRectangleRoundedLines(shield, 0.35f, 6, WithAlpha(Gold, 0.35f + pulse * 0.15f));
+        Raylib.DrawRectangleRoundedLines(new Rectangle(shield.X + 3f, shield.Y + 3f, shield.Width - 6f, shield.Height - 6f),
+            0.32f, 4, WithAlpha(p.StoneHi, 0.25f));
+        for (int i = 0; i < 4; i++)
         {
-            float ry = center.Y - 8f + i * 6f;
-            Raylib.DrawLineEx(new Vector2(center.X - 10f + i * 2f, ry), new Vector2(center.X + 10f - i * 2f, ry), 1.5f, WithAlpha(p.StoneHi, 0.35f));
+            float ry = center.Y - 10f + i * 5f;
+            Raylib.DrawLineEx(new Vector2(center.X - 12f + i * 1.5f, ry), new Vector2(center.X + 12f - i * 1.5f, ry), 1.2f, WithAlpha(p.StoneHi, 0.3f));
         }
-        Raylib.DrawLineEx(new Vector2(center.X, center.Y - 14f), new Vector2(center.X, center.Y + 10f), 2f, WithAlpha(p.StoneHi, 0.5f));
+        Raylib.DrawLineEx(new Vector2(center.X, center.Y - 16f), new Vector2(center.X, center.Y + 12f), 2.2f, WithAlpha(Gold, 0.45f));
+        Raylib.DrawLineEx(new Vector2(center.X - 8f, center.Y - 4f), new Vector2(center.X + 8f, center.Y - 4f), 1.8f, WithAlpha(Gold, 0.35f));
+        Vector2 lionHead = new Vector2(center.X, center.Y - 6f);
+        Raylib.DrawCircleV(lionHead, 5f, WithAlpha(p.StoneLight, 0.55f));
+        Raylib.DrawCircleV(new Vector2(lionHead.X - 2f, lionHead.Y - 1f), 1.2f, WithAlpha(p.StoneDeep, 0.6f));
+        Raylib.DrawCircleV(new Vector2(lionHead.X + 2f, lionHead.Y - 1f), 1.2f, WithAlpha(p.StoneDeep, 0.6f));
+        Raylib.DrawTriangle(new Vector2(lionHead.X, lionHead.Y + 2f), new Vector2(lionHead.X - 3f, lionHead.Y + 6f), new Vector2(lionHead.X + 3f, lionHead.Y + 6f), WithAlpha(p.StoneMid, 0.5f));
+        DrawEllipticalGlow(center, 22f, 26f, 0f, Gold, 0.012f + pulse * 0.008f, 2);
     }
 
     static void DrawMenuCastleBanner(Vector2 top, float time, float phase, MenuCastlePalette p)
@@ -12614,9 +15318,32 @@ float pulse = MathF.Sin(time * 1.8f) * 0.5f + 0.5f;
             Raylib.DrawCircleV(new Vector2(tip.X - tassel * 4f, tip.Y + tassel * 2f), 1.5f, WithAlpha(p.StoneHi, 0.45f));
     }
 
+    static void DrawMenuCastleMiniTowerSeparationShadow(Rectangle body, float headroom, MenuCastlePalette p)
+    {
+        const float outerPad = 7f;
+        const float rimPad = 3f;
+        float rise = headroom + outerPad;
+        var outer = new Rectangle(body.X - outerPad, body.Y - rise, body.Width + outerPad * 2f, body.Height + rise + outerPad + 5f);
+        Raylib.DrawRectangleRounded(outer, 0.14f, 8, WithAlpha(ForestShadow, 0.46f));
+        Raylib.DrawRectangleRounded(new Rectangle(outer.X + 2f, outer.Y + 2f, outer.Width - 4f, outer.Height - 4f),
+            0.12f, 7, WithAlpha(ForestShadow, 0.26f));
+
+        var drop = new Rectangle(body.X + 4f, body.Y + 5f, body.Width, body.Height + headroom);
+        Raylib.DrawRectangleRounded(drop, 0.1f, 6, WithAlpha(ForestShadow, 0.22f));
+
+        var rim = new Rectangle(body.X - rimPad, body.Y - headroom - rimPad, body.Width + rimPad * 2f, body.Height + headroom + rimPad + 6f);
+        Raylib.DrawRectangleRoundedLines(rim, 0.1f, 6, WithAlpha(p.StoneDeep, 0.72f));
+        Raylib.DrawRectangleRoundedLines(new Rectangle(rim.X + 1.5f, rim.Y + 1.5f, rim.Width - 3f, rim.Height - 3f),
+            0.09f, 5, WithAlpha(ForestShadow, 0.38f));
+
+        var contact = new Rectangle(body.X - 5f, body.Y + body.Height - 2f, body.Width + 10f, 12f);
+        DrawGradientWash(contact, WithAlpha(ForestShadow, 0.58f), WithAlpha(ForestShadow, 0f), new Vector2(0.5f, 0f), 1.35f);
+    }
+
     static void DrawMenuCastleTurret(Vector2 origin, float width, float height, MenuCastlePalette p, float time, float phase)
     {
-var body = new Rectangle(origin.X, origin.Y, width, height);
+        var body = new Rectangle(origin.X, origin.Y, width, height);
+        DrawMenuCastleMiniTowerSeparationShadow(body, 30f, p);
         Raylib.DrawRectangleRounded(body, 0.1f, 6, WithAlpha(p.Stone, 0.88f));
         DrawMenuMasonryUltra(body, p, 6, 3);
         DrawTowerRoof(origin.X + width / 2f, origin.Y - 22f, origin.Y + 4f, width * 0.55f, p.StoneDark, p.StoneLight, p.StoneHi);
@@ -12632,20 +15359,28 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         var arch = new Rectangle(origin.X, origin.Y, width, height);
         Raylib.DrawRectangleRounded(arch, 0.48f, 10, WithAlpha(p.StoneDeep, 0.98f));
         Raylib.DrawRectangleRoundedLines(arch, 0.48f, 10, WithAlpha(p.StoneLight, 0.8f));
-        int segments = 13;
+        int segments = 15;
+        float archCx = origin.X + width / 2f;
+        float archCy = origin.Y + height * 0.08f;
+        float archRx = width * 0.46f;
+        float archRy = height * 0.22f;
         for (int i = 0; i < segments; i++)
         {
             float t = i / (float)(segments - 1);
-            float angle = MathF.PI + t * MathF.PI;
-            float rx = width * 0.46f;
-            float ry = height * 0.22f;
-            float cx = origin.X + width / 2f;
-            float cy = origin.Y + height * 0.08f;
-            Vector2 vp = new Vector2(cx + MathF.Cos(angle) * rx, cy + MathF.Sin(angle) * ry);
+            float tNext = (i + 1) / (float)(segments - 1);
+            float a0 = MathF.PI + t * MathF.PI;
+            float a1 = MathF.PI + tNext * MathF.PI;
+            Vector2 inner0 = new Vector2(archCx + MathF.Cos(a0) * archRx * 0.88f, archCy + MathF.Sin(a0) * archRy * 0.88f);
+            Vector2 inner1 = new Vector2(archCx + MathF.Cos(a1) * archRx * 0.88f, archCy + MathF.Sin(a1) * archRy * 0.88f);
+            Vector2 outer0 = new Vector2(archCx + MathF.Cos(a0) * (archRx + 5f), archCy + MathF.Sin(a0) * (archRy + 3f));
+            Vector2 outer1 = new Vector2(archCx + MathF.Cos(a1) * (archRx + 5f), archCy + MathF.Sin(a1) * (archRy + 3f));
             Color vCol = LerpColor(p.StoneDark, p.StoneLight, t);
-            Raylib.DrawCircleV(vp, 5f + Hash(i * 7) * 1.5f, WithAlpha(vCol, 0.88f));
-            Raylib.DrawCircleV(vp, 3f, WithAlpha(p.StoneHi, 0.15f + Hash(i * 11) * 0.2f));
+            Raylib.DrawTriangle(inner0, outer0, outer1, WithAlpha(vCol, 0.92f));
+            Raylib.DrawTriangle(inner0, outer1, inner1, WithAlpha(Darken(vCol, 0.08f), 0.9f));
+            Raylib.DrawLineEx(outer0, outer1, 1f, WithAlpha(p.StoneHi, 0.18f + Hash(i * 11) * 0.12f));
         }
+        Raylib.DrawCircleV(new Vector2(archCx, archCy - archRy * 0.55f), 5f, WithAlpha(p.StoneLight, 0.95f));
+        Raylib.DrawCircleV(new Vector2(archCx, archCy - archRy * 0.55f), 3f, WithAlpha(p.StoneHi, 0.35f));
         float grateTop = origin.Y + height * 0.14f;
         float grateBot = origin.Y + height * 0.92f;
         int bars = 9;
@@ -12655,8 +15390,8 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             Raylib.DrawLineEx(new Vector2(bx, grateTop), new Vector2(bx, grateBot), 2.4f, WithAlpha(p.StoneHi, 0.55f));
             for (int rivet = 0; rivet < 5; rivet++)
             {
-                float ry = grateTop + rivet * ((grateBot - grateTop) / 4f);
-                Raylib.DrawCircleV(new Vector2(bx, ry), 1.2f, WithAlpha(p.Iron, 0.5f));
+                float rivetY = grateTop + rivet * ((grateBot - grateTop) / 4f);
+                Raylib.DrawCircleV(new Vector2(bx, rivetY), 1.2f, WithAlpha(p.Iron, 0.5f));
             }
         }
         for (int r = 0; r < 5; r++)
@@ -12667,11 +15402,11 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         // Chains
         for (int side = -1; side <= 1; side += 2)
         {
-            float cx = origin.X + (side < 0 ? 16f : width - 16f);
+            float chainX = origin.X + (side < 0 ? 16f : width - 16f);
             for (int link = 0; link < 8; link++)
             {
                 float ly = grateTop + link * 10f;
-                Raylib.DrawEllipse((int)cx, (int)ly, 3f, 5f, WithAlpha(p.Iron, 0.45f));
+                Raylib.DrawEllipse((int)chainX, (int)ly, 3f, 5f, WithAlpha(p.Iron, 0.45f));
             }
         }
         // Hinge plates
@@ -12701,12 +15436,14 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         Raylib.DrawLineEx(new Vector2(origin.X + width - 3f, origin.Y), new Vector2(origin.X + width - 3f, origin.Y + height), 1.5f, WithAlpha(p.StoneHi, 0.35f));
     }
 
-    static void DrawMenuCastleDrawbridge(Vector2 topLeft, float width, float time, MenuCastlePalette p)
+    static void DrawMenuCastleDrawbridge(Vector2 topLeft, float width, float spanHeight, float time, MenuCastlePalette p)
     {
-        float drop = 10f + MathF.Sin(time * 0.5f) * 1.5f;
+        float drop = MathF.Max(8f, spanHeight) + MathF.Sin(time * 0.5f) * 1.2f;
         var bridge = new Rectangle(topLeft.X + 8f, topLeft.Y, width - 16f, drop);
         Raylib.DrawRectangleRounded(bridge, 0.08f, 4, WithAlpha(p.StoneDark, 0.88f));
-        int planks = 9;
+        Raylib.DrawRectangleGradientV((int)bridge.X, (int)bridge.Y, (int)bridge.Width, (int)bridge.Height,
+            WithAlpha(p.StoneMid, 0.35f), WithAlpha(p.StoneDeep, 0f));
+        int planks = 11;
         for (int plank = 0; plank < planks; plank++)
         {
             float px = bridge.X + 4f + plank * ((bridge.Width - 8f) / (planks - 1));
@@ -12733,10 +15470,11 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawMenuCastleIvyPatches(float wallY, float wallH, float time, MenuCastlePalette p)
     {
+        float gateSkip = MenuCastleLayoutCurrent.GatehouseW * 0.55f + 20f;
         for (int i = 0; i < 10; i++)
         {
             float x = WindowWidth * (0.06f + i * 0.095f);
-            if (MathF.Abs(x - WindowWidth / 2f) < 110f) continue;
+            if (MathF.Abs(x - WindowWidth / 2f) < gateSkip) continue;
             float sway = MathF.Sin(time * 0.6f + i) * 3f;
             for (int v = 0; v < 6; v++)
             {
@@ -12789,116 +15527,98 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
     // Main menu castle framing
     // -------------------------------------------------------------------------
 
+    static void DrawMenuCastleAmbientMoonlight(float wallY, float wallH, MenuCastlePalette p)
+    {
+        Raylib.DrawRectangleGradientH(0, (int)wallY, WindowWidth, (int)wallH,
+            WithAlpha(p.MoonGlow, 0f), WithAlpha(p.MoonGlow, 0.07f));
+        Raylib.DrawRectangleGradientV(0, (int)wallY, WindowWidth, (int)(wallH * 0.45f),
+            WithAlpha(p.MoonGlow, 0.045f), WithAlpha(p.MoonGlow, 0f));
+        Raylib.DrawRectangleGradientV(0, (int)(wallY + wallH - 52f), WindowWidth, 52,
+            WithAlpha(ForestShadow, 0f), WithAlpha(ForestShadow, 0.32f));
+    }
+
+    static void DrawMenuCastleFoundationCourse(float wallY, float wallH, MenuCastlePalette p)
+    {
+        var plinth = new Rectangle(0f, wallY + wallH - 28f, WindowWidth, 28f);
+        Raylib.DrawRectangle((int)plinth.X, (int)plinth.Y, (int)plinth.Width, (int)plinth.Height, WithAlpha(p.StoneDeep, 0.95f));
+        DrawMenuMasonryUltra(plinth, p, 2, 24);
+        Raylib.DrawLine(0, (int)plinth.Y, WindowWidth, (int)plinth.Y, WithAlpha(p.StoneHi, 0.14f));
+        Raylib.DrawLine(0, (int)(plinth.Y + plinth.Height), WindowWidth, (int)(plinth.Y + plinth.Height), WithAlpha(ForestShadow, 0.4f));
+        for (int block = 0; block < 28; block++)
+        {
+            float bx = block * (WindowWidth / 28f);
+            if (block % 2 == 0)
+            {
+                Raylib.DrawRectangle((int)bx, (int)(plinth.Y + 4f), (int)(WindowWidth / 28f) - 1, (int)(plinth.Height - 8f),
+                    WithAlpha(p.StoneDark, 0.35f));
+            }
+        }
+    }
+
     static void DrawMenuCastleFraming(float time)
     {
         MenuCastlePalette p = MenuPalette;
+        MenuCastleLayout L = GetMenuCastleLayout();
+        MenuCastleLayoutCurrent = L;
+
         DrawMenuCastleNightSky(time);
         DrawMenuCastleMoon(time);
 
-        float wallH = WindowHeight * 0.46f;
-        float wallY = WindowHeight - wallH;
+        EnsureMenuCastleBake(L, p);
+        var src = new Rectangle(0, 0, menuCastleBake.Texture.Width, -menuCastleBake.Texture.Height);
+        var dest = new Rectangle(0f, 0f, WindowWidth, WindowHeight);
+        Raylib.DrawTexturePro(menuCastleBake.Texture, src, dest, Vector2.Zero, 0f, Color.White);
 
-        DrawMenuCastleHorizonMist(wallY, p, time);
-        DrawMenuCastleSilhouetteLayer(wallY, wallH, p, time);
-
-        // Soft atmospheric veil between sky and fortress
-        Raylib.DrawRectangleGradientV(0, (int)(wallY - 110f), WindowWidth, 90,
-            WithAlpha(p.StoneDeep, 0f), WithAlpha(new Color(18, 17, 16, 255), 0.28f));
-
-        Raylib.DrawRectangleGradientV(0, (int)(wallY - 90f), WindowWidth, 120,
-            WithAlpha(p.StoneDeep, 0f), WithAlpha(p.StoneDeep, 0.42f));
-
-        var curtain = new Rectangle(40f, wallY - 18f, WindowWidth - 80f, wallH + 18f);
-        Raylib.DrawRectangleRounded(curtain, 0.02f, 6, WithAlpha(p.StoneDeep, 0.55f));
-        Raylib.DrawRectangleRoundedLines(curtain, 0.02f, 6, WithAlpha(p.StoneLight, 0.12f));
-
-        Raylib.DrawRectangle(0, (int)wallY, WindowWidth, (int)wallH, p.StoneDark);
-        Raylib.DrawRectangleGradientV(0, (int)wallY, WindowWidth, (int)(wallH * 0.35f),
-            WithAlpha(p.StoneMid, 0.35f), WithAlpha(p.StoneDark, 0f));
-        Raylib.DrawRectangleGradientV(0, (int)(wallY + wallH * 0.55f), WindowWidth, (int)(wallH * 0.45f),
-            WithAlpha(p.StoneDark, 0f), WithAlpha(p.StoneDeep, 0.85f));
-
-        DrawMenuMasonryUltra(new Rectangle(0f, wallY, WindowWidth, wallH), p, 11, 20);
-        DrawMenuCastleCurtainWallRelief(wallY, wallH, p, time);
-        DrawMenuCastleIvyPatches(wallY, wallH, time, p);
-        DrawMenuCastleTowerBasePlinths(wallY, wallH, p);
-
-        DrawButtress(new Vector2(0f, wallY), 62f, wallH, p.Stone, p.StoneDark, p.StoneLight, true);
-        DrawButtress(new Vector2(WindowWidth - 62f, wallY), 62f, wallH, p.Stone, p.StoneDark, p.StoneLight, false);
-
-        DrawMenuCastleTower(new Vector2(-6f, wallY - 52f), 168f, wallH + 88f, p, time, true, 0f);
-        DrawMenuCastleTower(new Vector2(WindowWidth - 162f, wallY - 52f), 168f, wallH + 88f, p, time, false, 0.9f);
-
-        float gatehouseW = 196f;
-        float gatehouseH = wallH * 0.92f;
-        float gatehouseX = WindowWidth / 2f - gatehouseW / 2f;
-        float gatehouseY = WindowHeight - gatehouseH;
-        var gatehouse = new Rectangle(gatehouseX, gatehouseY - 34f, gatehouseW, gatehouseH + 34f);
-        Raylib.DrawRectangleRounded(gatehouse, 0.04f, 8, p.StoneMid);
-        Raylib.DrawRectangleRoundedLines(gatehouse, 0.04f, 8, WithAlpha(p.StoneLight, 0.7f));
-        DrawMenuMasonryUltra(gatehouse, p, 8, 7);
-        DrawQuoinStripes(gatehouse, p.StoneLight, p.StoneHi);
-        DrawMenuCastleShieldEmblem(new Vector2(WindowWidth / 2f, gatehouseY - 8f), time, p);
-        DrawMenuCastleGatehouseWindows(gatehouse, p, time);
-        DrawMenuCastleLintelShadows(gatehouse, p);
-        DrawMenuCastleIronworkDetail(gatehouse, p, 42);
-
-        DrawBattlements(new Rectangle(gatehouseX - 8f, gatehouseY - 58f, gatehouseW + 16f, 32f), p.StoneDark, p.StoneLight, p.StoneHi, 1.1f, time, true);
-        DrawMenuCastleTurret(new Vector2(gatehouseX - 22f, gatehouseY - 18f), 44f, 108f, p, time, 1.3f);
-        DrawMenuCastleTurret(new Vector2(gatehouseX + gatehouseW - 22f, gatehouseY - 18f), 44f, 108f, p, time, 2.1f);
-        DrawMenuCastleBanner(new Vector2(gatehouseX + 8f, gatehouseY - 52f), time, 0f, p);
-        DrawMenuCastleBanner(new Vector2(gatehouseX + gatehouseW - 8f, gatehouseY - 52f), time, 1.4f, p);
-
-        float gateW = 108f;
-        float gateH = gatehouseH * 0.58f;
-        float gateX = WindowWidth / 2f - gateW / 2f;
-        float gateY = WindowHeight - gateH - 8f;
-        DrawMenuCastleDrawbridge(new Vector2(gateX, gateY + gateH - 4f), gateW, time, p);
-        DrawMenuCastleGate(new Vector2(gateX, gateY), gateW, gateH, p, time);
-        DrawMenuCastleCourtyardDepth(gateX, gateW, gateY, gateH, p, time);
-        DrawMenuCastleDrawbridgeShadow(gateX, gateW, gateY, gateH, p);
-        DrawMenuCastlePortcullisShadow(new Vector2(gateX, gateY), gateW, gateH, p);
+        DrawMenuCastleBanner(new Vector2(L.GatehouseX + 10f, L.BattlementsY + 8f), time, 0f, p);
+        DrawMenuCastleBanner(new Vector2(L.GatehouseX + L.GatehouseW - 10f, L.BattlementsY + 8f), time, 1.4f, p);
+        DrawMenuCastleRichPennant(new Vector2(L.CenterX, L.BattlementsY + 4f), time, p);
 
         float gateFlicker = MathF.Sin(time * 4.6f) * 0.5f + 0.5f;
-        Vector2 gateGlow = new Vector2(gateX + gateW / 2f, gateY + gateH * 0.55f);
-        DrawEllipticalGlow(gateGlow, gateW * 0.62f, gateH * 0.48f, 0f, p.TorchWarm, 0.06f + gateFlicker * 0.05f, 5);
-        DrawLightCone(gateGlow, MathF.PI * 0.5f, gateH * 0.55f, 0.42f, p.TorchWarm, 0.04f + gateFlicker * 0.03f);
+        Vector2 gateGlow = new Vector2(L.GateX + L.GateW / 2f, L.GateY + L.GateH * 0.55f);
+        DrawEllipticalGlow(gateGlow, L.GateW * 0.62f, L.GateH * 0.48f, 0f, p.TorchWarm, 0.06f + gateFlicker * 0.05f, 5);
+        DrawLightCone(gateGlow, MathF.PI * 0.5f, L.GateH * 0.55f, 0.42f, p.TorchWarm, 0.04f + gateFlicker * 0.03f);
 
-        DrawMenuCastlePennant(new Vector2(WindowWidth / 2f, gatehouseY - 62f), time, p);
+        DrawMenuCastleRampartTorches(L, time, p);
 
-        DrawMenuCastleWallWalkway(wallY, p);
-        DrawMenuCastleRampartTorches(wallY, time, p);
-
-        Raylib.DrawRectangle(0, (int)(wallY - 4f), WindowWidth, 4, WithAlpha(p.StoneDeep, 0.9f));
-        Raylib.DrawLine(0, (int)(wallY - 4f), WindowWidth, (int)(wallY - 4f), WithAlpha(p.StoneHi, 0.25f));
-        Raylib.DrawLine(0, (int)(wallY - 5f), WindowWidth, (int)(wallY - 5f), WithAlpha(p.StoneLight, 0.08f));
-
-        DrawMenuCurtainWallArrowSlits(wallY, gatehouseX, gatehouseW, p);
-
-        Vector2 torchL = new Vector2(gateX - 42f, gateY + 12f);
-        Vector2 torchR = new Vector2(gateX + gateW + 42f, gateY + 12f);
+        Vector2 torchL = new Vector2(L.GateX - 36f, L.GateY + L.GateH * 0.12f);
+        Vector2 torchR = new Vector2(L.GateX + L.GateW + 36f, L.GateY + L.GateH * 0.12f);
         DrawCastleTorch(torchL, time, 0f, 1.15f, TorchMountKind.WallRight);
         DrawCastleTorch(torchR, time, 1.8f, 1.15f, TorchMountKind.WallLeft);
-        DrawCastleTorch(new Vector2(118f, wallY + 48f), time, 3.2f, 0.9f, TorchMountKind.WallFace);
-        DrawCastleTorch(new Vector2(WindowWidth - 118f, wallY + 48f), time, 4.5f, 0.9f, TorchMountKind.WallFace);
+        DrawCastleTorch(new Vector2(L.LeftTowerOrigin.X + L.TowerW * 0.72f, L.WallY + 52f), time, 3.2f, 0.9f, TorchMountKind.WallFace);
+        DrawCastleTorch(new Vector2(L.RightTowerOrigin.X + L.TowerW * 0.28f, L.WallY + 52f), time, 4.5f, 0.9f, TorchMountKind.WallFace);
         DrawWallTorchWash(torchL, new Vector2(0.2f, 0.1f), time, 0f, 1.1f);
         DrawWallTorchWash(torchR, new Vector2(-0.2f, 0.1f), time, 1.8f, 1.1f);
-        DrawWallTorchWash(new Vector2(118f, wallY + 48f), new Vector2(0.3f, 0.05f), time, 3.2f, 0.85f);
-        DrawWallTorchWash(new Vector2(WindowWidth - 118f, wallY + 48f), new Vector2(-0.3f, 0.05f), time, 4.5f, 0.85f);
+        DrawWallTorchWash(new Vector2(L.LeftTowerOrigin.X + L.TowerW * 0.72f, L.WallY + 52f), new Vector2(0.3f, 0.05f), time, 3.2f, 0.85f);
+        DrawWallTorchWash(new Vector2(L.RightTowerOrigin.X + L.TowerW * 0.28f, L.WallY + 52f), new Vector2(-0.3f, 0.05f), time, 4.5f, 0.85f);
 
-        DrawCobbleForeground(new Rectangle(0f, WindowHeight - 38f, WindowWidth, 38f), p.StoneDeep, p.Mortar);
-        var wetZone = new Rectangle(gateX - 50f, WindowHeight - 38f, gateW + 100f, 38f);
+        var wetZone = new Rectangle(L.GateX - 48f, L.ForecourtY, L.GateW + 96f, L.ForecourtH);
         Raylib.DrawRectangleGradientV((int)wetZone.X, (int)wetZone.Y, (int)wetZone.Width, (int)wetZone.Height,
             WithAlpha(p.TorchWarm, 0.06f + gateFlicker * 0.05f), WithAlpha(p.StoneDeep, 0f));
         for (int sheen = 0; sheen < 12; sheen++)
         {
-            float shx = gateX + Hash(sheen * 13) * gateW;
-            Raylib.DrawLineEx(new Vector2(shx, WindowHeight - 36f), new Vector2(shx + 8f, WindowHeight - 30f), 1f, WithAlpha(p.WetSheen, 0.12f + Hash(sheen * 17) * 0.1f));
+            float shx = L.GateX + Hash(sheen * 13) * L.GateW;
+            Raylib.DrawLineEx(new Vector2(shx, L.ForecourtY + 2f), new Vector2(shx + 8f, L.ForecourtY + 8f), 1f, WithAlpha(p.WetSheen, 0.12f + Hash(sheen * 17) * 0.1f));
         }
 
-        DrawMenuCastleFinishingPass(time, p, wallY, wallH, gateX, gateW, gateY, gateH);
-        DrawMenuCastleRefinementPass(time, p, wallY, wallH, gateX, gateW, gateY, gateH, gatehouseX, gatehouseW, gatehouseY);
-        DrawMenuCastleReleasePass(time, p, wallY, wallH, gateX, gateW, gateY, gateH, gatehouseX, gatehouseW, gatehouseY, gatehouse);
+        DrawMenuCastleFinishingPass(time, p, L.WallY, L.WallH, L.GateX, L.GateW, L.GateY, L.GateH);
+        DrawMenuCastleRefinementPass(time, p, L.WallY, L.WallH, L.GateX, L.GateW, L.GateY, L.GateH, L.GatehouseX, L.GatehouseW, L.GatehouseTop);
+        var gatehouse = L.GatehouseRect;
+        DrawMenuCastleReleasePass(time, p, L.WallY, L.WallH, L.GateX, L.GateW, L.GateY, L.GateH, L.GatehouseX, L.GatehouseW, L.GatehouseTop, gatehouse);
+        DrawMenuCastleUltimateBeautyPass(time, p, L.WallY, L.WallH, L.GateX, L.GateW, L.GateY, L.GateH, L.GatehouseX, L.GatehouseW, L.GatehouseTop, gatehouse);
+        DrawMenuCastleOblivionEnhancements(time, L, p);
+        DrawMenuCastleProductionMasterPass(MenuCastleProductionPhase.Finalize, time, p);
+    }
+
+    static void DrawMenuCastleCurtainBattlements(MenuCastleLayout L, MenuCastlePalette p, float time)
+    {
+        float bh = 26f;
+        float gap = 18f;
+        var left = new Rectangle(0f, L.ParapetY - bh + 8f, L.GatehouseLeft - gap, bh);
+        var right = new Rectangle(L.GatehouseRight + gap, L.ParapetY - bh + 8f, WindowWidth - L.GatehouseRight - gap, bh);
+        if (left.Width > 40f)
+            DrawBattlements(left, p.StoneDark, p.StoneLight, p.StoneHi, 1f, time, true);
+        if (right.Width > 40f)
+            DrawBattlements(right, p.StoneDark, p.StoneLight, p.StoneHi, 1f, time, true);
     }
 
     static void DrawMenuCastleReleasePass(float time, MenuCastlePalette p, float wallY, float wallH,
@@ -12911,7 +15631,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         // Ground-hugging ambient occlusion where the wall meets the world
         Raylib.DrawRectangleGradientV(0, (int)(wallY - 6f), WindowWidth, 28,
             WithAlpha(ForestShadow, 0f), WithAlpha(ForestShadow, 0.38f));
-        Raylib.DrawRectangleGradientV(0, (int)(WindowHeight - 42f), WindowWidth, 42,
+        Raylib.DrawRectangleGradientV(0, (int)(MenuCastleLayoutCurrent.ForecourtY - 4f), WindowWidth, (int)MenuCastleLayoutCurrent.ForecourtH + 4,
             WithAlpha(ForestShadow, 0.22f), WithAlpha(ForestShadow, 0f));
 
         // Gatehouse string courses — horizontal masonry bands for visual weight
@@ -12948,15 +15668,15 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
         // Moon-silver reflection band on wet forecourt cobbles
         float reflectX = gateX + gateW / 2f + (moon.X - (gateX + gateW / 2f)) * 0.15f;
-        DrawEllipticalGlow(new Vector2(reflectX, WindowHeight - 28f), gateW * 0.42f, 10f, 0f,
+        DrawEllipticalGlow(new Vector2(reflectX, MenuCastleLayoutCurrent.ForecourtY + 12f), gateW * 0.42f, 10f, 0f,
             p.MoonGlow, 0.016f + MathF.Sin(time * 0.35f) * 0.004f, 3);
 
-        // Alternating merlon top highlights and shadow gaps
         for (int m = 0; m < 22; m++)
         {
             float mx = 48f + m * ((WindowWidth - 96f) / 21f);
+            if (mx > MenuCastleLayoutCurrent.GatehouseLeft - 8f && mx < MenuCastleLayoutCurrent.GatehouseRight + 8f) continue;
             bool lit = m % 2 == 0;
-            Raylib.DrawRectangle((int)mx, (int)(wallY - 10f), 9, lit ? 6 : 4,
+            Raylib.DrawRectangle((int)mx, (int)(MenuCastleLayoutCurrent.ParapetY - 8f), 9, lit ? 6 : 4,
                 WithAlpha(lit ? p.StoneHi : ForestShadow, lit ? 0.14f : 0.28f));
         }
 
@@ -12971,7 +15691,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
         // Faint warm pulse inside gatehouse arrow-slit windows
         float[] winCols = { gatehouseX + gatehouseW * 0.22f, gatehouseX + gatehouseW * 0.5f, gatehouseX + gatehouseW * 0.78f };
-        float winRowY = gatehouse.Y + gatehouse.Height * 0.36f;
+        float winRowY = gatehouse.Y + gatehouse.Height * 0.32f;
         for (int w = 0; w < winCols.Length; w++)
         {
             float pulse = MathF.Sin(time * 1.5f + w * 1.7f) * 0.5f + 0.5f;
@@ -12981,11 +15701,10 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         }
 
         // Shield emblem polish — subtle gold edge catch
-        Vector2 shieldCenter = new Vector2(WindowWidth / 2f, gatehouseY - 8f);
+        Vector2 shieldCenter = new Vector2(WindowWidth / 2f, gatehouse.Y + gatehouse.Height * 0.12f);
         Raylib.DrawCircleLines((int)shieldCenter.X, (int)(shieldCenter.Y - 2f), 14f, WithAlpha(Gold, 0.12f + gateFlicker * 0.08f));
 
-        // Banner cloth shadow under pennant
-        Vector2 pennantAnchor = new Vector2(WindowWidth / 2f, gatehouseY - 62f);
+        Vector2 pennantAnchor = new Vector2(WindowWidth / 2f, MenuCastleLayoutCurrent.BattlementsY + 4f);
         Raylib.DrawLineEx(pennantAnchor + new Vector2(4f, 4f), pennantAnchor + new Vector2(40f, 34f), 2f, WithAlpha(ForestShadow, 0.25f));
 
         // Distant silhouette birds crossing the moon path
@@ -13000,10 +15719,11 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         }
 
         // Tower roof edge highlights on both flanking towers
+        MenuCastleLayout L = MenuCastleLayoutCurrent;
         ReadOnlySpan<(float x, float y)> towerRims =
         [
-            (78f, wallY - 46f),
-            (WindowWidth - 78f, wallY - 46f),
+            (L.LeftTowerOrigin.X + L.TowerW * 0.5f, L.ParapetY - 28f),
+            (L.RightTowerOrigin.X + L.TowerW * 0.5f, L.ParapetY - 28f),
         ];
         for (int t = 0; t < towerRims.Length; t++)
         {
@@ -13022,12 +15742,13 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
     {
         float moonX = WindowWidth * 0.76f;
         float gateFlicker = MathF.Sin(time * 4.6f) * 0.5f + 0.5f;
+        MenuCastleLayout L = MenuCastleLayoutCurrent;
 
         // Chimney smoke drifting from gatehouse towers
         Vector2[] chimneys =
         {
-            new Vector2(gatehouseX + 28f, gatehouseY - 36f),
-            new Vector2(gatehouseX + gatehouseW - 28f, gatehouseY - 36f),
+            new Vector2(gatehouseX + 28f, L.BattlementsY + 2f),
+            new Vector2(gatehouseX + gatehouseW - 28f, L.BattlementsY + 2f),
         };
         for (int c = 0; c < chimneys.Length; c++)
         {
@@ -13056,7 +15777,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         for (int s = 0; s < 20; s++)
         {
             float sx = gateX - 44f + Hash(s * 23) * (gateW + 88f);
-            float sy = WindowHeight - 33f + Hash(s * 29) * 5f;
+            float sy = L.ForecourtY + 2f + Hash(s * 29) * (L.ForecourtH - 4f);
             float tw = MathF.Sin(time * 3.8f + s * 1.6f) * 0.5f + 0.5f;
             if (tw > 0.78f)
                 Raylib.DrawCircleV(new Vector2(sx, sy), 0.8f + Hash(s * 31), WithAlpha(p.WetSheen, 0.18f + tw * 0.22f));
@@ -13065,9 +15786,9 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         // Moonlit caps on the flanking towers and gatehouse
         ReadOnlySpan<Vector2> peaks =
         [
-            new Vector2(78f, wallY - 28f),
-            new Vector2(WindowWidth - 78f, wallY - 28f),
-            new Vector2(gatehouseX + gatehouseW / 2f, gatehouseY - 54f),
+            new Vector2(L.LeftTowerOrigin.X + L.TowerW * 0.5f, L.ParapetY - 18f),
+            new Vector2(L.RightTowerOrigin.X + L.TowerW * 0.5f, L.ParapetY - 18f),
+            new Vector2(gatehouseX + gatehouseW / 2f, L.BattlementsY - 4f),
         ];
         for (int i = 0; i < peaks.Length; i++)
         {
@@ -13082,7 +15803,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         Raylib.DrawCircleV(keystone, 3.5f, WithAlpha(p.StoneHi, 0.32f + MathF.Sin(time * 1.1f) * 0.08f));
 
         // Warm torch spill across the gatehouse lintel
-        var lintelSpill = new Rectangle(gatehouseX + 16f, gatehouseY - 18f, gatehouseW - 32f, 36f);
+        var lintelSpill = new Rectangle(gatehouseX + 16f, gatehouseY + 8f, gatehouseW - 32f, 28f);
         Raylib.DrawRectangleGradientV((int)lintelSpill.X, (int)lintelSpill.Y, (int)lintelSpill.Width, (int)lintelSpill.Height,
             WithAlpha(p.TorchWarm, 0f), WithAlpha(p.TorchWarm, 0.035f + gateFlicker * 0.025f));
 
@@ -13090,7 +15811,8 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         for (int m = 0; m < 18; m++)
         {
             float mx = 56f + m * ((WindowWidth - 112f) / 17f);
-            Raylib.DrawRectangle((int)mx, (int)(wallY - 7f), 7, 5, WithAlpha(ForestShadow, 0.32f));
+            if (mx > L.GatehouseLeft - 10f && mx < L.GatehouseRight + 10f) continue;
+            Raylib.DrawRectangle((int)mx, (int)(L.ParapetY - 5f), 7, 5, WithAlpha(ForestShadow, 0.32f));
         }
 
         // Drawbridge chain sway and hinge gleam
@@ -13135,6 +15857,11 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         Raylib.DrawRectangleRounded(farKeep, 0.04f, 4, WithAlpha(ForestShadow, 0.5f));
         DrawBattlements(new Rectangle(farKeep.X - 5f, farKeep.Y - 11f, farKeep.Width + 10f, 11f),
             p.StoneDeep, p.StoneMid, p.StoneHi, 0.65f, time, true);
+        // Twin flanking towers on the distant keep
+        Raylib.DrawRectangleRounded(new Rectangle(farKeep.X + 8f, farKeep.Y - 38f, 34f, 42f), 0.08f, 4, WithAlpha(ForestShadow, 0.42f));
+        Raylib.DrawRectangleRounded(new Rectangle(farKeep.X + farKeep.Width - 42f, farKeep.Y - 38f, 34f, 42f), 0.08f, 4, WithAlpha(ForestShadow, 0.42f));
+        DrawTowerRoof(farKeep.X + 25f, farKeep.Y - 48f, farKeep.Y - 4f, 16f, p.StoneDeep, p.StoneMid, p.StoneHi);
+        DrawTowerRoof(farKeep.X + farKeep.Width - 25f, farKeep.Y - 48f, farKeep.Y - 4f, 16f, p.StoneDeep, p.StoneMid, p.StoneHi);
 
         Raylib.DrawRectangleRounded(new Rectangle(-14f, wallY - 42f, 152f, wallH + 74f), 0.05f, 6, WithAlpha(ForestShadow, 0.32f));
         Raylib.DrawRectangleRounded(new Rectangle(WindowWidth - 140f, wallY - 42f, 152f, wallH + 74f), 0.05f, 6, WithAlpha(ForestShadow, 0.32f));
@@ -13149,41 +15876,59 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             Raylib.DrawLineEx(new Vector2(sx, sy), new Vector2(sx, sy - 28f - Hash(spire * 7) * 14f), 2f, WithAlpha(ForestShadow, 0.38f));
             Raylib.DrawCircleV(new Vector2(sx, sy - 30f), 2.5f, WithAlpha(p.StoneDeep, 0.45f));
         }
+
+        // Distant village embers below the treeline
+        for (int hut = 0; hut < 12; hut++)
+        {
+            float hx = WindowWidth * (0.05f + hut * 0.08f) + Hash(hut * 29) * 20f;
+            float hy = wallY - 4f + Hash(hut * 31) * 6f;
+            Raylib.DrawRectangle((int)hx, (int)(hy - 6f), 6, 5, WithAlpha(ForestShadow, 0.45f));
+            float tw = MathF.Sin(time * 2.2f + hut * 1.4f) * 0.5f + 0.5f;
+            Raylib.DrawCircleV(new Vector2(hx + 3f, hy - 8f), 1.2f, WithAlpha(p.TorchWarm, 0.12f + tw * 0.18f));
+        }
     }
 
-    static void DrawMenuCastleWallWalkway(float wallY, MenuCastlePalette p)
+    static void DrawMenuCastleWallWalkway(MenuCastleLayout L, MenuCastlePalette p)
     {
-        Raylib.DrawRectangle(0, (int)(wallY - 8f), WindowWidth, 8, WithAlpha(p.StoneDark, 0.75f));
-        for (int paver = 0; paver < 40; paver++)
+        float walkY = L.ParapetY + 2f;
+        float walkH = 8f;
+        DrawMenuCastleWallWalkwaySegment(new Rectangle(0f, walkY, L.GatehouseLeft - 14f, walkH), p);
+        DrawMenuCastleWallWalkwaySegment(new Rectangle(L.GatehouseRight + 14f, walkY, WindowWidth - L.GatehouseRight - 14f, walkH), p);
+    }
+
+    static void DrawMenuCastleWallWalkwaySegment(Rectangle segment, MenuCastlePalette p)
+    {
+        if (segment.Width < 8f) return;
+        Raylib.DrawRectangle((int)segment.X, (int)segment.Y, (int)segment.Width, (int)segment.Height, WithAlpha(p.StoneDark, 0.75f));
+        int pavers = Math.Max(4, (int)(segment.Width / 20f));
+        for (int paver = 0; paver < pavers; paver++)
         {
-            float px = paver * (WindowWidth / 40f);
+            float px = segment.X + paver * (segment.Width / pavers);
             float n = Hash(paver * 19);
             Color c = LerpColor(p.StoneDark, p.StoneMid, n * 0.4f);
-            Raylib.DrawRectangle((int)px, (int)(wallY - 7f), (int)(WindowWidth / 40f) - 1, 6, WithAlpha(c, 0.5f));
+            Raylib.DrawRectangle((int)px, (int)(segment.Y + 1f), (int)(segment.Width / pavers) - 1, (int)segment.Height - 2, WithAlpha(c, 0.5f));
         }
-        Raylib.DrawLine(0, (int)(wallY - 8f), WindowWidth, (int)(wallY - 8f), WithAlpha(p.StoneHi, 0.15f));
+        Raylib.DrawLine((int)segment.X, (int)segment.Y, (int)(segment.X + segment.Width), (int)segment.Y, WithAlpha(p.StoneHi, 0.15f));
     }
 
-    static void DrawMenuCurtainWallArrowSlits(float wallY, float gatehouseX, float gatehouseW, MenuCastlePalette p)
+    static void DrawMenuCurtainWallArrowSlits(MenuCastleLayout L, MenuCastlePalette p)
     {
-        float gateLeft = gatehouseX - 24f;
-        float gateRight = gatehouseX + gatehouseW + 24f;
-        float[] rows = { wallY + 50f, wallY + 96f };
-        float[] leftCols = { 188f, 236f, 284f };
-        float[] rightCols = { WindowWidth - 284f, WindowWidth - 236f, WindowWidth - 188f };
+        float gateLeft = L.GatehouseLeft - 20f;
+        float gateRight = L.GatehouseRight + 20f;
+        float[] rows = { L.WallY + L.WallH * 0.14f, L.WallY + L.WallH * 0.26f };
+        float inset = MathF.Max(120f, L.TowerW + 24f);
 
         foreach (float row in rows)
         {
-            foreach (float col in leftCols)
+            for (int i = 0; i < 3; i++)
             {
-                if (col >= gateLeft) continue;
-                DrawMenuArrowSlit(new Vector2(col, row), 8f, 30f, p);
-            }
+                float leftCol = inset + i * 48f;
+                if (leftCol < gateLeft)
+                    DrawMenuArrowSlit(new Vector2(leftCol, row), 8f, 30f, p);
 
-            foreach (float col in rightCols)
-            {
-                if (col <= gateRight) continue;
-                DrawMenuArrowSlit(new Vector2(col, row), 8f, 30f, p);
+                float rightCol = WindowWidth - inset - i * 48f;
+                if (rightCol > gateRight)
+                    DrawMenuArrowSlit(new Vector2(rightCol, row), 8f, 30f, p);
             }
         }
     }
@@ -13196,6 +15941,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         {
             var win = new Rectangle(cols[w] - 8f, rowY, 16f, 22f);
             DrawWindowInteriorGlow(win, time, w * 1.7f);
+            if (w == 1) DrawMenuCastleStainedGlass(win, time, w * 1.7f);
             Raylib.DrawRectangleRounded(win, 0.2f, 4, WithAlpha(p.StoneDeep, 0.92f));
             Raylib.DrawRectangleRoundedLines(win, 0.2f, 4, WithAlpha(p.StoneHi, 0.4f));
             Raylib.DrawLine((int)(win.X + win.Width / 2f), (int)win.Y, (int)(win.X + win.Width / 2f), (int)(win.Y + win.Height), WithAlpha(p.StoneDeep, 0.5f));
@@ -13235,7 +15981,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             float dist = Hash(seed + i * 17) * radius;
             Vector2 pos = new Vector2(center.X + MathF.Cos(ang) * dist, center.Y + MathF.Sin(ang) * dist);
             float tw = MathF.Sin(time * 2f + i + seed) * 0.5f + 0.5f;
-            Color sc = LerpColor(new Color(200, 210, 255, 255), new Color(255, 240, 210, 255), Hash(seed + i * 23));
+            Color sc = LerpColor(new Color(196, 194, 188, 255), new Color(255, 236, 210, 255), Hash(seed + i * 23));
             Raylib.DrawCircleV(pos, 0.8f + Hash(seed + i * 29), WithAlpha(sc, 0.1f + tw * 0.2f));
         }
     }
@@ -13252,10 +15998,12 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         for (int c = 0; c < clusters.Length; c++)
             DrawMenuCastleStarCluster(clusters[c], c * 97 + 13, time, 28f + c * 6f);
 
-        // Faint atmospheric band just above the horizon — neutral, not blue.
+        DrawMenuCastleConstellationMap(time);
+
+        // Faint atmospheric band just above the horizon — warm charcoal, not blue.
         int bandY = (int)(WindowHeight * 0.46f);
         Raylib.DrawRectangleGradientV(0, bandY - 20, WindowWidth, 40,
-            WithAlpha(new Color(18, 17, 20, 255), 0f), WithAlpha(new Color(18, 17, 20, 255), 0.28f));
+            WithAlpha(new Color(6, 5, 5, 255), 0f), WithAlpha(new Color(10, 9, 8, 255), 0.22f));
     }
 
     static void DrawMenuCastleDrawbridgeShadow(float gateX, float gateW, float gateY, float gateH, MenuCastlePalette p)
@@ -13274,12 +16022,14 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         }
     }
 
-    static void DrawMenuCastleRampartTorches(float wallY, float time, MenuCastlePalette p)
+    static void DrawMenuCastleRampartTorches(MenuCastleLayout L, float time, MenuCastlePalette p)
     {
-        float[] positions = { 0.08f, 0.22f, 0.78f, 0.92f };
+        ReadOnlySpan<float> positions = [0.10f, 0.24f, 0.76f, 0.90f];
         for (int i = 0; i < positions.Length; i++)
         {
-            Vector2 pos = new Vector2(WindowWidth * positions[i], wallY - 26f);
+            float x = WindowWidth * positions[i];
+            if (x > L.GatehouseLeft - 30f && x < L.GatehouseRight + 30f) continue;
+            Vector2 pos = new Vector2(x, L.ParapetY - 18f);
             DrawCastleTorch(pos, time, i * 2.1f, 0.75f, TorchMountKind.Rampart);
             DrawWallTorchWash(pos, new Vector2(0f, 1f), time, i * 2.1f, 0.75f);
         }
@@ -14064,35 +16814,99 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawQuoinStripes(Rectangle region, Color edge, Color highlight)
     {
-        float stripeW = 10f;
-        Raylib.DrawRectangle((int)region.X, (int)region.Y, (int)stripeW, (int)region.Height, WithAlpha(edge, 0.35f));
-        Raylib.DrawRectangle((int)(region.X + region.Width - stripeW), (int)region.Y, (int)stripeW, (int)region.Height, WithAlpha(edge, 0.35f));
-        Raylib.DrawLineEx(new Vector2(region.X + 2f, region.Y), new Vector2(region.X + 2f, region.Y + region.Height), 1.5f, WithAlpha(highlight, 0.45f));
-        Raylib.DrawLineEx(new Vector2(region.X + region.Width - 2f, region.Y), new Vector2(region.X + region.Width - 2f, region.Y + region.Height), 1.5f, WithAlpha(highlight, 0.45f));
+        float stripeW = 14f;
+        int quoinRows = Math.Max(5, (int)(region.Height / 26f));
+        float rowStep = region.Height / quoinRows;
+
+        for (int side = 0; side < 2; side++)
+        {
+            float baseX = side == 0 ? region.X : region.X + region.Width - stripeW;
+            for (int q = 0; q < quoinRows; q++)
+            {
+                float qy = region.Y + q * rowStep + 1f;
+                float qh = rowStep - 2f;
+                bool proud = (q + side) % 2 == 0;
+                float protrude = proud ? 3.5f : 0f;
+                float qx = side == 0 ? baseX - protrude : baseX;
+                var quoin = new Rectangle(qx, qy, stripeW + protrude, qh);
+                Color face = proud ? LerpColor(edge, highlight, 0.28f) : edge;
+                Raylib.DrawRectangleRounded(quoin, 0.1f, 3, WithAlpha(face, proud ? 0.72f : 0.48f));
+                Raylib.DrawLineEx(new Vector2(quoin.X + (side == 0 ? 2f : quoin.Width - 2f), quoin.Y + 1f),
+                    new Vector2(quoin.X + (side == 0 ? 2f : quoin.Width - 2f), quoin.Y + qh - 1f),
+                    1.2f, WithAlpha(highlight, proud ? 0.42f : 0.22f));
+                if (proud)
+                {
+                    float shadowX = side == 0 ? quoin.X + quoin.Width - 1f : quoin.X + 1f;
+                    Raylib.DrawLineEx(new Vector2(shadowX, quoin.Y + 1f), new Vector2(shadowX, quoin.Y + qh - 1f),
+                        1f, WithAlpha(ForestShadow, 0.24f));
+                }
+            }
+        }
     }
 
     static void DrawButtress(Vector2 origin, float width, float height, Color stone, Color dark, Color light, bool left)
     {
         var body = new Rectangle(origin.X, origin.Y, width, height);
-        Raylib.DrawRectangleRounded(body, 0.06f, 6, WithAlpha(stone, 0.75f));
+        Raylib.DrawRectangleRounded(body, 0.06f, 6, WithAlpha(stone, 0.82f));
+        DrawMenuMasonryUltra(body, MenuPalette, 8, 3);
+
+        float[] setoffs = { 0.18f, 0.42f, 0.68f };
+        foreach (float setoff in setoffs)
+        {
+            float sy = origin.Y + height * setoff;
+            float inset = 4f + setoff * 6f;
+            Raylib.DrawLineEx(new Vector2(left ? origin.X + inset : origin.X + width - inset, sy),
+                new Vector2(left ? origin.X + width - 4f : origin.X + 4f, sy),
+                1.5f, WithAlpha(light, 0.22f));
+            Raylib.DrawLineEx(new Vector2(left ? origin.X + inset : origin.X + width - inset, sy + 1f),
+                new Vector2(left ? origin.X + width - 4f : origin.X + 4f, sy + 1f),
+                1f, WithAlpha(ForestShadow, 0.25f));
+        }
+
         float taperX = left ? origin.X + width * 0.55f : origin.X + width * 0.45f;
         Raylib.DrawTriangle(
-            new Vector2(taperX, origin.Y - 18f),
-            new Vector2(origin.X, origin.Y + height * 0.15f),
-            new Vector2(origin.X + width, origin.Y + height * 0.15f),
-            WithAlpha(dark, 0.8f));
-        Raylib.DrawLineEx(new Vector2(origin.X + width * 0.5f, origin.Y), new Vector2(origin.X + width * 0.5f, origin.Y + height), 2f, WithAlpha(light, 0.35f));
+            new Vector2(taperX, origin.Y - 22f),
+            new Vector2(origin.X, origin.Y + height * 0.12f),
+            new Vector2(origin.X + width, origin.Y + height * 0.12f),
+            WithAlpha(dark, 0.88f));
+        Raylib.DrawLineEx(new Vector2(taperX, origin.Y - 22f), new Vector2(taperX, origin.Y - 8f), 2f, WithAlpha(light, 0.3f));
+        Raylib.DrawLineEx(new Vector2(origin.X + width * 0.5f, origin.Y), new Vector2(origin.X + width * 0.5f, origin.Y + height), 2f, WithAlpha(light, 0.32f));
     }
 
     static void DrawTowerRoof(float cx, float apexY, float baseY, float halfW, Color dark, Color light, Color hi)
     {
+        Color slateDark = new Color(34, 32, 30, 255);
+        Color slateMid = new Color(48, 46, 42, 255);
+        Color slateHi = new Color(68, 66, 60, 255);
         var apex = new Vector2(cx, apexY);
         var left = new Vector2(cx - halfW, baseY);
         var right = new Vector2(cx + halfW, baseY);
-        Raylib.DrawTriangle(left, right, apex, dark);
-        Raylib.DrawLineEx(left, apex, 2.5f, WithAlpha(light, 0.55f));
-        Raylib.DrawLineEx(apex, right, 1.5f, WithAlpha(Darken(dark, 0.25f), 0.7f));
-        Raylib.DrawCircleV(apex, 3.5f, WithAlpha(hi, 0.65f));
+
+        Raylib.DrawTriangle(apex, right, new Vector2(cx, baseY), Darken(slateDark, 0.18f));
+        Raylib.DrawTriangle(apex, left, new Vector2(cx, baseY), slateMid);
+
+        const int courses = 9;
+        for (int c = 0; c < courses; c++)
+        {
+            float t = c / (float)courses;
+            float y = baseY - (baseY - apexY) * t;
+            float w = halfW * (1f - t * 0.94f);
+            Color courseCol = c % 2 == 0 ? slateDark : LerpColor(slateDark, slateMid, 0.35f);
+            Raylib.DrawLineEx(new Vector2(cx - w, y), new Vector2(cx + w, y), 1.4f, WithAlpha(courseCol, 0.62f));
+            if (c % 3 == 1)
+            {
+                Raylib.DrawLineEx(new Vector2(cx - w * 0.85f, y - 2f), new Vector2(cx + w * 0.85f, y - 2f), 0.7f, WithAlpha(slateHi, 0.22f));
+            }
+        }
+
+        Raylib.DrawLineEx(left, apex, 2.2f, WithAlpha(slateHi, 0.5f));
+        Raylib.DrawLineEx(apex, right, 1.4f, WithAlpha(Darken(slateDark, 0.2f), 0.75f));
+        Raylib.DrawLineEx(new Vector2(cx - halfW, baseY), new Vector2(cx + halfW, baseY), 2.8f, WithAlpha(ForestShadow, 0.42f));
+
+        Raylib.DrawLineEx(apex, new Vector2(apex.X, apexY - 10f), 1.6f, WithAlpha(hi, 0.75f));
+        Raylib.DrawCircleV(new Vector2(apex.X, apexY - 11f), 2.8f, WithAlpha(hi, 0.6f));
+        Raylib.DrawLineEx(new Vector2(apex.X, apexY - 11f), new Vector2(apex.X + 7f, apexY - 15f), 1.2f, WithAlpha(light, 0.45f));
+        Raylib.DrawLineEx(new Vector2(apex.X + 7f, apexY - 15f), new Vector2(apex.X + 7f, apexY - 9f), 1f, WithAlpha(light, 0.35f));
     }
 
     enum TorchMountKind
@@ -14503,6 +17317,9 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
                     throw new UnreachableException();
             }
         }
+
+        for (int pass = 221; pass <= 300; pass++)
+            DrawMenuStoneDetailPassProcedural(region, palette, time, pass);
     }
 
     static void DrawMenuStoneDetailPass41(Rectangle region, MenuCastlePalette palette, float time)
@@ -17663,6 +20480,911 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         }
     }
 
+    static void DrawMenuStoneDetailPassProcedural(Rectangle region, MenuCastlePalette palette, float time, int passIndex)
+    {
+        int kind = (passIndex - 221) % 10;
+        int baseSeed = passIndex * 137 + 9001;
+        int count = 10 + passIndex % 12;
+
+        for (int i = 0; i < count; i++)
+        {
+            int seed = baseSeed + i * 29;
+            float px = region.X + Hash(seed) * region.Width;
+            float py = region.Y + Hash(seed + 3) * region.Height;
+            float n = Hash(seed + 7);
+            float n2 = Hash(seed + 11);
+
+            switch (kind)
+            {
+                case 0:
+                {
+                    Vector2 a = new Vector2(px, py);
+                    Vector2 b = new Vector2(px + (n - 0.5f) * 22f, py + 5f + n2 * 26f);
+                    Raylib.DrawLineEx(a, b, 0.5f + n * 0.5f, WithAlpha(palette.StoneDeep, 0.1f + n2 * 0.16f));
+                    if (n > 0.58f)
+                        Raylib.DrawLineEx(b, b + new Vector2((n2 - 0.5f) * 12f, 7f), 0.45f, WithAlpha(palette.Mortar, 0.14f));
+                    break;
+                }
+                case 1:
+                {
+                    var stain = new Rectangle(px - 2f, py, 5f + n * 9f, 3f + n2 * 7f);
+                    DrawGradientWash(stain, WithAlpha(new Color(88, 54, 40, 255), 0.14f), WithAlpha(palette.StoneMid, 0f), new Vector2(0.5f, 1f), 1.4f);
+                    Raylib.DrawLineEx(new Vector2(px, py), new Vector2(px + n * 14f, py + 12f + n2 * 9f), 0.65f, WithAlpha(new Color(72, 44, 34, 255), 0.11f));
+                    break;
+                }
+                case 2:
+                {
+                    float w = 2f + n * 6f;
+                    float h = 1.5f + n2 * 4f;
+                    var chip = new Rectangle(px, py, w, h);
+                    Raylib.DrawRectangleRounded(chip, 0.2f, 2, WithAlpha(Lighten(palette.StoneLight, 0.07f), 0.12f + n * 0.1f));
+                    Raylib.DrawLineEx(new Vector2(px, py + h), new Vector2(px + w, py + h), 0.75f, WithAlpha(palette.StoneDeep, 0.18f));
+                    break;
+                }
+                case 3:
+                {
+                    for (int l = 0; l < 4; l++)
+                    {
+                        float lx = px + (Hash(seed + 20 + l) - 0.5f) * 10f;
+                        float ly = py + (Hash(seed + 24 + l) - 0.5f) * 8f;
+                        Raylib.DrawCircleV(new Vector2(lx, ly), 0.8f + Hash(seed + 28 + l) * 1.6f, WithAlpha(palette.Lichen, 0.09f + n * 0.14f));
+                    }
+                    break;
+                }
+                case 4:
+                {
+                    float len = 8f + n2 * 28f;
+                    Raylib.DrawLineEx(new Vector2(px, py), new Vector2(px + (n - 0.5f) * 4f, py + len), 1f, WithAlpha(palette.WetSheen, 0.08f + n * 0.1f));
+                    DrawGradientWash(new Rectangle(px - 1f, py, 3f, len), WithAlpha(palette.StoneDeep, 0.12f), WithAlpha(palette.StoneMid, 0f), new Vector2(0.5f, 1f), 1.2f);
+                    break;
+                }
+                case 5:
+                {
+                    DrawGradientWash(new Rectangle(px - 3f, py, 10f + n2 * 12f, 3f), WithAlpha(new Color(26, 22, 18, 255), 0.11f), WithAlpha(palette.StoneMid, 0f), new Vector2(0f, 0.5f), 1.4f);
+                    break;
+                }
+                case 6:
+                {
+                    Raylib.DrawCircleV(new Vector2(px, py), 0.6f + n * 1.4f, WithAlpha(palette.StoneDeep, 0.14f + n2 * 0.12f));
+                    Raylib.DrawCircleV(new Vector2(px + 1f, py + 1f), 0.4f + n * 0.8f, WithAlpha(palette.Mortar, 0.1f));
+                    break;
+                }
+                case 7:
+                {
+                    if (Hash(seed + 99) > 0.35f) break;
+                    float tw = MathF.Sin(time * 1.4f + seed) * 0.5f + 0.5f;
+                    Raylib.DrawCircleV(new Vector2(px, py), 0.7f + n, WithAlpha(palette.MoonGlow, 0.04f + tw * 0.08f));
+                    break;
+                }
+                case 8:
+                {
+                    Raylib.DrawLineEx(new Vector2(px, py), new Vector2(px + 14f + n * 10f, py + 1f + n2 * 2f), 0.55f, WithAlpha(palette.StoneHi, 0.08f + n * 0.1f));
+                    Raylib.DrawLineEx(new Vector2(px, py + 1f), new Vector2(px + 12f + n2 * 8f, py + 2f), 0.45f, WithAlpha(palette.StoneLight, 0.06f));
+                    break;
+                }
+                case 9:
+                {
+                    var moss = new Rectangle(px, py, 3f + n * 7f, 2f + n2 * 5f);
+                    DrawGradientWash(moss, WithAlpha(palette.Moss, 0.12f), WithAlpha(palette.StoneMid, 0f), new Vector2(0.5f, 0.5f), 1.3f);
+                    for (int tuft = 0; tuft < 3; tuft++)
+                        Raylib.DrawLineEx(new Vector2(px + tuft * 2f, py + 2f), new Vector2(px + tuft * 2f + (n - 0.5f) * 3f, py - 2f - tuft), 0.6f, WithAlpha(palette.Moss, 0.1f));
+                    break;
+                }
+                default:
+                    throw new UnreachableException();
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Menu castle — production master suite (backdrop / architecture / finalize)
+    // -------------------------------------------------------------------------
+
+    enum MenuCastleProductionPhase { Backdrop, Architecture, Finalize }
+
+    static void DrawMenuCastleProductionMasterPass(MenuCastleProductionPhase phase, float time, MenuCastlePalette p)
+    {
+        MenuCastleLayout L = MenuCastleLayoutCurrent;
+        switch (phase)
+        {
+            case MenuCastleProductionPhase.Backdrop:
+                DrawMenuCastleApproachCurtainWalls(L, p, time);
+                DrawMenuCastleOuterPalisadeHints(L, p, time);
+                break;
+            case MenuCastleProductionPhase.Architecture:
+                DrawMenuCastleTowerBartizans(L, p, time);
+                DrawMenuCastleWallHoardings(L, p, time);
+                DrawMenuCastleInnerKeepDepth(L.GateX, L.GateW, L.GateY, L.GateH, p, time);
+                DrawMenuCastleInnerCurtainWings(L, p, time);
+                DrawMenuCastlePortcullisOverlay(new Vector2(L.GateX, L.GateY), L.GateW, L.GateH, p, time);
+                DrawMenuCastleExtraChimneyStacks(L, p, time);
+                DrawMenuCastleParapetCauldrons(L, time, p);
+                DrawMenuCastleSentrySilhouettes(L, time, p);
+                DrawMenuCastleForecourtProps(L, p, time);
+                DrawMenuCastleBannerRigging(L, time, p);
+                DrawMenuCastleRavensAndOwls(time, L.WallY);
+                DrawMenuCastleGateMurderHoleDrips(L.GateX, L.GateW, L.GateY, L.GateH, p, time);
+                break;
+            case MenuCastleProductionPhase.Finalize:
+                DrawMenuCastleGlobalWeatheringNetwork(new Rectangle(0f, L.ParapetY - 54f, WindowWidth, L.WallH + 54f), p, time);
+                DrawMenuCastleWetSpecularHighlights(L, p, time);
+                DrawMenuCastleMoonLensFlare(time);
+                DrawMenuCastleProductionLighting(L, p, time);
+                DrawMenuCastleProductionColorGrade(time, p);
+                DrawMenuCastleProductionFilmGrain(time);
+                break;
+            default:
+                throw new UnreachableException();
+        }
+    }
+
+    static void DrawMenuCastleConstellationMap(float time)
+    {
+        ReadOnlySpan<(float x, float y, float r)> anchors =
+        [
+            (0.14f, 0.11f, 38f),
+            (0.38f, 0.07f, 32f),
+            (0.62f, 0.13f, 36f),
+            (0.84f, 0.09f, 28f),
+        ];
+        for (int a = 0; a < anchors.Length; a++)
+        {
+            var (xf, yf, rad) = anchors[a];
+            Vector2 center = new Vector2(WindowWidth * xf, WindowHeight * yf);
+            int nodes = 5 + (int)(Hash(a * 61) * 4f);
+            Vector2[] pts = new Vector2[nodes];
+            for (int n = 0; n < nodes; n++)
+            {
+                float ang = Hash(a * 71 + n * 17) * MathF.PI * 2f;
+                float dist = Hash(a * 73 + n * 19) * rad;
+                pts[n] = center + new Vector2(MathF.Cos(ang) * dist, MathF.Sin(ang) * dist);
+                float tw = MathF.Sin(time * 0.7f + a + n) * 0.5f + 0.5f;
+                Raylib.DrawCircleV(pts[n], 0.9f + Hash(a + n * 3), WithAlpha(new Color(210, 216, 232, 255), 0.08f + tw * 0.14f));
+            }
+            for (int e = 0; e < nodes - 1; e++)
+            {
+                if (Hash(a * 79 + e * 11) > 0.42f)
+                    Raylib.DrawLineEx(pts[e], pts[e + 1], 0.6f, WithAlpha(new Color(160, 168, 188, 255), 0.06f));
+            }
+            if (nodes > 3 && Hash(a * 83) > 0.5f)
+                Raylib.DrawLineEx(pts[0], pts[nodes - 1], 0.55f, WithAlpha(new Color(160, 168, 188, 255), 0.05f));
+        }
+    }
+
+    static void DrawMenuCastleApproachCurtainWalls(MenuCastleLayout L, MenuCastlePalette p, float time)
+    {
+        float approachH = L.WallH * 0.18f;
+        float approachY = L.ForecourtY - approachH;
+        float pathHalf = L.GateW * 0.72f;
+        float pathCenter = L.CenterX;
+
+        for (int side = 0; side < 2; side++)
+        {
+            float wx = side == 0 ? 0f : pathCenter + pathHalf + 8f;
+            float ww = side == 0 ? pathCenter - pathHalf - 8f : WindowWidth - wx;
+            if (ww < 40f) continue;
+            var wall = new Rectangle(wx, approachY, ww, approachH);
+            Raylib.DrawRectangleRounded(wall, 0.03f, 4, WithAlpha(p.StoneDeep, 0.52f));
+            DrawMenuMasonryUltra(wall, p, 2, 18 + side * 7);
+            DrawBattlements(new Rectangle(wall.X - 2f, wall.Y - 10f, wall.Width + 4f, 10f),
+                p.StoneDark, p.StoneLight, p.StoneHi, 0.7f, time, side == 0);
+            float tx = side == 0 ? wall.X + wall.Width - 18f : wall.X + 10f;
+            var turret = new Rectangle(tx - 10f, wall.Y - 16f, 20f, approachH + 12f);
+            DrawMenuCastleMiniTowerSeparationShadow(turret, 20f, p);
+            Raylib.DrawRectangleRounded(turret, 0.1f, 3, WithAlpha(p.StoneMid, 0.58f));
+            DrawTowerRoof(tx, turret.Y - 14f, turret.Y + 2f, 10f, p.StoneDark, p.StoneLight, p.StoneHi);
+        }
+        Raylib.DrawRectangleGradientV(0, (int)(approachY - 6f), WindowWidth, 12, WithAlpha(ForestShadow, 0f), WithAlpha(ForestShadow, 0.18f));
+    }
+
+    static void DrawMenuCastleOuterPalisadeHints(MenuCastleLayout L, MenuCastlePalette p, float time)
+    {
+        float baseY = L.MoatY + 6f;
+        for (int stake = 0; stake < 48; stake++)
+        {
+            float sx = stake * (WindowWidth / 47f) + MathF.Sin(time * 0.05f + stake * 0.2f);
+            float sh = 8f + Hash(stake * 29) * 7f;
+            Color wood = new Color(34, 30, 26, 255);
+            Raylib.DrawLineEx(new Vector2(sx, baseY), new Vector2(sx + (Hash(stake * 31) - 0.5f) * 2f, baseY - sh), 1.2f, WithAlpha(wood, 0.24f + Hash(stake * 37) * 0.1f));
+        }
+    }
+
+    static void DrawMenuCastleTowerBartizans(MenuCastleLayout L, MenuCastlePalette p, float time)
+    {
+        ReadOnlySpan<(Vector2 origin, bool left)> towers = [(L.LeftTowerOrigin, true), (L.RightTowerOrigin, false)];
+        for (int t = 0; t < towers.Length; t++)
+        {
+            var (origin, left) = towers[t];
+            float ty = origin.Y + L.TowerH * 0.16f;
+            float bx = left ? origin.X + L.TowerW - 24f : origin.X + 4f;
+            var bart = new Rectangle(bx, ty, 26f, 32f);
+            DrawMenuCastleMiniTowerSeparationShadow(bart, 18f, p);
+            Raylib.DrawRectangleRounded(bart, 0.12f, 3, WithAlpha(p.StoneMid, 0.9f));
+            DrawMenuMasonryUltra(bart, p, 2, 40 + t * 11);
+            DrawBattlements(new Rectangle(bart.X - 2f, bart.Y - 8f, bart.Width + 4f, 8f),
+                p.StoneDark, p.StoneLight, p.StoneHi, 0.75f, time, left);
+            DrawMenuArrowSlit(new Vector2(bart.X + bart.Width * 0.5f - 3f, bart.Y + 10f), 6f, 16f, p);
+            DrawMenuCastleSculptedGargoyle(new Vector2(bart.X + (left ? bart.Width + 2f : -2f), bart.Y + 8f), !left, p, time);
+        }
+    }
+
+    static void DrawMenuCastleWallHoardings(MenuCastleLayout L, MenuCastlePalette p, float time)
+    {
+        Color timber = new Color(42, 36, 30, 255);
+        Color timberHi = new Color(58, 50, 42, 255);
+        float plankY = L.ParapetY - 12f;
+        int spans = 12;
+        for (int span = 0; span < spans; span++)
+        {
+            float sx = 32f + span * ((WindowWidth - 64f) / spans);
+            float sw = (WindowWidth - 64f) / spans - 2f;
+            if (sx + sw > L.GatehouseLeft - 8f && sx < L.GatehouseRight + 8f) continue;
+            float sway = MathF.Sin(time * 0.35f + span * 0.5f) * 0.8f;
+            var plank = new Rectangle(sx, plankY + sway, sw, 12f);
+            Raylib.DrawRectangleRounded(plank, 0.06f, 2, WithAlpha(LerpColor(timber, timberHi, Hash(span * 7) * 0.4f), 0.62f));
+            Raylib.DrawLineEx(new Vector2(plank.X, plank.Y + plank.Height), new Vector2(plank.X + plank.Width, plank.Y + plank.Height + 3f),
+                1f, WithAlpha(ForestShadow, 0.35f));
+        }
+    }
+
+    static void DrawMenuCastleInnerKeepDepth(float gateX, float gateW, float gateY, float gateH, MenuCastlePalette p, float time)
+    {
+        var keep = new Rectangle(gateX + gateW * 0.08f, gateY + gateH * 0.12f, gateW * 0.84f, gateH * 0.72f);
+        Raylib.DrawRectangleRounded(keep, 0.04f, 4, WithAlpha(p.StoneDeep, 0.82f));
+        DrawMenuMasonryUltra(keep, p, 2, 55);
+        DrawBattlements(new Rectangle(keep.X - 3f, keep.Y - 10f, keep.Width + 6f, 10f), p.StoneDark, p.StoneLight, p.StoneHi, 0.8f, time, true);
+        float pulse = MathF.Sin(time * 1.5f) * 0.5f + 0.5f;
+        for (int win = 0; win < 3; win++)
+        {
+            float wx = keep.X + keep.Width * (0.2f + win * 0.3f);
+            var window = new Rectangle(wx - 5f, keep.Y + keep.Height * 0.28f, 10f, 16f);
+            DrawWindowInteriorGlow(window, time, win * 2.1f);
+            Raylib.DrawRectangleRounded(window, 0.2f, 2, WithAlpha(p.StoneDeep, 0.9f));
+            DrawEllipticalGlow(new Vector2(wx, window.Y + window.Height * 0.5f), 8f, 12f, 0f, p.TorchWarm, 0.008f + pulse * 0.006f, 2);
+        }
+        Raylib.DrawLineEx(new Vector2(keep.X + keep.Width * 0.5f, keep.Y + keep.Height * 0.55f),
+            new Vector2(keep.X + keep.Width * 0.5f, keep.Y + keep.Height * 0.92f), 2f, WithAlpha(p.StoneHi, 0.15f));
+    }
+
+    static void DrawMenuCastlePortcullisOverlay(Vector2 gateOrigin, float width, float height, MenuCastlePalette p, float time)
+    {
+        float grateTop = gateOrigin.Y + height * 0.16f;
+        float grateBot = gateOrigin.Y + height * 0.88f;
+        float lift = MathF.Sin(time * 0.35f) * 1.5f;
+        int bars = 11;
+        for (int b = 0; b < bars; b++)
+        {
+            float bx = gateOrigin.X + 8f + b * ((width - 16f) / (bars - 1));
+            Raylib.DrawLineEx(new Vector2(bx, grateTop + lift), new Vector2(bx, grateBot + lift), 2.8f, WithAlpha(p.Iron, 0.72f));
+            Raylib.DrawLineEx(new Vector2(bx + 0.8f, grateTop + lift), new Vector2(bx + 0.8f, grateBot + lift), 0.8f, WithAlpha(p.StoneHi, 0.22f));
+        }
+        for (int r = 0; r < 6; r++)
+        {
+            float gy = grateTop + lift + r * ((grateBot - grateTop) / 5f);
+            Raylib.DrawLineEx(new Vector2(gateOrigin.X + 6f, gy), new Vector2(gateOrigin.X + width - 6f, gy), 1.6f, WithAlpha(p.Iron, 0.55f));
+        }
+        float glint = MathF.Sin(time * 3.2f) * 0.5f + 0.5f;
+        for (int g = 0; g < 5; g++)
+        {
+            if (Hash(g * 19 + (int)(time * 2f)) > 0.78f)
+            {
+                float gx = gateOrigin.X + 12f + g * ((width - 24f) / 4f);
+                float gy = grateTop + lift + Hash(g * 23) * (grateBot - grateTop);
+                Raylib.DrawCircleV(new Vector2(gx, gy), 1.4f, WithAlpha(p.StoneHi, 0.35f + glint * 0.25f));
+            }
+        }
+    }
+
+    static void DrawMenuCastleExtraChimneyStacks(MenuCastleLayout L, MenuCastlePalette p, float time)
+    {
+        ReadOnlySpan<float> cols = [0.16f, 0.84f];
+        for (int c = 0; c < cols.Length; c++)
+        {
+            float cx = L.GatehouseX + L.GatehouseW * cols[c];
+            float baseY = L.BattlementsY + 4f;
+            float chH = 18f + Hash(c * 19) * 6f;
+            Raylib.DrawRectangleRounded(new Rectangle(cx - 5f, baseY - chH, 10f, chH), 0.12f, 2, WithAlpha(p.StoneDark, 0.85f));
+            Raylib.DrawRectangle((int)(cx - 6f), (int)(baseY - chH - 4f), 12, 4, WithAlpha(p.StoneMid, 0.8f));
+            for (int w = 0; w < 4; w++)
+            {
+                float drift = time * (0.6f + c * 0.15f) + w * 0.8f;
+                Vector2 smoke = new Vector2(cx + MathF.Sin(drift) * (4f + w * 2f), baseY - chH - 6f - w * 7f);
+                DrawEllipticalGlow(smoke, 6f + w * 2f, 3f + w, Hash(c + w) * 12f, new Color(48, 46, 44, 255), 0.009f - w * 0.001f, 2);
+            }
+        }
+    }
+
+    static void DrawMenuCastleForecourtProps(MenuCastleLayout L, MenuCastlePalette p, float time)
+    {
+        float groundY = L.ForecourtY + L.ForecourtH - 4f;
+        Color barrel = new Color(46, 38, 32, 255);
+        for (int b = 0; b < 3; b++)
+        {
+            float bx = L.GateX - 52f + b * 16f;
+            Raylib.DrawRectangleRounded(new Rectangle(bx, groundY - 14f, 12f, 14f), 0.25f, 3, WithAlpha(barrel, 0.75f));
+        }
+        float cartX = L.GateX + L.GateW + 28f;
+        Raylib.DrawRectangleRounded(new Rectangle(cartX, groundY - 10f, 26f, 10f), 0.1f, 2, WithAlpha(barrel, 0.65f));
+        Raylib.DrawCircle((int)(cartX + 4f), (int)(groundY + 1f), 4, WithAlpha(p.Iron, 0.55f));
+        Raylib.DrawCircle((int)(cartX + 20f), (int)(groundY + 1f), 4, WithAlpha(p.Iron, 0.55f));
+        float wellX = L.GateX - 72f;
+        Raylib.DrawCircleV(new Vector2(wellX, groundY - 4f), 10f, WithAlpha(p.StoneDark, 0.7f));
+        Raylib.DrawCircleLines((int)wellX, (int)(groundY - 4f), 10, WithAlpha(p.StoneHi, 0.25f));
+        Raylib.DrawLineEx(new Vector2(wellX, groundY - 14f), new Vector2(wellX, groundY - 24f + MathF.Sin(time * 0.4f) * 2f), 1.2f, WithAlpha(p.StoneLight, 0.35f));
+    }
+
+    static void DrawMenuCastleRavensAndOwls(float time, float wallY)
+    {
+        ReadOnlySpan<(float x, float y, float phase, bool owl)> birds =
+        [
+            (0.12f, 0.18f, 0f, false),
+            (0.22f, 0.14f, 1.2f, false),
+            (0.78f, 0.16f, 2.4f, true),
+            (0.88f, 0.12f, 3.6f, false),
+        ];
+        for (int b = 0; b < birds.Length; b++)
+        {
+            var (xf, yf, phase, owl) = birds[b];
+            float flap = MathF.Sin(time * (owl ? 1.2f : 4.5f) + phase) * (owl ? 2f : 5f);
+            Vector2 pos = new Vector2(WindowWidth * xf + MathF.Sin(time * 0.3f + phase) * 20f, WindowHeight * yf + MathF.Cos(time * 0.25f + phase) * 8f);
+            Color body = owl ? new Color(62, 58, 52, 255) : new Color(28, 26, 24, 255);
+            Raylib.DrawCircleV(pos, owl ? 3.5f : 2.5f, WithAlpha(body, 0.65f));
+            Raylib.DrawLineEx(pos + new Vector2(-7f, -1f), pos + new Vector2(-2f - flap * 0.3f, -4f - flap * 0.2f), 1.2f, WithAlpha(body, 0.7f));
+            Raylib.DrawLineEx(pos + new Vector2(7f, -1f), pos + new Vector2(2f + flap * 0.3f, -4f - flap * 0.2f), 1.2f, WithAlpha(body, 0.7f));
+            if (owl)
+            {
+                Raylib.DrawCircleV(pos + new Vector2(-1.5f, 0f), 1f, WithAlpha(Gold, 0.45f));
+                Raylib.DrawCircleV(pos + new Vector2(1.5f, 0f), 1f, WithAlpha(Gold, 0.45f));
+            }
+        }
+        if (Hash((int)(time * 8f)) > 0.7f)
+        {
+            Vector2 raven = new Vector2(WindowWidth * 0.5f + MathF.Sin(time) * 120f, wallY - 80f + MathF.Cos(time * 0.7f) * 20f);
+            float wing = MathF.Sin(time * 5f) * 6f;
+            Raylib.DrawLineEx(raven + new Vector2(-8f, 0f), raven + new Vector2(-wing, -5f), 1.3f, WithAlpha(ForestShadow, 0.55f));
+            Raylib.DrawLineEx(raven + new Vector2(8f, 0f), raven + new Vector2(wing, -5f), 1.3f, WithAlpha(ForestShadow, 0.55f));
+            Raylib.DrawCircleV(raven, 2f, WithAlpha(ForestShadow, 0.6f));
+        }
+    }
+
+    static void DrawMenuCastleGateMurderHoleDrips(float gateX, float gateW, float gateY, float gateH, MenuCastlePalette p, float time)
+    {
+        for (int mh = 0; mh < 4; mh++)
+        {
+            float mx = gateX + gateW * (0.22f + mh * 0.18f);
+            float my = gateY + gateH * 0.06f;
+            if (Hash(mh * 31 + (int)(time * 4f)) > 0.62f)
+            {
+                float drip = (time * 2f + mh) % 1f;
+                Raylib.DrawLineEx(new Vector2(mx, my + 8f), new Vector2(mx + MathF.Sin(mh) * 2f, my + 8f + drip * 18f), 0.8f, WithAlpha(p.WetSheen, 0.15f * (1f - drip)));
+            }
+        }
+    }
+
+    static void DrawMenuCastleGlobalWeatheringNetwork(Rectangle region, MenuCastlePalette p, float time)
+    {
+        for (int crack = 0; crack < 32; crack++)
+        {
+            int seed = crack * 173 + 4400;
+            float px = region.X + Hash(seed) * region.Width;
+            float py = region.Y + Hash(seed + 5) * region.Height;
+            Vector2 cursor = new Vector2(px, py);
+            int segments = 3 + (int)(Hash(seed + 9) * 5f);
+            for (int s = 0; s < segments; s++)
+            {
+                float n = Hash(seed + s * 13);
+                float n2 = Hash(seed + s * 17);
+                Vector2 next = cursor + new Vector2((n - 0.5f) * 28f, 4f + n2 * 20f);
+                Raylib.DrawLineEx(cursor, next, 0.55f + n * 0.35f, WithAlpha(p.StoneDeep, 0.08f + Hash(seed + s) * 0.1f));
+                cursor = next;
+            }
+        }
+        for (int pat = 0; pat < 40; pat++)
+        {
+            float px = region.X + Hash(pat * 59) * region.Width;
+            float py = region.Y + Hash(pat * 61) * region.Height;
+            DrawGradientWash(new Rectangle(px, py, 4f + Hash(pat * 67) * 8f, 2f), WithAlpha(p.StoneDeep, 0.1f), WithAlpha(p.StoneMid, 0f), new Vector2(0.5f, 0.5f), 1.1f);
+        }
+    }
+
+    static void DrawMenuCastleProductionLighting(MenuCastleLayout L, MenuCastlePalette p, float time)
+    {
+        Vector2 moon = MenuCastleMoonPosition;
+        float key = Math.Clamp(1f - MathF.Abs(L.CenterX - moon.X) / (WindowWidth * 0.55f), 0.25f, 1f);
+        Raylib.DrawRectangleGradientH(0, (int)L.WallY, WindowWidth, (int)(L.WallH * 0.5f),
+            WithAlpha(p.MoonGlow, 0f), WithAlpha(p.MoonGlow, 0.025f * key));
+        var gatePool = new Rectangle(L.GateX - 16f, L.GateY + 8f, L.GateW + 32f, L.GateH * 0.4f);
+        float flicker = MathF.Sin(time * 4.2f) * 0.5f + 0.5f;
+        DrawGradientWash(gatePool, WithAlpha(p.TorchWarm, 0.04f + flicker * 0.03f), WithAlpha(ForestShadow, 0f), new Vector2(0.5f, 0.3f), 2f);
+        for (int rim = 0; rim < 8; rim++)
+        {
+            float rx = WindowWidth * (rim / 7f);
+            if (rx > L.GatehouseLeft - 20f && rx < L.GatehouseRight + 20f) continue;
+            DrawEllipticalGlow(new Vector2(rx, L.ParapetY + 2f), 34f, 4f, -3f, p.MoonGlow, 0.006f * key, 2);
+        }
+    }
+
+    static void DrawMenuCastleProductionColorGrade(float time, MenuCastlePalette p)
+    {
+        float pulse = 0.94f + MathF.Sin(time * 0.12f) * 0.03f;
+        Raylib.DrawRectangleGradientV(0, 0, WindowWidth, (int)(WindowHeight * 0.18f),
+            WithAlpha(new Color(12, 10, 14, 255), 0.18f * pulse), WithAlpha(new Color(12, 10, 14, 255), 0f));
+        Raylib.DrawRectangleGradientV(0, (int)(WindowHeight * 0.82f), WindowWidth, (int)(WindowHeight * 0.18f),
+            WithAlpha(new Color(14, 12, 10, 255), 0f), WithAlpha(new Color(18, 14, 10, 255), 0.14f * pulse));
+        Raylib.DrawRectangleGradientH(0, 0, (int)(WindowWidth * 0.08f), WindowHeight,
+            WithAlpha(new Color(8, 8, 10, 255), 0.12f), WithAlpha(new Color(8, 8, 10, 255), 0f));
+        Raylib.DrawRectangleGradientH((int)(WindowWidth * 0.92f), 0, (int)(WindowWidth * 0.08f), WindowHeight,
+            WithAlpha(new Color(8, 8, 10, 255), 0f), WithAlpha(new Color(8, 8, 10, 255), 0.12f));
+        Raylib.DrawRectangle(0, 0, WindowWidth, WindowHeight, WithAlpha(new Color(58, 52, 46, 255), 0.018f));
+    }
+
+    static void DrawMenuCastleInnerCurtainWings(MenuCastleLayout L, MenuCastlePalette p, float time)
+    {
+        float wingW = L.GateW * 0.14f;
+        float wingH = L.GateH * 0.72f;
+        float wingY = L.GateY + L.GateH * 0.12f;
+        for (int side = 0; side < 2; side++)
+        {
+            float wx = side == 0 ? L.GateX + L.GateW * 0.04f : L.GateX + L.GateW * 0.82f;
+            var wing = new Rectangle(wx, wingY, wingW, wingH);
+            Raylib.DrawRectangleRounded(wing, 0.06f, 3, WithAlpha(p.StoneDeep, 0.72f));
+            DrawMenuMasonryUltra(wing, p, 2, 90 + side * 13);
+            DrawMenuArrowSlit(new Vector2(wing.X + wing.Width * 0.5f - 3f, wing.Y + wing.Height * 0.42f), 5f, 14f, p);
+        }
+    }
+
+    static void DrawMenuCastleParapetCauldrons(MenuCastleLayout L, float time, MenuCastlePalette p)
+    {
+        ReadOnlySpan<float> positions = [0.12f, 0.30f, 0.70f, 0.88f];
+        for (int i = 0; i < positions.Length; i++)
+        {
+            float x = WindowWidth * positions[i];
+            if (x > L.GatehouseLeft - 24f && x < L.GatehouseRight + 24f) continue;
+            Vector2 pos = new Vector2(x, L.ParapetY - 16f);
+            Raylib.DrawCircleV(pos + new Vector2(0f, 4f), 7f, WithAlpha(p.StoneDark, 0.75f));
+            Raylib.DrawCircleV(pos, 5f, WithAlpha(p.Iron, 0.6f));
+            float flicker = MathF.Sin(time * 3.5f + i * 1.7f) * 0.5f + 0.5f;
+            DrawEllipticalGlow(pos + new Vector2(0f, -2f), 10f, 14f, 0f, p.TorchWarm, 0.012f + flicker * 0.01f, 2);
+        }
+    }
+
+    static void DrawMenuCastleSentrySilhouettes(MenuCastleLayout L, float time, MenuCastlePalette p)
+    {
+        ReadOnlySpan<float> positions = [0.18f, 0.82f];
+        for (int s = 0; s < positions.Length; s++)
+        {
+            float sway = MathF.Sin(time * 0.45f + s * 1.6f) * 1.5f;
+            Vector2 basePos = new Vector2(WindowWidth * positions[s], L.ParapetY - 6f + sway);
+            Raylib.DrawCircleV(basePos + new Vector2(0f, -10f), 3f, WithAlpha(ForestShadow, 0.55f));
+            Raylib.DrawLineEx(basePos + new Vector2(0f, -7f), basePos + new Vector2(0f, 4f), 2f, WithAlpha(ForestShadow, 0.5f));
+            Raylib.DrawLineEx(basePos + new Vector2(0f, -2f), basePos + new Vector2(-5f, 3f), 1.5f, WithAlpha(ForestShadow, 0.45f));
+        }
+    }
+
+    static void DrawMenuCastleBannerRigging(MenuCastleLayout L, float time, MenuCastlePalette p)
+    {
+        float poleX = L.CenterX;
+        float poleTop = L.BattlementsY + 2f;
+        float wave = MathF.Sin(time * 1.8f) * 3f;
+        Raylib.DrawLineEx(new Vector2(poleX, poleTop + 36f), new Vector2(poleX + 26f + wave, poleTop + 8f), 0.8f, WithAlpha(p.StoneLight, 0.35f));
+        Raylib.DrawLineEx(new Vector2(poleX, poleTop + 40f), new Vector2(poleX - 20f - wave * 0.7f, poleTop + 16f), 0.7f, WithAlpha(p.StoneMid, 0.3f));
+    }
+
+    static void DrawMenuCastleWetSpecularHighlights(MenuCastleLayout L, MenuCastlePalette p, float time)
+    {
+        Vector2 moon = MenuCastleMoonPosition;
+        for (int streak = 0; streak < 28; streak++)
+        {
+            float sx = Hash(streak * 47) * WindowWidth;
+            float sy = L.WallY + Hash(streak * 53) * L.WallH;
+            float face = Math.Clamp(1f - MathF.Abs(sx - moon.X) / 320f, 0.08f, 1f);
+            float tw = MathF.Sin(time * 2.2f + streak) * 0.5f + 0.5f;
+            if (tw > 0.72f)
+                Raylib.DrawLineEx(new Vector2(sx, sy), new Vector2(sx + 6f, sy - 3f), 0.9f, WithAlpha(p.WetSheen, 0.1f * face));
+        }
+        for (int cob = 0; cob < 18; cob++)
+        {
+            float cx = L.GateX - 36f + Hash(cob * 61) * (L.GateW + 72f);
+            float cy = L.ForecourtY + 2f + Hash(cob * 67) * (L.ForecourtH - 4f);
+            if (MathF.Sin(time * 3.1f + cob) > 0.65f)
+                Raylib.DrawCircleV(new Vector2(cx, cy), 0.9f, WithAlpha(p.WetSheen, 0.16f));
+        }
+    }
+
+    static void DrawMenuCastleMoonLensFlare(float time)
+    {
+        Vector2 moon = MenuCastleMoonPosition;
+        float pulse = 0.85f + MathF.Sin(time * 0.22f) * 0.15f;
+        ReadOnlySpan<float> offsets = [-180f, -95f, -42f, 38f, 112f, 210f];
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            float ox = offsets[i];
+            float size = 8f + MathF.Abs(ox) * 0.04f;
+            Color flare = LerpColor(MenuPalette.MoonGlow, new Color(255, 248, 220, 255), i / (float)(offsets.Length - 1));
+            DrawEllipticalGlow(new Vector2(moon.X + ox, moon.Y + ox * 0.02f), size, size * 0.35f, 0f, flare, 0.006f * pulse / (1f + i * 0.15f), 2);
+        }
+        DrawEllipticalGlow(moon, 42f, 42f, 0f, MenuPalette.MoonGlow, 0.035f * pulse, 4);
+    }
+
+    static void DrawMenuCastleProductionFilmGrain(float time)
+    {
+        for (int grain = 0; grain < 55; grain++)
+        {
+            if (Hash(grain + (int)(time * 24f)) > 0.78f)
+            {
+                float gx = Hash(grain * 3 + 1) * WindowWidth;
+                float gy = Hash(grain * 5 + 2) * WindowHeight;
+                Color tone = Hash(grain * 7) > 0.5f ? new Color(255, 255, 255, 255) : new Color(0, 0, 0, 255);
+                Raylib.DrawPixel((int)gx, (int)gy, WithAlpha(tone, 0.018f));
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Menu castle — ultimate beauty suite
+    // -------------------------------------------------------------------------
+
+    static void DrawMenuCastleGodRays(float time)
+    {
+        Vector2 moon = MenuCastleMoonPosition;
+        float pulse = 0.82f + MathF.Sin(time * 0.28f) * 0.18f;
+        ReadOnlySpan<(float angDeg, float len, float width)> rays =
+        [
+            (-38f, WindowHeight * 0.72f, 0.22f),
+            (-28f, WindowHeight * 0.78f, 0.28f),
+            (-18f, WindowHeight * 0.82f, 0.32f),
+            (-8f, WindowHeight * 0.76f, 0.24f),
+            (2f, WindowHeight * 0.68f, 0.18f),
+        ];
+        for (int r = 0; r < rays.Length; r++)
+        {
+            var (angDeg, len, halfAng) = rays[r];
+            float ang = angDeg * MathF.PI / 180f;
+            float drift = MathF.Sin(time * 0.12f + r * 0.9f) * 0.015f;
+            DrawLightCone(moon, ang + drift, len, halfAng, MenuPalette.MoonGlow, (0.018f + r * 0.004f) * pulse);
+        }
+    }
+
+    static void DrawMenuCastleAuroraVeil(float time)
+    {
+        int skyH = (int)(WindowHeight * 0.38f);
+        float wave = MathF.Sin(time * 0.14f) * 14f;
+        for (int band = 0; band < 4; band++)
+        {
+            float t = band / 3f;
+            float cx = WindowWidth * (0.10f + t * 0.58f) + wave;
+            float cy = skyH * (0.14f + t * 0.22f);
+            Color veil = LerpColor(new Color(10, 12, 10, 255), new Color(14, 12, 11, 255), Hash(band * 17));
+            DrawEllipticalGlow(new Vector2(cx, cy), 120f + band * 18f, 14f + band * 3f, -20f + band * 5f,
+                veil, 0.004f + Hash(band * 23) * 0.004f, 2);
+        }
+    }
+
+    static void DrawMenuCastleForestTreeline(float wallY, MenuCastlePalette p, float time)
+    {
+        Color pine = new Color(8, 12, 9, 255);
+        Color pineHi = new Color(14, 20, 14, 255);
+        float baseY = wallY - 8f;
+        for (int tree = 0; tree < 38; tree++)
+        {
+            float tx = tree * (WindowWidth / 37f) + MathF.Sin(time * 0.08f + tree * 0.4f) * 2f;
+            float h = 28f + Hash(tree * 31) * 42f;
+            float w = 10f + Hash(tree * 37) * 14f;
+            Raylib.DrawTriangle(
+                new Vector2(tx, baseY - h),
+                new Vector2(tx - w, baseY + 4f),
+                new Vector2(tx + w, baseY + 4f),
+                WithAlpha(LerpColor(pine, pineHi, Hash(tree * 41) * 0.35f), 0.55f + Hash(tree * 43) * 0.25f));
+            Raylib.DrawRectangle((int)(tx - 2f), (int)(baseY - 2f), 4, (int)(h * 0.35f), WithAlpha(Darken(pine, 0.2f), 0.5f));
+        }
+        Raylib.DrawRectangleGradientV(0, (int)(baseY - 6f), WindowWidth, 28, WithAlpha(pine, 0f), WithAlpha(pine, 0.35f));
+    }
+
+    static void DrawMenuCastleMoatReflection(float wallY, float wallH, MenuCastlePalette p, float time)
+    {
+        var moat = new Rectangle(0f, wallY + wallH - 6f, WindowWidth, 14f);
+        Raylib.DrawRectangleGradientV((int)moat.X, (int)moat.Y, (int)moat.Width, (int)moat.Height,
+            WithAlpha(new Color(4, 4, 4, 255), 0.62f), WithAlpha(new Color(2, 2, 2, 255), 0.92f));
+        Vector2 moon = MenuCastleMoonPosition;
+        float ripple = MathF.Sin(time * 1.2f) * 2f;
+        for (int r = 0; r < 8; r++)
+        {
+            float rx = WindowWidth * (0.12f + r * 0.11f) + ripple * r * 0.3f;
+            float ry = moat.Y + moat.Height * 0.45f + MathF.Sin(time * 0.9f + r) * 1.5f;
+            DrawEllipticalGlow(new Vector2(rx, ry), 18f + r * 2f, 3f, 0f, p.MoonGlow, 0.006f, 2);
+        }
+        float reflectX = moon.X * 0.35f + WindowWidth * 0.5f * 0.65f;
+        DrawEllipticalGlow(new Vector2(reflectX, moat.Y + 5f), 48f, 6f, 0f, p.MoonGlow, 0.014f + MathF.Sin(time * 0.4f) * 0.004f, 3);
+        for (int w = 0; w < 16; w++)
+        {
+            float wx = Hash(w * 19) * WindowWidth;
+            float wy = moat.Y + 3f + Hash(w * 23) * 8f;
+            Raylib.DrawLineEx(new Vector2(wx, wy), new Vector2(wx + 12f + MathF.Sin(time + w) * 4f, wy), 0.8f, WithAlpha(p.WetSheen, 0.08f));
+        }
+    }
+
+    static void DrawMenuCastleIntervalTowers(float wallY, float wallH, float gatehouseX, float gatehouseW, MenuCastlePalette p, float time)
+    {
+        float gateLeft = gatehouseX - 30f;
+        float gateRight = gatehouseX + gatehouseW + 30f;
+        ReadOnlySpan<float> offsets = [0.14f, 0.28f, 0.72f, 0.86f];
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            float ox = offsets[i];
+            float tx = WindowWidth * ox;
+            if (tx > gateLeft - 40f && tx < gateRight + 40f) continue;
+            float tw = 36f + Hash(i * 13) * 10f;
+            float th = wallH * (0.38f + Hash(i * 17) * 0.12f);
+            float ty = wallY + wallH - th - 8f;
+            var tower = new Rectangle(tx - tw / 2f, ty, tw, th);
+            DrawMenuCastleMiniTowerSeparationShadow(tower, 38f, p);
+            Raylib.DrawRectangleRounded(tower, 0.08f, 4, WithAlpha(p.StoneMid, 0.88f));
+            DrawMenuMasonryUltra(tower, p, 5, 3);
+            DrawBattlements(new Rectangle(tower.X - 2f, tower.Y - 14f, tower.Width + 4f, 14f),
+                p.StoneDark, p.StoneLight, p.StoneHi, 0.85f, time, true);
+            DrawTowerRoof(tower.X + tower.Width / 2f, tower.Y - 24f, tower.Y + 2f, tw * 0.48f, p.StoneDark, p.StoneLight, p.StoneHi);
+            DrawMenuArrowSlit(new Vector2(tower.X + tower.Width * 0.5f - 4f, tower.Y + th * 0.35f), 7f, 22f, p);
+        }
+    }
+
+    static void DrawMenuCastleChapelSpire(float gatehouseX, float gatehouseW, float gatehouseTop, float time, MenuCastlePalette p)
+    {
+        float cx = gatehouseX + gatehouseW * 0.78f;
+        float baseY = gatehouseTop + 8f;
+        var chapel = new Rectangle(cx - 24f, baseY - 52f, 48f, 52f);
+        DrawMenuCastleMiniTowerSeparationShadow(chapel, 28f, p);
+        Raylib.DrawRectangleRounded(chapel, 0.06f, 4, WithAlpha(p.StoneDeep, 0.72f));
+        DrawMenuMasonryUltra(chapel, p, 4, 3);
+        DrawTowerRoof(cx, baseY - 72f, baseY - 2f, 18f, p.StoneDark, p.StoneLight, p.StoneHi);
+        Raylib.DrawLineEx(new Vector2(cx, baseY - 72f), new Vector2(cx, baseY - 86f), 1.5f, WithAlpha(p.StoneHi, 0.45f));
+        Raylib.DrawCircleV(new Vector2(cx, baseY - 88f), 3f, WithAlpha(Gold, 0.35f + MathF.Sin(time * 1.4f) * 0.1f));
+        var rose = new Rectangle(cx - 8f, baseY - 32f, 16f, 20f);
+        Raylib.DrawCircleV(new Vector2(rose.X + rose.Width / 2f, rose.Y + rose.Height / 2f), 9f, WithAlpha(new Color(48, 28, 32, 255), 0.55f));
+        for (int petal = 0; petal < 8; petal++)
+        {
+            float ang = petal * MathF.PI / 4f;
+            Vector2 pc = new Vector2(rose.X + rose.Width / 2f + MathF.Cos(ang) * 7f, rose.Y + rose.Height / 2f + MathF.Sin(ang) * 7f);
+            Raylib.DrawCircleV(pc, 2.5f, WithAlpha(new Color(72, 38, 42, 255), 0.45f));
+        }
+        DrawEllipticalGlow(new Vector2(cx, baseY - 40f), 24f, 32f, 0f, p.TorchWarm, 0.012f + MathF.Sin(time * 1.8f) * 0.006f, 2);
+    }
+
+    static void DrawMenuCastleBarbican(MenuCastleLayout L, float time, MenuCastlePalette p)
+    {
+        var barbican = new Rectangle(L.BarbicanX, L.BarbicanY, L.BarbicanW, L.BarbicanH);
+        Raylib.DrawRectangleRounded(barbican, 0.05f, 6, WithAlpha(p.StoneDark, 0.88f));
+        DrawMenuMasonryUltra(barbican, p, 3, 9);
+        DrawQuoinStripes(barbican, p.StoneLight, p.StoneHi);
+        DrawBattlements(new Rectangle(L.BarbicanX - 4f, L.BarbicanY - 12f, L.BarbicanW + 8f, 12f),
+            p.StoneDark, p.StoneLight, p.StoneHi, 0.9f, time, true);
+        for (int side = 0; side < 2; side++)
+        {
+            float tx = side == 0 ? L.BarbicanX + 8f : L.BarbicanX + L.BarbicanW - 28f;
+            DrawMenuCastleTurret(new Vector2(tx, L.BarbicanY + 6f), 24f, L.BarbicanH - 8f, p, time, side * 2.1f);
+        }
+        var arch = new Rectangle(L.GateX + L.GateW * 0.22f, L.BarbicanY + L.BarbicanH * 0.35f, L.GateW * 0.56f, L.BarbicanH * 0.55f);
+        Raylib.DrawRectangleRounded(arch, 0.45f, 6, WithAlpha(ForestShadow, 0.75f));
+        Raylib.DrawRectangleRoundedLines(arch, 0.45f, 6, WithAlpha(p.StoneHi, 0.28f));
+    }
+
+    static void DrawMenuCastleSculptedGargoyle(Vector2 pos, bool facingLeft, MenuCastlePalette p, float time)
+    {
+        float dir = facingLeft ? -1f : 1f;
+        float drip = time > 0f ? MathF.Sin(time * 2.4f) * 0.5f : 0f;
+        Raylib.DrawCircleV(pos, 5f, WithAlpha(p.StoneDark, 0.92f));
+        Raylib.DrawCircleV(new Vector2(pos.X - dir * 2f, pos.Y - 2f), 2f, WithAlpha(p.StoneHi, 0.35f));
+        Vector2 brow = new Vector2(pos.X + dir * 2f, pos.Y - 4f);
+        Raylib.DrawLineEx(brow + new Vector2(-dir * 4f, 0f), brow + new Vector2(dir * 5f, -1f), 1.5f, WithAlpha(p.StoneDeep, 0.7f));
+        Vector2 snout = new Vector2(pos.X + dir * 11f, pos.Y + 3f);
+        Raylib.DrawTriangle(pos, new Vector2(pos.X + dir * 4f, pos.Y - 2f), snout, WithAlpha(p.StoneMid, 0.9f));
+        Raylib.DrawTriangle(snout, new Vector2(snout.X + dir * 4f, snout.Y + 2f), new Vector2(snout.X, snout.Y + 5f), WithAlpha(p.StoneDeep, 0.85f));
+        Raylib.DrawLineEx(new Vector2(pos.X - dir * 3f, pos.Y + 1f), new Vector2(pos.X - dir * 9f, pos.Y + 8f), 1.2f, WithAlpha(p.StoneDark, 0.8f));
+        Raylib.DrawLineEx(new Vector2(pos.X + dir, pos.Y + 2f), new Vector2(pos.X + dir * 7f, pos.Y + 9f), 1.2f, WithAlpha(p.StoneDark, 0.8f));
+        Raylib.DrawLineEx(new Vector2(pos.X, pos.Y + 5f), new Vector2(pos.X + dir * 2f, pos.Y + 14f), 1.5f, WithAlpha(p.StoneDeep, 0.75f));
+        for (int wing = 0; wing < 3; wing++)
+        {
+            float wy = pos.Y - 1f + wing * 3f;
+            Raylib.DrawLineEx(new Vector2(pos.X - dir * 2f, wy), new Vector2(pos.X - dir * (10f + wing * 2f), wy - 4f + wing), 1f, WithAlpha(p.StoneDark, 0.7f));
+        }
+        if (time > 0f && Hash((int)(time * 3f)) > 0.55f)
+        {
+            Raylib.DrawCircleV(new Vector2(snout.X + dir * 2f, snout.Y + 10f + drip * 4f), 1f, WithAlpha(p.WetSheen, 0.25f));
+        }
+    }
+
+    static void DrawMenuCastleStainedGlass(Rectangle window, float time, float phase)
+    {
+        float pulse = MathF.Sin(time * 1.6f + phase) * 0.5f + 0.5f;
+        Color[] panes =
+        [
+            new Color(92, 38, 48, 255),
+            new Color(48, 62, 92, 255),
+            new Color(78, 72, 38, 255),
+            new Color(52, 82, 58, 255),
+        ];
+        for (int py = 0; py < 2; py++)
+        {
+            for (int px = 0; px < 2; px++)
+            {
+                var pane = new Rectangle(
+                    window.X + 2f + px * (window.Width - 4f) / 2f,
+                    window.Y + 2f + py * (window.Height - 4f) / 2f,
+                    (window.Width - 4f) / 2f - 1f,
+                    (window.Height - 4f) / 2f - 1f);
+                Color c = panes[(px + py * 2) % panes.Length];
+                Raylib.DrawRectangleRounded(pane, 0.1f, 2, WithAlpha(c, 0.22f + pulse * 0.12f));
+            }
+        }
+        DrawEllipticalGlow(new Vector2(window.X + window.Width / 2f, window.Y + window.Height / 2f),
+            window.Width * 0.55f, window.Height * 0.5f, 0f, new Color(180, 152, 108, 255), 0.015f + pulse * 0.01f, 2);
+    }
+
+    static void DrawMenuCastleRichPennant(Vector2 anchor, float time, MenuCastlePalette p)
+    {
+        float wave = MathF.Sin(time * 2.1f) * 8f;
+        float fold = MathF.Sin(time * 3.4f + 0.6f) * 0.5f + 0.5f;
+        Vector2 tip = new Vector2(anchor.X + 52f + wave, anchor.Y + 34f + fold * 4f);
+        Vector2 mid = new Vector2(anchor.X + 28f + wave * 0.5f, anchor.Y + 42f);
+        Raylib.DrawTriangle(anchor, new Vector2(anchor.X + 2f, anchor.Y + 48f), tip + new Vector2(3f, 2f), WithAlpha(p.StoneDeep, 0.55f));
+        Raylib.DrawTriangle(anchor, mid, tip, WithAlpha(new Color(118, 42, 38, 255), 0.82f));
+        Raylib.DrawTriangle(anchor, new Vector2(anchor.X, anchor.Y + 46f), mid, WithAlpha(new Color(148, 58, 48, 255), 0.75f));
+        for (int stripe = 0; stripe < 5; stripe++)
+        {
+            float sy = anchor.Y + 6f + stripe * 7f;
+            Raylib.DrawLineEx(new Vector2(anchor.X + 4f + wave * 0.1f * stripe, sy),
+                new Vector2(tip.X - 8f + stripe * 3f, sy + 8f + stripe * 2f), 1.2f,
+                WithAlpha(Gold, 0.18f + fold * 0.12f));
+        }
+        Raylib.DrawLineEx(anchor, new Vector2(anchor.X, anchor.Y + 52f), 2.5f, WithAlpha(p.StoneHi, 0.85f));
+        Raylib.DrawCircleV(new Vector2(anchor.X, anchor.Y - 4f), 3f, WithAlpha(Gold, 0.55f));
+        for (int tassel = 0; tassel < 4; tassel++)
+            Raylib.DrawCircleV(new Vector2(tip.X - tassel * 5f, tip.Y + tassel * 2.5f), 1.8f, WithAlpha(Gold, 0.5f));
+    }
+
+    static void DrawMenuCastleEpicCobbles(Rectangle region, MenuCastlePalette p, float time, float gateCenterX, float gateW)
+    {
+        Raylib.DrawRectangle((int)region.X, (int)region.Y, (int)region.Width, (int)region.Height, p.StoneDeep);
+        int cols = 32;
+        float colW = region.Width / cols;
+        for (int row = 0; row < 4; row++)
+        {
+            float y = region.Y + row * (region.Height / 4f);
+            float offset = row % 2 == 0 ? 0f : colW * 0.5f;
+            for (int col = -1; col < cols + 1; col++)
+            {
+                float x = region.X + col * colW + offset;
+                int seed = row * 131 + col * 97;
+                float n = Hash(seed);
+                float n2 = Hash(seed + 11);
+                float inset = 0.8f + n * 1.6f;
+                var stone = new Rectangle(x + inset, y + inset, colW - inset * 2f, region.Height / 4f - inset * 2f);
+                Color face = LerpColor(p.StoneDark, p.StoneMid, n * 0.5f + 0.15f);
+                face = LerpColor(face, p.StoneLight, n2 * 0.2f);
+                Raylib.DrawRectangleRounded(stone, 0.12f + n * 0.08f, 3, WithAlpha(face, 0.72f + n2 * 0.18f));
+                Raylib.DrawLine((int)stone.X, (int)stone.Y, (int)(stone.X + stone.Width * 0.6f), (int)stone.Y, WithAlpha(p.StoneHi, 0.1f));
+                if (n > 0.78f)
+                    Raylib.DrawCircleV(new Vector2(stone.X + stone.Width * 0.5f, stone.Y + stone.Height * 0.5f), 1f, WithAlpha(p.Mortar, 0.35f));
+            }
+        }
+        float torchProx = MathF.Abs(gateCenterX - region.X) / region.Width;
+        Raylib.DrawRectangleGradientH((int)(gateCenterX - gateW * 0.6f), (int)region.Y, (int)(gateW * 1.2f), (int)region.Height,
+            WithAlpha(p.TorchWarm, 0f), WithAlpha(p.TorchWarm, 0.04f + MathF.Sin(time * 4f) * 0.02f));
+        for (int sheen = 0; sheen < 18; sheen++)
+        {
+            float sx = region.X + Hash(sheen * 29) * region.Width;
+            float sy = region.Y + 4f + Hash(sheen * 31) * (region.Height - 8f);
+            if (MathF.Sin(time * 2.8f + sheen) > 0.65f)
+                Raylib.DrawLineEx(new Vector2(sx, sy), new Vector2(sx + 10f, sy - 3f), 0.9f, WithAlpha(p.WetSheen, 0.14f));
+        }
+    }
+
+    static void DrawMenuCastleWalkwayParapetDetail(MenuCastleLayout L, MenuCastlePalette p, float time)
+    {
+        int merlons = 24;
+        for (int merlon = 0; merlon < merlons; merlon++)
+        {
+            float mx = 32f + merlon * ((WindowWidth - 64f) / (merlons - 1));
+            if (mx > L.GatehouseLeft - 12f && mx < L.GatehouseRight + 12f) continue;
+            if (merlon % 2 != 0) continue;
+            Raylib.DrawRectangle((int)mx, (int)(L.ParapetY - 10f), 10, 10, WithAlpha(p.StoneMid, 0.65f));
+            Raylib.DrawLine((int)mx, (int)(L.ParapetY - 10f), (int)(mx + 10), (int)(L.ParapetY - 10f), WithAlpha(p.StoneHi, 0.2f));
+        }
+    }
+
+    static void DrawMenuCastleFireflies(float wallY, float time)
+    {
+        for (int f = 0; f < 22; f++)
+        {
+            float life = (time * (0.35f + Hash(f * 7) * 0.5f) + f * 1.7f) % 1f;
+            float fx = Hash(f * 13) * WindowWidth + MathF.Sin(time * 0.6f + f) * 30f;
+            float fy = wallY - 40f - life * 120f + Hash(f * 17) * 30f;
+            float glow = MathF.Sin(life * MathF.PI);
+            Color fire = LerpColor(new Color(196, 220, 96, 255), new Color(148, 196, 72, 255), Hash(f * 23));
+            Raylib.DrawCircleV(new Vector2(fx, fy), 1.2f + glow, WithAlpha(fire, glow * 0.55f));
+            DrawEllipticalGlow(new Vector2(fx, fy), 6f, 4f, 0f, fire, glow * 0.025f, 2);
+        }
+    }
+
+    static void DrawMenuCastleCinematicVignette(float time)
+    {
+        float pulse = 0.92f + MathF.Sin(time * 0.15f) * 0.04f;
+        Raylib.DrawRectangleGradientV(0, 0, WindowWidth, (int)(WindowHeight * 0.22f),
+            WithAlpha(ForestShadow, 0.38f * pulse), WithAlpha(ForestShadow, 0f));
+        Raylib.DrawRectangleGradientV(0, (int)(WindowHeight * 0.78f), WindowWidth, (int)(WindowHeight * 0.22f),
+            WithAlpha(ForestShadow, 0f), WithAlpha(ForestShadow, 0.42f * pulse));
+        Raylib.DrawRectangleGradientH(0, 0, (int)(WindowWidth * 0.14f), WindowHeight,
+            WithAlpha(ForestShadow, 0.32f * pulse), WithAlpha(ForestShadow, 0f));
+        Raylib.DrawRectangleGradientH((int)(WindowWidth * 0.86f), 0, (int)(WindowWidth * 0.14f), WindowHeight,
+            WithAlpha(ForestShadow, 0f), WithAlpha(ForestShadow, 0.32f * pulse));
+    }
+
+    static void DrawMenuCastleInnerBaileyGlow(float gateX, float gateW, float gateY, float gateH, MenuCastlePalette p, float time)
+    {
+        var bailey = new Rectangle(gateX + gateW * 0.15f, gateY + gateH * 0.2f, gateW * 0.7f, gateH * 0.65f);
+        float pulse = MathF.Sin(time * 1.2f) * 0.5f + 0.5f;
+        DrawGradientWash(bailey, WithAlpha(p.TorchWarm, 0.08f + pulse * 0.06f), WithAlpha(ForestShadow, 0f), new Vector2(0.5f, 0.2f), 2.2f);
+        for (int torch = 0; torch < 3; torch++)
+        {
+            float tx = bailey.X + bailey.Width * (0.2f + torch * 0.3f);
+            DrawEllipticalGlow(new Vector2(tx, bailey.Y + bailey.Height * 0.4f), 14f, 20f, 0f, p.TorchWarm, 0.012f + pulse * 0.008f, 2);
+        }
+        Raylib.DrawLineEx(new Vector2(bailey.X + 8f, bailey.Y + bailey.Height * 0.7f),
+            new Vector2(bailey.X + bailey.Width - 8f, bailey.Y + bailey.Height * 0.7f), 1f, WithAlpha(p.StoneHi, 0.12f));
+    }
+
+    static void DrawMenuCastleUltimateBeautyPass(float time, MenuCastlePalette p, float wallY, float wallH,
+        float gateX, float gateW, float gateY, float gateH, float gatehouseX, float gatehouseW, float gatehouseY,
+        Rectangle gatehouse)
+    {
+        DrawMenuCastleInnerBaileyGlow(gateX, gateW, gateY, gateH, p, time);
+        DrawMenuCastleFireflies(wallY, time);
+        DrawMenuCastleVolumetricFog(wallY, time, p);
+
+        Vector2 moon = MenuCastleMoonPosition;
+        for (int halo = 0; halo < 6; halo++)
+        {
+            float hx = gatehouseX + gatehouseW * (0.15f + halo * 0.14f);
+            float hy = gatehouse.Y - 12f - halo * 4f;
+            float face = Math.Clamp(1f - MathF.Abs(hx - moon.X) / 280f, 0.1f, 1f);
+            DrawEllipticalGlow(new Vector2(hx, hy), 18f, 6f, -5f, p.MoonGlow, 0.008f * face, 2);
+        }
+
+        for (int lantern = 0; lantern < 5; lantern++)
+        {
+            float lx = gatehouseX + gatehouseW * (0.1f + lantern * 0.2f);
+            float ly = gatehouse.Y + gatehouse.Height * (0.55f + Hash(lantern * 9) * 0.2f);
+            float lp = MathF.Sin(time * 2f + lantern * 1.3f) * 0.5f + 0.5f;
+            DrawEllipticalGlow(new Vector2(lx, ly), 8f, 10f, 0f, p.TorchWarm, 0.01f + lp * 0.008f, 2);
+        }
+
+        DrawMenuCastleCinematicVignette(time);
+
+        for (int grain = 0; grain < 40; grain++)
+        {
+            if (Hash(grain + (int)(time * 20f)) > 0.82f)
+            {
+                float gx = Hash(grain * 3) * WindowWidth;
+                float gy = Hash(grain * 5) * WindowHeight;
+                Raylib.DrawPixel((int)gx, (int)gy, WithAlpha(Color.White, 0.025f));
+            }
+        }
+    }
+
+    static void DrawMenuCastleVolumetricFog(float wallY, float time, MenuCastlePalette p)
+    {
+        for (int layer = 0; layer < 7; layer++)
+        {
+            float y = wallY - 20f + layer * 10f;
+            float drift = MathF.Sin(time * 0.11f + layer * 0.7f) * 18f;
+            for (int wisp = 0; wisp < 8; wisp++)
+            {
+                float wx = WindowWidth * (wisp / 7f) + drift + Hash(layer * 13 + wisp) * 50f;
+                DrawEllipticalGlow(new Vector2(wx, y), 70f + layer * 8f, 12f + layer * 2f, layer * 3f,
+                    p.MoonGlow, 0.006f + layer * 0.002f, 2);
+            }
+        }
+    }
+
     static void DrawMenuCastleMoonlitWallRim(float wallY, float wallH, MenuCastlePalette p, float time)
     {
         Vector2 moon = MenuCastleMoonPosition;
@@ -17753,25 +21475,31 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         DrawGlow(crown, 28f * scale, leafC, alpha * 0.12f);
     }
 
-    // Now accepts alphaMult to reduce clutter in the menu.
     static void DrawMotes(float alphaMult = 1f) 
     {
-        float time = (float)Raylib.GetTime();
+        if (!backgroundMotes) return;
+        float time = frameTime > 0f ? frameTime : (float)Raylib.GetTime();
         foreach (Mote m in motes)
         {
             if (m.IsLeaf)
             {
-                // Leaf motes can stay at 0.55f.
                 float sway = MathF.Sin(time * 1.2f + m.Phase) * 0.3f;
                 var rect = new Rectangle(m.Position.X, m.Position.Y, m.Radius * 2.2f, m.Radius * 1.4f);
-                Raylib.DrawRectanglePro(rect, new Vector2(m.Radius, m.Radius * 0.7f), m.Spin + sway * 30f, WithAlpha(m.Color, 0.55f));
+                Raylib.DrawRectanglePro(rect, new Vector2(m.Radius, m.Radius * 0.7f), m.Spin + sway * 30f, WithAlpha(m.Color, 0.55f * alphaMult));
             }
             else
             {
-                // Reduce light motes on menu clutter
                 float twinkle = 0.3f + (MathF.Sin(time * 2.5f + m.Phase) * 0.5f + 0.5f) * 0.5f;
-                DrawGlow(m.Position, m.Radius * 2.5f, m.Color, twinkle * 0.25f * alphaMult); // use mult
-                Raylib.DrawCircleV(m.Position, m.Radius, WithAlpha(m.Color, twinkle * 0.85f * alphaMult)); // use mult
+                if (alphaMult >= 0.99f)
+                {
+                    DrawGlowFast(m.Position, m.Radius * 2.5f, m.Color, twinkle * 0.25f);
+                }
+                else
+                {
+                    Raylib.DrawCircleV(m.Position, m.Radius * 1.4f, WithAlpha(m.Color, twinkle * 0.35f * alphaMult));
+                }
+
+                Raylib.DrawCircleV(m.Position, m.Radius, WithAlpha(m.Color, twinkle * 0.85f * alphaMult));
             }
         }
     }
@@ -17779,8 +21507,8 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
     static Camera2D ComputeCamera()
     {
         float clamped = Math.Clamp(trauma, 0f, 1f);
-        float s = clamped * clamped * clamped * shakeScale;
-        float t = (float)Raylib.GetTime();
+        float s = clamped * clamped * clamped * shakeScale * (reduceMotion ? 0.35f : 1f);
+        float t = frameTime > 0f ? frameTime : (float)Raylib.GetTime();
 
         float hf = MathF.Sin(t * 61f) * 0.65f + MathF.Sin(t * 89f + 2.1f) * 0.35f;
         float hf2 = MathF.Sin(t * 71f + 1.3f) * 0.65f + MathF.Sin(t * 103f + 4.7f) * 0.35f;
@@ -17796,7 +21524,8 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             rot -= lean * d.Y * 0.5f;
         }
 
-        float zoom = 1f + zoomPunch + s * 0.065f + adrenaline * (0.022f + glowPulse * 0.014f);
+        float zoom = 1f + (reduceMotion ? zoomPunch * 0.35f : zoomPunch) + s * 0.065f
+            + (reduceMotion ? 0f : adrenaline * (0.022f + glowPulse * 0.014f));
 
         return new Camera2D
         {
@@ -17880,6 +21609,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
     {
         if (!gfxReady) return;
         Raylib.UnloadRenderTexture(sceneTarget);
+        UnloadMenuCastleBake();
         if (uhdCompositeShader.Id != 0) Raylib.UnloadShader(uhdCompositeShader);
         gfxReady = false;
         uhdShaderReady = false;
@@ -17894,8 +21624,8 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         Raylib.SetShaderValue(uhdCompositeShader, uhdLocResolution, resolution, ShaderUniformDataType.Vec2);
         Raylib.SetShaderValue(uhdCompositeShader, uhdLocTime, time, ShaderUniformDataType.Float);
         Raylib.SetShaderValue(uhdCompositeShader, uhdLocSharpen, uhdEnabled ? 0.55f : 0.35f, ShaderUniformDataType.Float);
-        Raylib.SetShaderValue(uhdCompositeShader, uhdLocVignette, 0.42f + adrenaline * 0.22f, ShaderUniformDataType.Float);
-        Raylib.SetShaderValue(uhdCompositeShader, uhdLocGrain, 0.028f + adrenaline * 0.02f, ShaderUniformDataType.Float);
+        Raylib.SetShaderValue(uhdCompositeShader, uhdLocVignette, (0.42f + adrenaline * 0.22f + nearDeathPulse * 0.35f) * vignetteScale, ShaderUniformDataType.Float);
+        Raylib.SetShaderValue(uhdCompositeShader, uhdLocGrain, (0.028f + adrenaline * 0.02f) * filmGrainScale, ShaderUniformDataType.Float);
         Raylib.SetShaderValue(uhdCompositeShader, uhdLocExposure, 1.08f + adrenaline * 0.12f, ShaderUniformDataType.Float);
         Raylib.SetShaderValue(uhdCompositeShader, uhdLocWarmth, 0.18f + adrenaline * 0.14f, ShaderUniformDataType.Float);
         Raylib.SetShaderValue(uhdCompositeShader, uhdLocAdrenaline, adrenaline, ShaderUniformDataType.Float);
@@ -17933,15 +21663,6 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         }
 
         glowPulse = MathF.Sin((float)Raylib.GetTime() * (7f + adrenaline * 8f)) * 0.5f + 0.5f;
-
-        if (state == GameState.Playing || state == GameState.GameOver)
-        {
-            motionBlurVel = Vector2.Lerp(motionBlurVel, playerVel, 1f - MathF.Exp(-11f * dt));
-        }
-        else
-        {
-            motionBlurVel = Vector2.Lerp(motionBlurVel, Vector2.Zero, 1f - MathF.Exp(-8f * dt));
-        }
 
         float dashLeanTarget = dashTimer > 0f ? 1f : 0f;
         cameraDashLean = Approach(cameraDashLean, dashLeanTarget, dashTimer > 0f ? 20f : 11f, dt);
@@ -17990,7 +21711,10 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
     {
         if (intensity <= 0.0005f || radius < 0.5f) return;
 
-        steps = Math.Clamp(steps, 12, 48);
+        steps = Math.Clamp(steps, 10, 36);
+        if (radius < 24f) steps = Math.Min(steps, 16);
+        else if (radius < 80f) steps = Math.Min(steps, 22);
+        int ringSteps = Math.Max(6, steps / 2);
         for (int i = steps - 1; i >= 0; i--)
         {
             float t0 = i / (float)steps;
@@ -17999,12 +21723,12 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             float r1 = radius * t1;
             float shell = (GlowFalloff(t0) - GlowFalloff(t1)) * intensity * alphaScale;
             if (shell <= 0.0001f) continue;
-            Raylib.DrawRing(center, r0, r1, 0f, 360f, Math.Max(12, steps), WithAlpha(color, shell));
+            Raylib.DrawRing(center, r0, r1, 0f, 360f, ringSteps, WithAlpha(color, shell));
         }
     }
 
     static void DrawRadialLight(Vector2 pos, float radius, Color color, float intensity)
-        => DrawSmoothGlowCore(pos, radius, color, intensity, 0.065f, steps: 32);
+        => DrawSmoothGlowCore(pos, radius, color, intensity, 0.065f, steps: 18);
 
     static void DrawArenaAtmosphere()
     {
@@ -18013,7 +21737,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         var arena = new Rectangle(0f, 0f, WindowWidth, WindowHeight);
 
         DrawGradientWash(arena,
-            WithAlpha(new Color(210, 198, 168, 255), 0.09f + adrenaline * 0.07f + pulse * 0.03f),
+            WithAlpha(new Color(168, 162, 152, 255), 0.06f + adrenaline * 0.05f + pulse * 0.02f),
             WithAlpha(ForestShadow, 0f),
             new Vector2(0.5f, 0.08f), 2.8f);
 
@@ -18032,17 +21756,21 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             new Vector2(0.98f, 0.5f), 2f);
 
         Vector2 keyLight = new(WindowWidth * 0.28f, WindowHeight * 0.16f);
-        DrawRadialLight(keyLight, 560f, new Color(236, 222, 194, 255), 0.11f + adrenaline * 0.07f);
-        DrawRadialLight(new Vector2(WindowWidth * 0.72f, WindowHeight * 0.22f), 420f, new Color(196, 214, 238, 255), 0.05f + adrenaline * 0.04f);
+        DrawRadialLight(keyLight, 560f, new Color(196, 188, 172, 255), 0.09f + adrenaline * 0.06f);
+        DrawRadialLight(new Vector2(WindowWidth * 0.72f, WindowHeight * 0.22f), 420f, new Color(148, 146, 140, 255), 0.04f + adrenaline * 0.03f);
 
-        int motes = 18 + (int)(adrenaline * 10f);
+        Color tod = GetTimeOfDayTint();
+        float todStr = GetTimeOfDayStrength();
+        DrawGradientWash(arena, WithAlpha(tod, todStr), WithAlpha(tod, 0f), new Vector2(0.5f, 0.2f), 2.2f);
+
+        int motes = reduceMotion ? 10 : 18 + (int)(adrenaline * 10f);
         for (int i = 0; i < motes; i++)
         {
             float h = Hash(i * 131 + 7);
             float vx = h * WindowWidth;
             float vy = (time * (28f + h * 40f) + i * 53f) % (WindowHeight + 40f) - 20f;
             float a = 0.04f + Hash(i + 19) * 0.08f + pulse * 0.03f;
-            Raylib.DrawCircleV(new Vector2(vx, vy), 1.2f + Hash(i + 3) * 1.8f, WithAlpha(new Color(228, 214, 186, 255), a));
+            Raylib.DrawCircleV(new Vector2(vx, vy), 1.2f + Hash(i + 3) * 1.8f, WithAlpha(new Color(196, 188, 172, 255), a));
         }
     }
 
@@ -18095,9 +21823,10 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawDynamicLighting()
     {
+        if (bloomScale <= 0.01f) return;
         Raylib.BeginBlendMode(BlendMode.Additive);
 
-        DrawRadialLight(playerPos, PlayerRadius * 5f, BodyBright(), 0.11f + adrenaline * 0.07f + glowPulse * 0.025f);
+        DrawRadialLight(playerPos, PlayerRadius * 5f, BodyBright(), (0.11f + adrenaline * 0.07f + glowPulse * 0.025f) * bloomScale);
 
         foreach (Enemy e in enemies)
         {
@@ -18107,7 +21836,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             bool boss = IsBoss(e.Type);
             float intensity = boss ? 0.12f : 0.05f;
             if (e.Hit > 0f) intensity += (e.Hit / 0.12f) * 0.35f;
-            DrawRadialLight(e.Position, e.Radius * grow * (boss ? 3.6f : 2.4f), Lighten(c, 0.25f), intensity * 0.75f);
+            DrawRadialLight(e.Position, e.Radius * grow * (boss ? 3.6f : 2.4f), Lighten(c, 0.25f), intensity * 0.75f * bloomScale);
         }
 
         foreach (Projectile p in projectiles)
@@ -18208,8 +21937,8 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         Vector2 origin = new(GfxS(WindowWidth * 0.5f), GfxS(-60f));
         int beams = activeEvent != FloorEventType.None ? 10 : 15;
         float spread = 0.48f + adrenaline * 0.22f;
-        Color rayHot = new Color(255, 236, 196, 255);
-        Color rayCold = new Color(196, 210, 228, 255);
+        Color rayHot = new Color(220, 206, 176, 255);
+        Color rayCold = new Color(148, 146, 140, 255);
 
         for (int i = 0; i < beams; i++)
         {
@@ -18242,18 +21971,19 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawBloomOverlay()
     {
+        if (bloomScale <= 0.01f) return;
         Raylib.BeginBlendMode(BlendMode.Additive);
 
         foreach (Particle p in particles)
         {
             if (!p.Glow || p.Alpha < 0.15f) continue;
-            DrawRadialLight(p.Position, p.Size * 7f, p.Color, p.Alpha * 0.1f);
+            DrawRadialLight(p.Position, p.Size * 7f, p.Color, p.Alpha * 0.1f * bloomScale);
         }
 
         foreach (Projectile p in projectiles)
         {
             if (p.Style == GunFireStyle.Laser) continue;
-            DrawRadialLight(p.Position, p.Size * 9f, p.Color, 0.07f + adrenaline * 0.05f);
+            DrawRadialLight(p.Position, p.Size * 9f, p.Color, (0.07f + adrenaline * 0.05f) * bloomScale);
         }
 
         Raylib.EndBlendMode();
@@ -18261,42 +21991,13 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawScreenVignette()
     {
-        float strength = 0.22f + adrenaline * 0.18f;
+        float strength = (0.22f + adrenaline * 0.18f) * vignetteScale;
         int band = WindowWidth / 3;
         Raylib.DrawRectangleGradientH(0, 0, band, WindowHeight, WithAlpha(ForestShadow, strength), WithAlpha(ForestShadow, 0f));
         Raylib.DrawRectangleGradientH(WindowWidth - band, 0, band, WindowHeight, WithAlpha(ForestShadow, 0f), WithAlpha(ForestShadow, strength));
         int vband = WindowHeight / 3;
         Raylib.DrawRectangleGradientV(0, 0, WindowWidth, vband, WithAlpha(ForestShadow, strength * 0.85f), WithAlpha(ForestShadow, 0f));
         Raylib.DrawRectangleGradientV(0, WindowHeight - vband, WindowWidth, vband, WithAlpha(ForestShadow, 0f), WithAlpha(ForestShadow, strength * 0.85f));
-    }
-
-    static void DrawLightMotionBlur()
-    {
-        if (!gfxReady) return;
-
-        float speed = motionBlurVel.Length();
-        float dashBoost = dashTimer > 0f ? 0.38f : 0f;
-        float blur = Math.Clamp(
-            speed / 680f + trauma * 0.22f + dashBoost + adrenaline * 0.14f
-            + (activeEvent != FloorEventType.None ? 0.06f : 0f),
-            0f, 0.65f);
-        if (blur < 0.035f) return;
-
-        Vector2 dir = speed > 2f ? motionBlurVel / speed : weaponAimDir;
-        if (dir.LengthSquared() < 0.001f) return;
-
-        Rectangle src = SceneSourceRect();
-        float mag = 5f + blur * 16f;
-        Vector2 off = dir * mag;
-
-        Raylib.BeginBlendMode(BlendMode.Alpha);
-        var streak = new Rectangle(off.X, off.Y, WindowWidth, WindowHeight);
-        Raylib.DrawTexturePro(sceneTarget.Texture, src, streak, Vector2.Zero, 0f,
-            WithAlpha(new Color(236, 228, 214, 255), blur * 0.36f));
-        var streakMid = new Rectangle(off.X * 0.52f, off.Y * 0.52f, WindowWidth, WindowHeight);
-        Raylib.DrawTexturePro(sceneTarget.Texture, src, streakMid, Vector2.Zero, 0f,
-            WithAlpha(Color.White, blur * 0.2f));
-        Raylib.EndBlendMode();
     }
 
     static void DrawCinematicPostProcess()
@@ -18314,13 +22015,13 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             Raylib.EndBlendMode();
         }
 
-        Color warm = WithAlpha(new Color(255, 196, 120, 255), 0.05f + adrenaline * 0.09f);
+        Color warm = WithAlpha(new Color(196, 168, 132, 255), 0.04f + adrenaline * 0.07f);
         Raylib.DrawRectangleGradientV(0, 0, WindowWidth, WindowHeight / 2 + 40,
             warm, WithAlpha(warm, 0f));
 
-        Color cool = WithAlpha(new Color(120, 148, 196, 255), 0.045f + adrenaline * 0.06f);
+        Color lowerWash = WithAlpha(new Color(8, 8, 8, 255), 0.035f + adrenaline * 0.04f);
         Raylib.DrawRectangleGradientV(0, WindowHeight / 2 - 20, WindowWidth, WindowHeight / 2 + 20,
-            WithAlpha(cool, 0f), cool);
+            WithAlpha(lowerWash, 0f), lowerWash);
 
         Raylib.DrawRectangle(0, 0, WindowWidth, WindowHeight,
             WithAlpha(ForestShadow, 0.05f + adrenaline * 0.09f));
@@ -18338,10 +22039,13 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawFilmGrain(float intensity)
     {
+        intensity *= filmGrainScale;
         if (intensity <= 0.02f) return;
+        if (reduceMotion) intensity *= 0.45f;
+        if (UhdShadersActive && uhdShaders) intensity *= 0.35f;
         float eventMul = activeEvent != FloorEventType.None ? 0.5f : 1f;
-        int grains = (int)(650f * intensity * eventMul);
-        float time = (float)Raylib.GetTime();
+        int grains = Math.Min(140, (int)(650f * intensity * eventMul));
+        float time = frameTime > 0f ? frameTime : (float)Raylib.GetTime();
         int seedBase = (int)(time * 60f);
         for (int i = 0; i < grains; i++)
         {
@@ -18399,7 +22103,6 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         Raylib.EndTextureMode();
 
         DrawSceneComposite();
-        DrawLightMotionBlur();
         DrawCinematicPostProcess();
         DrawFlash();
         DrawImpactFlash();
@@ -19028,7 +22731,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             {
                 Raylib.DrawPolyLinesEx(p, sides, r * wob + 3.5f, rot, 4f, WithAlpha(new Color(20, 16, 14, 255), 0.82f * e.Spawn));
             }
-            DrawGlow(p, r * (UhdShadersActive ? 1.55f : 1.35f), color, glowStrength * e.Spawn);
+            DrawGlowFast(p, r * (UhdShadersActive ? 1.55f : 1.35f), color, glowStrength * e.Spawn);
             Raylib.DrawPoly(p, sides, r * wob, rot, color);
             float lineW = UhdShadersActive ? 3f : 2f;
             float lineA = UhdShadersActive ? 1f : 0.9f;
@@ -19054,7 +22757,12 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
                 }
             }
 
-            if (e.Spawn >= 1f && e.Hp < e.MaxHp)
+            if (e.Elite && e.Spawn >= 0.5f)
+            {
+                Raylib.DrawRing(p, r + 6f, r + 9f, 0f, 360f, 32, WithAlpha(Gold, 0.75f * e.Spawn));
+            }
+
+            if (e.Spawn >= 1f && e.Hp < e.MaxHp && showEnemyHealthBars)
             {
                 float w = IsBoss(e.Type) ? e.Radius * 2.8f : e.Radius * 2f;
                 float barH = IsBoss(e.Type) ? 5f : 3f;
@@ -19091,6 +22799,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         DrawGlow(p, auraR, body, dashing ? 0.08f : 0.045f);
         Raylib.DrawCircleV(p, bodyR, body);
         Raylib.DrawCircleLinesV(p, bodyR, WithAlpha(bright, 0.9f));
+        if (heraldryPatterns) DrawHeraldryHatch(new Rectangle(p.X - bodyR, p.Y - bodyR, bodyR * 2f, bodyR * 2f), body, (int)(p.X + p.Y));
 
         Vector2 iris = p + accessoryRig.Forward * bodyR * 0.34f;
         Raylib.DrawCircleV(iris, bodyR * 0.36f, bright);
@@ -19405,8 +23114,16 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         public float FacingDeg => MathF.Atan2(Forward.Y, Forward.X) * 180f / MathF.PI;
     }
 
+    static readonly Vector2 AccessoryPreviewForward = Vector2.UnitY;
+
+    static PlayerAccessoryRig BuildAccessoryRig(Vector2 center, float radius, Vector2 forward)
+    {
+        if (forward.LengthSquared() < 0.001f) forward = Vector2.UnitY;
+        return new PlayerAccessoryRig(center, radius, Vector2.Normalize(forward));
+    }
+
     static PlayerAccessoryRig BuildAccessoryRig(Vector2 center, float radius)
-        => new PlayerAccessoryRig(center, radius, ResolveWeaponAimDir());
+        => BuildAccessoryRig(center, radius, ResolveWeaponAimDir());
 
     static AccessoryLayer AccessoryLayerFor(int idx) => idx switch
     {
@@ -19427,12 +23144,154 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
     static void DrawAccessory(Vector2 p, float r, float time) => DrawAccessory(p, r, time, accessoryIndex);
 
     static void DrawAccessory(Vector2 p, float r, float time, int idx)
+        => DrawAccessory(p, r, time, idx, ResolveWeaponAimDir());
+
+    static void DrawAccessory(Vector2 p, float r, float time, int idx, Vector2 forward)
     {
         if (idx == 0) return;
-        var rig = BuildAccessoryRig(p, r);
+        var rig = BuildAccessoryRig(p, r, forward);
         DrawAccessoryLayer(rig, time, idx, AccessoryLayer.Back);
         DrawAccessoryLayer(rig, time, idx, AccessoryLayer.Mid);
         DrawAccessoryLayer(rig, time, idx, AccessoryLayer.Front);
+    }
+
+    static void DrawTrinketGem(Vector2 c, float radius, Color core, float time, float glowMul = 1f)
+    {
+        float tw = MathF.Sin(time * 3.2f + c.X * 0.03f + c.Y * 0.05f) * 0.5f + 0.5f;
+        DrawGlow(c, radius * 3.6f, core, (0.05f + tw * 0.06f) * glowMul);
+        Raylib.DrawCircleV(c, radius * 1.32f, WithAlpha(Darken(core, 0.5f), 0.95f));
+        Raylib.DrawCircleV(c, radius, core);
+        Raylib.DrawCircleV(c, radius * 0.94f, WithAlpha(Lighten(core, 0.5f), 0.3f));
+        Raylib.DrawCircleV(c - new Vector2(radius * 0.32f, radius * 0.34f), radius * 0.36f, WithAlpha(Color.White, 0.55f + tw * 0.35f));
+    }
+
+    static void DrawMetalBead(Vector2 c, float radius, Color baseCol)
+    {
+        Raylib.DrawCircleV(c + new Vector2(radius * 0.16f, radius * 0.22f), radius, WithAlpha(Darken(baseCol, 0.45f), 0.92f));
+        Raylib.DrawCircleV(c, radius, baseCol);
+        Raylib.DrawCircleV(c - new Vector2(radius * 0.3f, radius * 0.32f), radius * 0.42f, WithAlpha(Lighten(baseCol, 0.55f), 0.85f));
+    }
+
+    static void DrawJeweledBand(Vector2 c, float rInner, float rOuter, float startDeg, float endDeg, int seg, Color metal, Color hi)
+    {
+        Raylib.DrawRing(c, rInner, rOuter, startDeg, endDeg, seg, Darken(metal, 0.3f));
+        Raylib.DrawRing(c, rInner, rInner + (rOuter - rInner) * 0.62f, startDeg, endDeg, seg, metal);
+        Raylib.DrawRing(c, rOuter - (rOuter - rInner) * 0.34f, rOuter, startDeg, endDeg, seg, WithAlpha(hi, 0.6f));
+    }
+
+    static void DrawCursorCrown(in PlayerAccessoryRig rig, float time, float r)
+    {
+        Color gold = new Color(214, 174, 90, 255);
+        Color goldHi = new Color(255, 234, 158, 255);
+        Color goldDark = new Color(122, 92, 42, 255);
+        Color velvet = new Color(28, 22, 48, 255);
+        Color velvetHi = new Color(58, 44, 88, 255);
+        Color ruby = new Color(196, 52, 70, 255);
+        Color sapphire = new Color(66, 104, 184, 255);
+        Color emerald = new Color(58, 152, 118, 255);
+        Color cursorGem = new Color(118, 196, 255, 255);
+        Color cursorGemHi = new Color(220, 244, 255, 255);
+        Color pearl = new Color(232, 226, 214, 255);
+        float pulse = MathF.Sin(time * 2.4f) * 0.5f + 0.5f;
+        float glint = MathF.Sin(time * 5f) * 0.5f + 0.5f;
+
+        WithAccessoryRigRotation(rig, () =>
+        {
+            Vector2 crownBase = new Vector2(0f, -r * 0.58f);
+
+            // Velvet cap interior
+            Raylib.DrawCircleSector(crownBase, r * 0.72f, 200f, 340f, 28, velvet);
+            Raylib.DrawCircleSector(crownBase, r * 0.66f, 204f, 336f, 26, Darken(velvet, 0.15f));
+            Raylib.DrawCircleSector(crownBase, r * 0.58f, 208f, 332f, 24, velvetHi);
+
+            // Lower circlet band with pearls
+            DrawJeweledBand(crownBase, r * 0.54f, r * 0.68f, 198f, 342f, 32, gold, goldHi);
+            for (int p = 0; p < 9; p++)
+            {
+                float ang = (198f + p * 18f) * MathF.PI / 180f;
+                Vector2 pearlPos = crownBase + new Vector2(MathF.Cos(ang), MathF.Sin(ang)) * r * 0.61f;
+                DrawMetalBead(pearlPos, r * 0.045f, pearl);
+            }
+
+            // Main crown body — arched gallery
+            Raylib.DrawRing(crownBase, r * 0.48f, r * 0.56f, 196f, 344f, 30, goldDark);
+            Raylib.DrawRing(crownBase, r * 0.50f, r * 0.54f, 198f, 342f, 28, gold);
+            for (int arch = 0; arch < 7; arch++)
+            {
+                float ax = -r * 0.42f + arch * r * 0.14f;
+                Raylib.DrawLineEx(new Vector2(ax, -r * 0.52f), new Vector2(ax, -r * 0.78f), 1.2f, WithAlpha(goldHi, 0.35f));
+                Raylib.DrawCircleV(new Vector2(ax, -r * 0.8f), 1.4f, WithAlpha(gold, 0.5f));
+            }
+
+            // Five royal spires
+            ReadOnlySpan<float> spireX = stackalloc float[] { -r * 0.38f, -r * 0.19f, 0f, r * 0.19f, r * 0.38f };
+            ReadOnlySpan<float> spireH = stackalloc float[] { 0.34f, 0.42f, 0.52f, 0.42f, 0.34f };
+            ReadOnlySpan<Color> spireGems = stackalloc Color[] { sapphire, emerald, cursorGem, ruby, sapphire };
+            for (int s = 0; s < 5; s++)
+            {
+                float sx = spireX[s];
+                float top = -r * (0.78f + spireH[s]);
+                var body = new Rectangle(sx - r * 0.055f, top, r * 0.11f, r * spireH[s]);
+                Raylib.DrawRectangleRounded(body, 0.2f, 4, goldDark);
+                Raylib.DrawRectangleRounded(new Rectangle(body.X + 1f, body.Y + 1f, body.Width - 2f, body.Height * 0.55f), 0.2f, 4, gold);
+                Raylib.DrawRectangleRounded(new Rectangle(body.X + 1.5f, body.Y + 1.5f, body.Width - 3f, body.Height * 0.22f), 0.25f, 3, WithAlpha(goldHi, 0.75f));
+
+                Vector2 tip = new Vector2(sx, top - r * 0.04f);
+                Raylib.DrawTriangle(
+                    tip,
+                    new Vector2(sx - r * 0.07f, top + r * 0.06f),
+                    new Vector2(sx + r * 0.07f, top + r * 0.06f),
+                    goldHi);
+                Raylib.DrawTriangle(
+                    tip + new Vector2(0f, r * 0.02f),
+                    new Vector2(sx - r * 0.04f, top + r * 0.05f),
+                    new Vector2(sx + r * 0.04f, top + r * 0.05f),
+                    gold);
+
+                Vector2 gemPos = new Vector2(sx, top + r * spireH[s] * 0.42f);
+                if (s == 2)
+                {
+                    DrawGlow(gemPos, r * 0.35f, cursorGem, 0.08f + pulse * 0.06f);
+                    Raylib.DrawCircleV(gemPos, r * 0.11f, WithAlpha(Darken(cursorGem, 0.4f), 0.95f));
+                    Raylib.DrawCircleV(gemPos, r * 0.085f, cursorGem);
+                    Raylib.DrawCircleV(gemPos - new Vector2(r * 0.028f, r * 0.03f), r * 0.032f, WithAlpha(cursorGemHi, 0.9f));
+                    for (int ray = 0; ray < 4; ray++)
+                    {
+                        float ra = time * 1.6f + ray * 1.57f;
+                        Vector2 rp = gemPos + new Vector2(MathF.Cos(ra), MathF.Sin(ra)) * r * 0.14f;
+                        Raylib.DrawLineEx(gemPos, rp, 1f, WithAlpha(cursorGemHi, 0.25f + glint * 0.2f));
+                    }
+                }
+                else
+                {
+                    DrawTrinketGem(gemPos, r * 0.07f, spireGems[s], time, 0.85f);
+                }
+            }
+
+            // Filigree scrollwork on band
+            for (int f = 0; f < 6; f++)
+            {
+                float fx = -r * 0.33f + f * r * 0.132f;
+                float fy = -r * 0.64f;
+                Raylib.DrawLineEx(new Vector2(fx - r * 0.03f, fy), new Vector2(fx, fy - r * 0.04f), 1f, WithAlpha(goldHi, 0.4f));
+                Raylib.DrawLineEx(new Vector2(fx, fy - r * 0.04f), new Vector2(fx + r * 0.03f, fy), 1f, WithAlpha(goldHi, 0.4f));
+            }
+
+            // Side fleurs
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float fx = side * r * 0.46f;
+                float fy = -r * 0.66f;
+                Raylib.DrawCircleV(new Vector2(fx, fy), r * 0.04f, gold);
+                Raylib.DrawLineEx(new Vector2(fx, fy), new Vector2(fx + side * r * 0.08f, fy - r * 0.06f), 1.2f, goldHi);
+                Raylib.DrawLineEx(new Vector2(fx, fy), new Vector2(fx + side * r * 0.08f, fy + r * 0.04f), 1.2f, goldHi);
+                DrawTrinketGem(new Vector2(fx, fy - r * 0.02f), r * 0.035f, emerald, time, 0.5f);
+            }
+
+            // Halo glow behind crown
+            DrawGlow(new Vector2(0f, -r * 0.72f), r * 1.1f, gold, 0.05f + pulse * 0.04f);
+            DrawGlow(new Vector2(0f, -r * 0.95f), r * 0.55f, cursorGem, 0.04f + glint * 0.03f);
+        });
     }
 
     static void DrawAccessoryLayer(in PlayerAccessoryRig rig, float time, int idx, AccessoryLayer layer)
@@ -19440,326 +23299,512 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         if (idx == 0 || AccessoryLayerFor(idx) != layer) return;
 
         float r = rig.Radius;
-        Color iron = new Color(118, 114, 108, 255);
-        Color ironHi = new Color(158, 152, 146, 255);
-        Color ironDark = new Color(68, 64, 62, 255);
-        Color cloth = new Color(58, 56, 62, 255);
-        Color clothHi = new Color(88, 84, 92, 255);
-        Color crimson = new Color(128, 58, 68, 255);
-        Color plum = new Color(98, 72, 108, 255);
-        Color slate = new Color(82, 92, 108, 255);
-        Color copper = new Color(138, 98, 82, 255);
-        Color bone = new Color(168, 158, 148, 255);
+        Color iron = new Color(126, 124, 122, 255);
+        Color ironHi = new Color(196, 196, 192, 255);
+        Color ironDark = new Color(56, 54, 54, 255);
+        Color steel = new Color(150, 160, 176, 255);
+        Color steelHi = new Color(224, 232, 244, 255);
+        Color steelDark = new Color(64, 72, 86, 255);
+        Color gold = new Color(214, 174, 90, 255);
+        Color goldHi = new Color(255, 234, 158, 255);
+        Color goldDark = new Color(122, 92, 42, 255);
+        Color cloth = new Color(58, 56, 66, 255);
+        Color clothHi = new Color(108, 102, 120, 255);
+        Color crimson = new Color(154, 46, 58, 255);
+        Color crimsonHi = new Color(220, 96, 100, 255);
+        Color plum = new Color(110, 74, 132, 255);
+        Color plumHi = new Color(176, 126, 200, 255);
+        Color slate = new Color(92, 104, 124, 255);
+        Color copper = new Color(176, 112, 74, 255);
+        Color copperHi = new Color(232, 168, 116, 255);
+        Color ruby = new Color(196, 52, 70, 255);
+        Color sapphire = new Color(66, 104, 184, 255);
+        Color emerald = new Color(58, 152, 118, 255);
+        Color amethyst = new Color(150, 96, 196, 255);
+        Color amber = new Color(224, 150, 70, 255);
+        Color bone = new Color(208, 198, 180, 255);
+        Color boneHi = new Color(240, 234, 220, 255);
+        Color flame = new Color(255, 176, 96, 255);
         float pulse = MathF.Sin(time * 2.2f + idx) * 0.5f + 0.5f;
+        float glint = MathF.Sin(time * 4f + idx * 1.3f) * 0.5f + 0.5f;
         float rot = rig.FacingDeg - 90f;
 
         switch (idx)
         {
-            case 1: // Iron Circlet — crown of head
+            case 1: // Iron Circlet — golden jeweled circlet
             {
                 Vector2 head = rig.At(-0.55f, 0f);
-                Raylib.DrawRing(head, r * 0.62f, r * 0.72f, rot + 200f, rot + 340f, 20, iron);
-                Raylib.DrawCircleV(rig.At(-0.92f, 0f), 2.5f, ironHi);
-                Raylib.DrawLineEx(rig.At(-0.72f, -0.35f), rig.At(-0.72f, 0.35f), 1f, ironDark);
+                DrawJeweledBand(head, r * 0.6f, r * 0.74f, rot + 196f, rot + 344f, 24, gold, goldHi);
+                DrawMetalBead(rig.At(-0.78f, -0.42f), r * 0.06f, goldHi);
+                DrawMetalBead(rig.At(-0.78f, 0.42f), r * 0.06f, goldHi);
+                DrawTrinketGem(rig.At(-0.92f, 0f), r * 0.13f, ruby, time);
                 break;
             }
-            case 2: // Hood — over skull, open toward face
+            case 2: // Hood — draped cloth with shadowed opening
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawCircleSector(new Vector2(0f, -r * 0.2f), r * 1.02f, 195f, 345f, 22, cloth);
-                    Raylib.DrawCircleSector(new Vector2(0f, -r * 0.2f), r * 0.92f, 200f, 340f, 18, Darken(cloth, 0.15f));
-                    Raylib.DrawLineEx(new Vector2(-r * 0.55f, -r * 0.15f), new Vector2(r * 0.55f, -r * 0.15f), 1.2f, clothHi);
+                    Vector2 hc = new Vector2(0f, -r * 0.2f);
+                    Raylib.DrawCircleSector(hc, r * 1.06f, 192f, 348f, 26, Darken(cloth, 0.35f));
+                    Raylib.DrawCircleSector(hc, r * 0.99f, 196f, 344f, 24, cloth);
+                    Raylib.DrawCircleSector(hc, r * 0.82f, 202f, 338f, 22, Lighten(cloth, 0.12f));
+                    Raylib.DrawCircleSector(hc, r * 0.64f, 206f, 334f, 20, new Color(16, 14, 20, 255));
+                    Raylib.DrawRing(hc, r * 0.99f, r * 1.06f, 192f, 348f, 26, WithAlpha(clothHi, 0.5f));
                 });
                 break;
-            case 3: // Pauldrons — both shoulders
+            case 3: // Pauldrons — layered steel shoulder guards
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawRectangleRounded(new Rectangle(-r * 0.92f, -r * 0.42f, r * 0.55f, r * 0.5f), 0.25f, 4, iron);
-                    Raylib.DrawRectangleRounded(new Rectangle(r * 0.37f, -r * 0.42f, r * 0.55f, r * 0.5f), 0.25f, 4, iron);
-                    Raylib.DrawLineEx(new Vector2(-r * 0.65f, -r * 0.18f), new Vector2(-r * 0.65f, r * 0.05f), 1.5f, ironHi);
-                    Raylib.DrawLineEx(new Vector2(r * 0.65f, -r * 0.18f), new Vector2(r * 0.65f, r * 0.05f), 1.5f, ironHi);
+                    for (int s = -1; s <= 1; s += 2)
+                    {
+                        float bx = s < 0 ? -r * 0.92f : r * 0.37f;
+                        var pl = new Rectangle(bx, -r * 0.42f, r * 0.55f, r * 0.5f);
+                        Raylib.DrawRectangleRounded(pl, 0.3f, 5, Darken(steel, 0.3f));
+                        Raylib.DrawRectangleRounded(new Rectangle(pl.X + 1.5f, pl.Y + 1.5f, pl.Width - 3f, pl.Height * 0.55f), 0.3f, 5, steel);
+                        Raylib.DrawRectangleRounded(new Rectangle(pl.X + 2f, pl.Y + 2f, pl.Width - 4f, pl.Height * 0.22f), 0.4f, 4, WithAlpha(steelHi, 0.7f));
+                        Raylib.DrawRectangleRoundedLines(pl, 0.3f, 5, WithAlpha(gold, 0.5f));
+                        Raylib.DrawCircleV(new Vector2(pl.X + pl.Width * 0.5f, pl.Y + pl.Height * 0.7f), 2f, goldHi);
+                    }
                 });
                 break;
-            case 4: // Cloak Pin — right shoulder clasp
+            case 4: // Cloak Pin — golden clasp with gem
             {
                 Vector2 clasp = rig.Screen(0.58f, -0.08f);
-                Raylib.DrawLineEx(rig.Screen(-0.15f, -0.35f), clasp, 2f, copper);
-                Raylib.DrawCircleV(clasp, 4f, crimson);
-                Raylib.DrawCircleV(clasp, 2f, WithAlpha(bone, 0.8f));
+                Vector2 anchor = rig.Screen(-0.15f, -0.35f);
+                Raylib.DrawLineEx(anchor, clasp, 3f, goldDark);
+                Raylib.DrawLineEx(anchor, clasp, 1.5f, goldHi);
+                Raylib.DrawCircleV(clasp, 5f, gold);
+                DrawTrinketGem(clasp, 3.2f, ruby, time);
                 break;
             }
-            case 5: // Torch Bearer — off-hand (left when facing)
-            {
-                Vector2 torch = rig.Screen(-0.78f, -0.12f);
+            case 5: // Torch Bearer — lit torch with living flame
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Vector2 local = new Vector2(-r * 0.78f, -r * 0.12f);
-                    Raylib.DrawRectangleRounded(new Rectangle(local.X - 3f, local.Y, 6f, r * 0.35f), 0.2f, 2, ironDark);
-                    Raylib.DrawCircleV(local + new Vector2(0, -4f), 4f, new Color(188, 108, 82, 255));
-                    Raylib.DrawCircleV(local + new Vector2(0, -6f), 2f, WithAlpha(bone, 0.7f + pulse * 0.3f));
+                    Raylib.DrawRectangleRounded(new Rectangle(local.X - 3f, local.Y, 6f, r * 0.4f), 0.3f, 3, new Color(74, 52, 36, 255));
+                    Raylib.DrawLineEx(local + new Vector2(0, 2f), local + new Vector2(0, r * 0.36f), 1.5f, WithAlpha(copperHi, 0.5f));
+                    Vector2 fb = local + new Vector2(0, -3f);
+                    float fl = 0.8f + pulse * 0.4f;
+                    DrawGlow(fb, r * 0.7f, flame, 0.12f + pulse * 0.06f);
+                    Raylib.DrawCircleV(fb, 5f * fl, WithAlpha(new Color(180, 70, 40, 255), 0.9f));
+                    Raylib.DrawCircleV(fb + new Vector2(0, -2f), 3.4f * fl, flame);
+                    Raylib.DrawCircleV(fb + new Vector2(0, -3.5f), 1.8f * fl, WithAlpha(boneHi, 0.9f));
                 });
                 break;
-            }
-            case 6: // Chain Coif — head mesh
+            case 6: // Chain Coif — interlocking mail
                 WithAccessoryRigRotation(rig, () =>
                 {
                     for (int row = 0; row < 4; row++)
                     {
                         float ry = -r * (0.75f - row * 0.12f);
                         for (int col = -3; col <= 3; col++)
-                            Raylib.DrawCircleV(new Vector2(col * r * 0.14f + (row % 2) * r * 0.07f, ry), 2f, WithAlpha(iron, 0.75f));
+                        {
+                            Vector2 lp = new Vector2(col * r * 0.14f + (row % 2) * r * 0.07f, ry);
+                            Raylib.DrawCircleV(lp, 2.6f, WithAlpha(steelDark, 0.85f));
+                            Raylib.DrawCircleLinesV(lp, 2.6f, WithAlpha(steelHi, 0.7f));
+                            Raylib.DrawCircleV(lp - new Vector2(0.8f, 0.8f), 0.9f, WithAlpha(steelHi, 0.6f));
+                        }
                     }
                 });
                 break;
-            case 7: // Belt Pouch — hip belt
+            case 7: // Belt Pouch — leather satchel with gold buckle
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawRectangleRounded(new Rectangle(-r * 0.42f, r * 0.18f, r * 0.84f, r * 0.38f), 0.2f, 3, new Color(72, 58, 52, 255));
-                    Raylib.DrawLineEx(new Vector2(-r * 0.42f, r * 0.28f), new Vector2(r * 0.42f, r * 0.28f), 1.5f, copper);
-                    Raylib.DrawCircleV(new Vector2(0f, r * 0.37f), 3f, iron);
+                    var belt = new Rectangle(-r * 0.5f, r * 0.16f, r * 1.0f, r * 0.14f);
+                    Raylib.DrawRectangleRounded(belt, 0.4f, 3, new Color(58, 42, 34, 255));
+                    var pouch = new Rectangle(-r * 0.22f, r * 0.22f, r * 0.44f, r * 0.4f);
+                    Raylib.DrawRectangleRounded(pouch, 0.35f, 4, new Color(96, 66, 46, 255));
+                    Raylib.DrawRectangleRounded(new Rectangle(pouch.X + 1.5f, pouch.Y + 1.5f, pouch.Width - 3f, pouch.Height * 0.4f), 0.35f, 4, new Color(126, 90, 62, 255));
+                    Raylib.DrawRectangleRoundedLines(pouch, 0.35f, 4, WithAlpha(new Color(40, 28, 22, 255), 0.8f));
+                    Raylib.DrawRectangleRounded(new Rectangle(-r * 0.07f, r * 0.2f, r * 0.14f, r * 0.1f), 0.3f, 2, gold);
+                    Raylib.DrawCircleV(new Vector2(0f, r * 0.25f), 1.6f, goldHi);
                 });
                 break;
-            case 8: // Signet Ring — off-hand fingers
+            case 8: // Signet Ring — gold band with engraved gem
             {
                 Vector2 finger = rig.Screen(-0.58f, 0.12f);
-                Raylib.DrawCircleV(finger, 5f, copper);
-                Raylib.DrawCircleLinesV(finger, 7f, ironHi);
-                Raylib.DrawCircleV(finger, 2.5f, crimson);
+                Raylib.DrawCircleV(finger, 6f, goldDark);
+                Raylib.DrawCircleV(finger, 5f, gold);
+                Raylib.DrawCircleLinesV(finger, 6.5f, WithAlpha(goldHi, 0.8f));
+                DrawTrinketGem(finger, 2.8f, sapphire, time, 0.8f);
                 break;
             }
-            case 9: // Warden Cape — back
+            case 9: // Warden Cape — flowing cape with trim
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawTriangle(new Vector2(0f, -r * 0.2f), new Vector2(-r * 0.95f, r * 0.75f), new Vector2(r * 0.95f, r * 0.75f), cloth);
-                    Raylib.DrawLineEx(new Vector2(-r * 0.7f, r * 0.1f), new Vector2(r * 0.7f, r * 0.1f), 1.2f, WithAlpha(plum, 0.55f));
+                    float sway = MathF.Sin(time * 1.6f) * r * 0.05f;
+                    Vector2 top = new Vector2(0f, -r * 0.22f);
+                    Raylib.DrawTriangle(top, new Vector2(-r * 0.98f + sway, -r * 0.95f), new Vector2(r * 0.98f + sway, -r * 0.95f), Darken(cloth, 0.28f));
+                    Raylib.DrawTriangle(top, new Vector2(-r * 0.66f + sway, -r * 0.95f), new Vector2(r * 0.66f + sway, -r * 0.95f), cloth);
+                    Raylib.DrawTriangle(top, new Vector2(-r * 0.28f + sway, -r * 0.95f), new Vector2(r * 0.16f + sway, -r * 0.95f), Lighten(cloth, 0.14f));
+                    Raylib.DrawLineEx(new Vector2(-r * 0.9f + sway, -r * 0.88f), new Vector2(r * 0.9f + sway, -r * 0.88f), 2.5f, WithAlpha(plumHi, 0.55f));
                 });
                 break;
-            case 10: // Skull Brooch — shoulder
+            case 10: // Skull Brooch — bone skull on gold mount
             {
                 Vector2 brooch = rig.Screen(0.62f, -0.05f);
-                Raylib.DrawCircleV(brooch, 6f, bone);
-                Raylib.DrawCircleV(brooch + rig.Left * 4f, 1.5f, ironDark);
-                Raylib.DrawCircleV(brooch - rig.Left * 4f, 1.5f, ironDark);
-                Raylib.DrawLineEx(brooch + rig.Forward * 7f - rig.Left * 6f, brooch + rig.Forward * 7f + rig.Left * 6f, 1f, ironDark);
+                DrawGlow(brooch, 14f, gold, 0.05f);
+                Raylib.DrawCircleV(brooch, 7.5f, goldDark);
+                Raylib.DrawCircleV(brooch, 6.5f, bone);
+                Raylib.DrawCircleV(brooch - new Vector2(2f, 2f), 2.5f, boneHi);
+                Raylib.DrawCircleV(brooch + rig.Left * 2.6f - rig.Forward * 0.5f, 1.7f, new Color(20, 16, 18, 255));
+                Raylib.DrawCircleV(brooch - rig.Left * 2.6f - rig.Forward * 0.5f, 1.7f, new Color(20, 16, 18, 255));
+                Raylib.DrawLineEx(brooch + rig.Forward * 5f - rig.Left * 3f, brooch + rig.Forward * 5f + rig.Left * 3f, 1f, ironDark);
                 break;
             }
-            case 11: // Battle Scarf — neck drape
+            case 11: // Battle Scarf — windblown scarf
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawLineEx(new Vector2(-r * 0.85f, -r * 0.05f), new Vector2(r * 0.85f, r * 0.35f), 5f, crimson);
-                    Raylib.DrawLineEx(new Vector2(-r * 0.75f, r * 0.05f), new Vector2(r * 0.75f, r * 0.45f), 3f, Darken(crimson, 0.25f));
+                    float w = MathF.Sin(time * 2.4f) * r * 0.12f;
+                    Raylib.DrawLineEx(new Vector2(-r * 0.85f, -r * 0.05f), new Vector2(r * 0.85f, r * 0.35f), 6f, Darken(crimson, 0.25f));
+                    Raylib.DrawLineEx(new Vector2(-r * 0.8f, -r * 0.02f), new Vector2(r * 0.8f, r * 0.32f), 3.5f, crimson);
+                    Raylib.DrawLineEx(new Vector2(-r * 0.78f, 0f), new Vector2(r * 0.7f, r * 0.28f), 1.2f, WithAlpha(crimsonHi, 0.7f));
+                    Raylib.DrawLineEx(new Vector2(r * 0.6f, r * 0.28f), new Vector2(r * 0.9f + w, r * 0.6f), 4f, crimson);
+                    Raylib.DrawLineEx(new Vector2(r * 0.9f + w, r * 0.6f), new Vector2(r * 0.7f + w, r * 0.85f), 3f, Darken(crimson, 0.2f));
                 });
                 break;
-            case 12: // Spiked Collar — neck ring
-                Raylib.DrawRing(rig.At(0.05f, 0f), r * 0.72f, r * 0.86f, 0f, 360f, 24, iron);
-                for (int spike = 0; spike < 8; spike++)
+            case 12: // Spiked Collar — studded steel collar
+            {
+                Vector2 cc = rig.At(0.05f, 0f);
+                Raylib.DrawRing(cc, r * 0.72f, r * 0.88f, 0f, 360f, 28, Darken(steel, 0.3f));
+                Raylib.DrawRing(cc, r * 0.72f, r * 0.8f, 0f, 360f, 28, steel);
+                for (int spike = 0; spike < 10; spike++)
                 {
-                    float ang = spike * MathF.PI * 2f / 8f;
+                    float ang = spike * MathF.PI * 2f / 10f;
                     Vector2 dir = new Vector2(MathF.Cos(ang), MathF.Sin(ang));
-                    Vector2 basePt = rig.At(0.05f, 0f) + dir * r * 0.8f;
-                    Vector2 tip = rig.At(0.05f, 0f) + dir * r * 1.02f;
-                    Raylib.DrawLineEx(basePt, tip, 2f, ironHi);
+                    Vector2 basePt = cc + dir * r * 0.8f;
+                    Vector2 tip = cc + dir * r * 1.04f;
+                    Raylib.DrawLineEx(basePt, tip, 2.4f, steel);
+                    Raylib.DrawLineEx(basePt, tip, 1f, steelHi);
+                    Raylib.DrawCircleV(tip, 1.3f, steelHi);
                 }
                 break;
-            case 13: // Lantern Hook — off-hand hip
+            }
+            case 13: // Lantern Hook — hanging lantern
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Vector2 hook = new Vector2(-r * 0.65f, -r * 0.2f);
-                    Raylib.DrawLineEx(hook + new Vector2(0, -r * 0.35f), hook, 2f, iron);
-                    Raylib.DrawRectangleRounded(new Rectangle(hook.X - 5f, hook.Y, 10f, r * 0.28f), 0.2f, 2, slate);
-                    Raylib.DrawCircleV(hook + new Vector2(0, r * 0.1f), 3f, WithAlpha(new Color(168, 108, 82, 255), 0.7f + pulse * 0.3f));
+                    Raylib.DrawLineEx(hook + new Vector2(0, -r * 0.4f), hook, 2f, iron);
+                    var box = new Rectangle(hook.X - 5f, hook.Y, 10f, r * 0.3f);
+                    Raylib.DrawRectangleRounded(box, 0.2f, 3, steelDark);
+                    Raylib.DrawRectangleRoundedLines(box, 0.2f, 3, WithAlpha(steelHi, 0.6f));
+                    Vector2 lflame = hook + new Vector2(0, r * 0.13f);
+                    DrawGlow(lflame, r * 0.5f, amber, 0.1f + pulse * 0.06f);
+                    Raylib.DrawCircleV(lflame, 2.6f + pulse, WithAlpha(amber, 0.85f));
+                    Raylib.DrawCircleV(lflame, 1.2f, boneHi);
                 });
                 break;
-            case 14: // Prayer Beads — waist
-                for (int bead = 0; bead < 7; bead++)
+            case 14: // Prayer Beads — polished rosary
+                for (int bead = 0; bead < 9; bead++)
                 {
-                    float t = bead / 6f;
-                    Vector2 bp = rig.Screen(-0.55f + t * 1.1f, 0.22f + MathF.Sin(t * MathF.PI) * 0.18f);
-                    Raylib.DrawCircleV(bp, 2.5f, bead % 3 == 0 ? plum : iron);
+                    float t = bead / 8f;
+                    Vector2 bp = rig.Screen(-0.55f + t * 1.1f, 0.22f + MathF.Sin(t * MathF.PI) * 0.2f);
+                    DrawMetalBead(bp, bead % 3 == 0 ? 2.8f : 2f, bead % 3 == 0 ? amethyst : bone);
                 }
                 break;
-            case 15: // Royal Mantle — back
+            case 15: // Royal Mantle — regal cape with ermine collar
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawTriangle(new Vector2(0f, -r * 0.35f), new Vector2(-r * 1.05f, r * 0.85f), new Vector2(r * 1.05f, r * 0.85f), plum);
-                    Raylib.DrawLineEx(new Vector2(-r * 0.5f, r * 0.2f), new Vector2(r * 0.5f, r * 0.2f), 2f, WithAlpha(crimson, 0.8f));
-                    Raylib.DrawCircleV(new Vector2(0f, -r * 0.15f), 4f, copper);
+                    float sway = MathF.Sin(time * 1.3f) * r * 0.05f;
+                    Vector2 top = new Vector2(0f, -r * 0.35f);
+                    Raylib.DrawTriangle(top, new Vector2(-r * 1.08f + sway, -r * 0.95f), new Vector2(r * 1.08f + sway, -r * 0.95f), Darken(plum, 0.3f));
+                    Raylib.DrawTriangle(top, new Vector2(-r * 0.7f + sway, -r * 0.95f), new Vector2(r * 0.7f + sway, -r * 0.95f), plum);
+                    Raylib.DrawTriangle(top, new Vector2(-r * 0.32f + sway, -r * 0.95f), new Vector2(r * 0.2f + sway, -r * 0.95f), Lighten(plum, 0.18f));
+                    Raylib.DrawLineEx(new Vector2(-r * 0.6f, -r * 0.05f), new Vector2(r * 0.6f, -r * 0.05f), 4f, boneHi);
+                    for (int sp = -2; sp <= 2; sp++)
+                        Raylib.DrawCircleV(new Vector2(sp * r * 0.22f, -r * 0.05f), 1.3f, ironDark);
+                    DrawTrinketGem(new Vector2(0f, -r * 0.18f), r * 0.1f, amethyst, time);
                 });
                 break;
-            case 16: // Black Hood
+            case 16: // Black Hood — deep shadowed cowl
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawCircleSector(new Vector2(0f, -r * 0.15f), r * 1.05f, 190f, 350f, 24, new Color(28, 26, 32, 255));
-                    Raylib.DrawLineEx(new Vector2(-r * 0.45f, -r * 0.05f), new Vector2(r * 0.45f, -r * 0.05f), 1f, WithAlpha(clothHi, 0.25f));
+                    Vector2 hc = new Vector2(0f, -r * 0.15f);
+                    Raylib.DrawCircleSector(hc, r * 1.08f, 188f, 352f, 26, new Color(14, 13, 16, 255));
+                    Raylib.DrawCircleSector(hc, r * 0.9f, 196f, 344f, 22, new Color(28, 26, 32, 255));
+                    Raylib.DrawCircleSector(hc, r * 0.66f, 204f, 336f, 20, new Color(6, 6, 8, 255));
+                    Raylib.DrawRing(hc, r * 1.0f, r * 1.08f, 188f, 352f, 26, WithAlpha(clothHi, 0.22f));
                 });
                 break;
-            case 17: // Tower Crest — top of head
+            case 17: // Tower Crest — heraldic crest
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawRectangleRounded(new Rectangle(-r * 0.35f, -r * 0.95f, r * 0.7f, r * 0.55f), 0.1f, 3, slate);
-                    Raylib.DrawTriangle(new Vector2(0f, -r * 1.15f), new Vector2(-r * 0.4f, -r * 0.72f), new Vector2(r * 0.4f, -r * 0.72f), ironHi);
-                    Raylib.DrawRectangle((int)(-r * 0.12f), (int)(-r * 0.55f), (int)(r * 0.24f), (int)(r * 0.18f), Darken(slate, 0.3f));
+                    var keep = new Rectangle(-r * 0.34f, -r * 0.96f, r * 0.68f, r * 0.5f);
+                    Raylib.DrawRectangleRounded(keep, 0.12f, 3, Darken(steel, 0.25f));
+                    Raylib.DrawRectangleRounded(new Rectangle(keep.X + 1.5f, keep.Y + 1.5f, keep.Width - 3f, keep.Height * 0.4f), 0.12f, 3, steel);
+                    for (int b = 0; b < 3; b++)
+                        Raylib.DrawRectangle((int)(keep.X + b * keep.Width / 2.6f), (int)(keep.Y - r * 0.08f), (int)(keep.Width / 5f), (int)(r * 0.1f), steel);
+                    Raylib.DrawRectangle((int)(-r * 0.1f), (int)(-r * 0.6f), (int)(r * 0.2f), (int)(r * 0.16f), new Color(16, 14, 18, 255));
+                    DrawTrinketGem(new Vector2(0f, -r * 0.52f), r * 0.07f, sapphire, time, 0.7f);
                 });
                 break;
-            case 18: // Ash Veil — face veil
+            case 18: // Ash Veil — drifting translucent veil
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawCircleSector(new Vector2(0f, -r * 0.1f), r * 0.88f, 180f, 360f, 16, WithAlpha(new Color(88, 82, 92, 255), 0.75f));
-                    for (int wisp = 0; wisp < 4; wisp++)
-                        Raylib.DrawLineEx(new Vector2(-r * 0.4f + wisp * r * 0.25f, -r * 0.5f), new Vector2(-r * 0.3f + wisp * r * 0.25f, r * 0.35f), 1f, WithAlpha(bone, 0.25f));
+                    Raylib.DrawCircleSector(new Vector2(0f, -r * 0.1f), r * 0.9f, 180f, 360f, 20, WithAlpha(new Color(120, 116, 128, 255), 0.5f));
+                    Raylib.DrawCircleSector(new Vector2(0f, -r * 0.1f), r * 0.78f, 184f, 356f, 18, WithAlpha(new Color(150, 146, 158, 255), 0.3f));
+                    for (int wisp = 0; wisp < 5; wisp++)
+                    {
+                        float wx = -r * 0.5f + wisp * r * 0.25f;
+                        float wob = MathF.Sin(time * 1.5f + wisp) * r * 0.05f;
+                        Raylib.DrawLineEx(new Vector2(wx, -r * 0.45f), new Vector2(wx + wob, r * 0.45f), 1.2f, WithAlpha(boneHi, 0.22f));
+                    }
                 });
                 break;
-            case 19: // Blood Sash — waist diagonal
+            case 19: // Blood Sash — crimson sash with medallion
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawLineEx(new Vector2(-r * 0.75f, r * 0.05f), new Vector2(r * 0.75f, r * 0.35f), 6f, Darken(crimson, 0.2f));
-                    Raylib.DrawLineEx(new Vector2(-r * 0.65f, r * 0.15f), new Vector2(r * 0.65f, r * 0.45f), 2f, crimson);
-                    Raylib.DrawCircleV(new Vector2(-r * 0.55f, r * 0.1f), 3f, copper);
+                    Raylib.DrawLineEx(new Vector2(-r * 0.78f, r * 0.0f), new Vector2(r * 0.78f, r * 0.4f), 7f, Darken(crimson, 0.25f));
+                    Raylib.DrawLineEx(new Vector2(-r * 0.72f, r * 0.05f), new Vector2(r * 0.72f, r * 0.42f), 4f, crimson);
+                    Raylib.DrawLineEx(new Vector2(-r * 0.7f, r * 0.07f), new Vector2(r * 0.6f, r * 0.36f), 1.2f, WithAlpha(crimsonHi, 0.6f));
+                    Vector2 med = new Vector2(-r * 0.5f, r * 0.12f);
+                    Raylib.DrawCircleV(med, 4.5f, gold);
+                    Raylib.DrawCircleLinesV(med, 4.5f, goldHi);
+                    DrawTrinketGem(med, 2.2f, ruby, time, 0.7f);
                 });
                 break;
-            case 20: // Iron Halo — above head
+            case 20: // Iron Halo — radiant ringed halo
             {
                 Vector2 halo = rig.At(-0.75f, 0f);
-                Raylib.DrawRing(halo, r * 0.55f, r * 0.62f, 0f, 360f, 28, iron);
-                for (int spoke = 0; spoke < 6; spoke++)
+                DrawGlow(halo, r * 1.1f, goldHi, 0.05f + glint * 0.03f);
+                Raylib.DrawRing(halo, r * 0.52f, r * 0.64f, 0f, 360f, 32, goldDark);
+                Raylib.DrawRing(halo, r * 0.54f, r * 0.6f, 0f, 360f, 32, gold);
+                for (int spoke = 0; spoke < 8; spoke++)
                 {
-                    float ang = spoke * MathF.PI / 3f;
-                    Vector2 off = new Vector2(MathF.Cos(ang) * r * 0.48f, MathF.Sin(ang) * r * 0.2f);
-                    Raylib.DrawLineEx(halo, halo + off, 1.2f, ironHi);
+                    float ang = spoke * MathF.PI / 4f + time * 0.4f;
+                    Vector2 off = new Vector2(MathF.Cos(ang) * r * 0.5f, MathF.Sin(ang) * r * 0.24f);
+                    Raylib.DrawLineEx(halo, halo + off, 1.2f, WithAlpha(goldHi, 0.6f));
                 }
                 break;
             }
-            case 21: // Keep Banner — back-mounted pole
+            case 21: // Keep Banner — waving heraldic banner
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    float wave = MathF.Sin(time * 2.5f) * r * 0.08f;
-                    Raylib.DrawLineEx(new Vector2(-r * 0.55f, -r * 0.9f), new Vector2(-r * 0.55f, r * 0.35f), 2f, ironDark);
-                    Raylib.DrawTriangle(new Vector2(-r * 0.55f, -r * 0.75f), new Vector2(-r * 0.55f, r * 0.2f), new Vector2(-r * 0.05f + wave, r * 0.05f), slate);
-                    Raylib.DrawLineEx(new Vector2(-r * 0.45f, -r * 0.35f), new Vector2(-r * 0.15f + wave * 0.5f, -r * 0.1f), 1.5f, crimson);
+                    float wave = MathF.Sin(time * 2.5f) * r * 0.1f;
+                    float wave2 = MathF.Sin(time * 2.5f + 1f) * r * 0.06f;
+                    Raylib.DrawLineEx(new Vector2(-r * 0.6f, -r * 0.95f), new Vector2(-r * 0.6f, -r * 0.15f), 2.5f, new Color(70, 52, 36, 255));
+                    Raylib.DrawCircleV(new Vector2(-r * 0.6f, -r * 0.95f), 3f, gold);
+                    Raylib.DrawTriangle(new Vector2(-r * 0.6f, -r * 0.8f), new Vector2(-r * 0.6f, -r * 0.25f), new Vector2(-r * 0.02f + wave, -r * 0.55f), Darken(crimson, 0.2f));
+                    Raylib.DrawTriangle(new Vector2(-r * 0.6f, -r * 0.8f), new Vector2(-r * 0.6f, -r * 0.55f), new Vector2(-r * 0.05f + wave2, -r * 0.72f), crimson);
+                    Raylib.DrawCircleV(new Vector2(-r * 0.32f + wave * 0.5f, -r * 0.62f), r * 0.1f, gold);
                 });
                 break;
-            case 22: // Dungeon Keys — off-hand hip
+            case 22: // Dungeon Keys — ornate key ring
             {
                 Vector2 keyRing = rig.Screen(-0.45f, 0.15f);
-                Raylib.DrawCircleV(keyRing, 5f, iron);
-                Raylib.DrawCircleLinesV(keyRing, 7f, ironHi);
-                Raylib.DrawLineEx(keyRing, rig.Screen(-0.75f, 0.45f), 2f, iron);
-                Vector2 bit = rig.Screen(-0.68f, 0.38f);
-                Raylib.DrawRectangle((int)bit.X, (int)bit.Y, 5, 8, ironHi);
+                Raylib.DrawCircleLinesV(keyRing, 6f, gold);
+                Raylib.DrawCircleLinesV(keyRing, 6.8f, WithAlpha(goldHi, 0.6f));
+                for (int k = 0; k < 2; k++)
+                {
+                    Vector2 tip = rig.Screen(-0.7f - k * 0.12f, 0.42f + k * 0.05f);
+                    Raylib.DrawLineEx(keyRing, tip, 2.2f, k == 0 ? gold : copper);
+                    Raylib.DrawLineEx(keyRing, tip, 1f, goldHi);
+                    Raylib.DrawCircleV(tip, 2.4f, k == 0 ? gold : copper);
+                    Raylib.DrawCircleV(tip, 1f, new Color(20, 18, 16, 255));
+                }
                 break;
             }
-            case 23: // Oath Band — forehead
+            case 23: // Oath Band — gilded brow band
             {
                 Vector2 brow = rig.At(-0.45f, 0f);
-                Raylib.DrawRing(brow, r * 0.48f, r * 0.56f, rot + 210f, rot + 330f, 16, copper);
-                Raylib.DrawCircleV(rig.At(-0.78f, 0f), 3f, bone);
+                DrawJeweledBand(brow, r * 0.46f, r * 0.58f, rot + 208f, rot + 332f, 18, gold, goldHi);
+                DrawTrinketGem(rig.At(-0.78f, 0f), r * 0.1f, emerald, time);
                 break;
             }
-            case 24: // Siege Gloves — both hands
+            case 24: // Siege Gloves — plated gauntlets
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawRectangleRounded(new Rectangle(-r * 0.82f, -r * 0.15f, r * 0.38f, r * 0.42f), 0.2f, 3, iron);
-                    Raylib.DrawRectangleRounded(new Rectangle(r * 0.44f, -r * 0.15f, r * 0.38f, r * 0.42f), 0.2f, 3, iron);
-                    Raylib.DrawLineEx(new Vector2(-r * 0.63f, r * 0.05f), new Vector2(-r * 0.63f, r * 0.18f), 1.2f, ironHi);
+                    for (int s = -1; s <= 1; s += 2)
+                    {
+                        float bx = s < 0 ? -r * 0.82f : r * 0.44f;
+                        var gl = new Rectangle(bx, -r * 0.15f, r * 0.38f, r * 0.44f);
+                        Raylib.DrawRectangleRounded(gl, 0.3f, 4, Darken(steel, 0.3f));
+                        Raylib.DrawRectangleRounded(new Rectangle(gl.X + 1.5f, gl.Y + 1.5f, gl.Width - 3f, gl.Height * 0.4f), 0.3f, 4, steel);
+                        for (int k = 0; k < 3; k++)
+                            Raylib.DrawLineEx(new Vector2(gl.X + 2f, gl.Y + gl.Height * (0.45f + k * 0.18f)), new Vector2(gl.X + gl.Width - 2f, gl.Y + gl.Height * (0.45f + k * 0.18f)), 1f, WithAlpha(steelDark, 0.7f));
+                        Raylib.DrawCircleV(new Vector2(gl.X + gl.Width * 0.5f, gl.Y + 2.5f), 1.4f, goldHi);
+                    }
                 });
                 break;
-            case 25: // Grave Shawl — back
+            case 25: // Grave Shawl — tattered funeral shawl
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawTriangle(new Vector2(0f, -r * 0.25f), new Vector2(-r * 0.85f, r * 0.7f), new Vector2(r * 0.85f, r * 0.7f), new Color(48, 46, 54, 255));
+                    Vector2 top = new Vector2(0f, -r * 0.25f);
+                    Raylib.DrawTriangle(top, new Vector2(-r * 0.88f, -r * 0.85f), new Vector2(r * 0.88f, -r * 0.85f), new Color(38, 36, 44, 255));
+                    Raylib.DrawTriangle(top, new Vector2(-r * 0.55f, -r * 0.85f), new Vector2(r * 0.55f, -r * 0.85f), new Color(54, 52, 62, 255));
+                    for (int frill = 0; frill < 6; frill++)
+                    {
+                        float fx = -r * 0.7f + frill * r * 0.28f;
+                        Raylib.DrawLineEx(new Vector2(fx, -r * 0.82f), new Vector2(fx + r * 0.04f, -r * 0.96f), 2f, new Color(38, 36, 44, 255));
+                    }
                     for (int stitch = 0; stitch < 5; stitch++)
-                        Raylib.DrawCircleV(new Vector2(-r * 0.35f + stitch * r * 0.18f, r * 0.35f), 1.5f, WithAlpha(bone, 0.45f));
+                        Raylib.DrawCircleV(new Vector2(-r * 0.35f + stitch * r * 0.18f, -r * 0.35f), 1.5f, WithAlpha(boneHi, 0.5f));
                 });
                 break;
-            case 26: // Rampart Pin — chest
+            case 26: // Rampart Pin — shield brooch
             {
                 Vector2 pin = rig.Screen(0.62f, 0.05f);
-                Raylib.DrawLineEx(rig.Screen(0.2f, -0.25f), pin, 2f, iron);
-                Raylib.DrawTriangle(pin, pin - rig.Left * r * 0.14f + rig.Forward * r * 0.13f, pin + rig.Left * r * 0.1f + rig.Forward * r * 0.13f, slate);
+                Raylib.DrawLineEx(rig.Screen(0.2f, -0.25f), pin, 2f, goldDark);
+                DrawGlow(pin, 12f, steel, 0.04f);
+                Raylib.DrawCircleV(pin, 5f, Darken(steel, 0.3f));
+                Raylib.DrawCircleV(pin, 4f, steel);
+                Raylib.DrawCircleV(pin - new Vector2(1.4f, 1.4f), 1.6f, steelHi);
+                Raylib.DrawLineEx(pin - rig.Forward * 3f, pin + rig.Forward * 3f, 1f, WithAlpha(gold, 0.7f));
                 break;
             }
-            case 27: // Lord's Mask — over face
+            case 27: // Lord's Mask — gilded visage
             {
                 Vector2 face = rig.At(0.15f, 0f);
                 Vector2 faceLeft = face - rig.Left * r * 0.18f;
                 Vector2 faceRight = face + rig.Left * r * 0.18f;
-                Raylib.DrawEllipse((int)face.X, (int)face.Y, (int)(r * 0.55f), (int)(r * 0.42f), ironDark);
-                Raylib.DrawEllipse((int)faceLeft.X, (int)faceLeft.Y, 4, 6, new Color(12, 10, 14, 255));
-                Raylib.DrawEllipse((int)faceRight.X, (int)faceRight.Y, 4, 6, new Color(12, 10, 14, 255));
-                Raylib.DrawLineEx(faceLeft + rig.Forward * r * 0.16f, faceRight + rig.Forward * r * 0.16f, 1.5f, iron);
+                Vector2 sheen = face - rig.Forward * r * 0.12f;
+                Raylib.DrawEllipse((int)face.X, (int)face.Y, (int)(r * 0.56f), (int)(r * 0.44f), Darken(gold, 0.35f));
+                Raylib.DrawEllipse((int)sheen.X, (int)sheen.Y, (int)(r * 0.46f), (int)(r * 0.3f), gold);
+                Raylib.DrawEllipse((int)faceLeft.X, (int)faceLeft.Y, 4, 6, new Color(10, 8, 12, 255));
+                Raylib.DrawEllipse((int)faceRight.X, (int)faceRight.Y, 4, 6, new Color(10, 8, 12, 255));
+                Raylib.DrawLineEx(faceLeft + rig.Forward * r * 0.18f, faceRight + rig.Forward * r * 0.18f, 1.5f, goldHi);
+                Raylib.DrawCircleV(face + rig.Forward * r * 0.05f, 1.4f, goldHi);
                 break;
             }
-            case 28: // Bell Cord — chest to waist
+            case 28: // Bell Cord — golden bell on cord
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawLineEx(new Vector2(0f, -r * 0.85f), new Vector2(0f, r * 0.15f), 2f, cloth);
-                    Raylib.DrawCircleV(new Vector2(0f, r * 0.22f), 5f, copper);
-                    Raylib.DrawCircleV(new Vector2(0f, -r * 0.88f), 3f, ironHi);
+                    Raylib.DrawLineEx(new Vector2(0f, -r * 0.85f), new Vector2(0f, r * 0.12f), 2f, new Color(72, 58, 46, 255));
+                    Raylib.DrawCircleV(new Vector2(0f, -r * 0.88f), 3f, goldHi);
+                    Vector2 bell = new Vector2(0f, r * 0.2f);
+                    DrawGlow(bell, r * 0.4f, gold, 0.04f + glint * 0.03f);
+                    Raylib.DrawCircleV(bell, 5f, goldDark);
+                    Raylib.DrawCircleV(bell - new Vector2(0, 1f), 4f, gold);
+                    Raylib.DrawCircleV(bell - new Vector2(1.4f, 2f), 1.5f, goldHi);
+                    Raylib.DrawCircleV(bell + new Vector2(0, r * 0.07f), 1.6f, goldDark);
                 });
                 break;
-            case 29: // Stone Rosary — waist loop
-                for (int bead = 0; bead < 8; bead++)
+            case 29: // Stone Rosary — carved bead loop
+                for (int bead = 0; bead < 9; bead++)
                 {
-                    float ang = bead * 0.55f - 1.2f;
+                    float ang = bead * 0.5f - 1.1f;
                     Vector2 bp = rig.At(0.15f + MathF.Sin(ang) * 0.35f, MathF.Cos(ang) * 0.55f);
-                    Raylib.DrawCircleV(bp, bead % 4 == 0 ? 3.5f : 2.5f, bead % 4 == 0 ? slate : bone);
+                    if (bead == 4) DrawTrinketGem(bp, 3f, sapphire, time, 0.7f);
+                    else DrawMetalBead(bp, bead % 2 == 0 ? 3f : 2.2f, bead % 2 == 0 ? slate : bone);
                 }
                 break;
-            case 30: // War Paint — face markings
+            case 30: // War Paint — fierce face markings
             {
                 Vector2 face = rig.At(0.12f, 0f);
                 Vector2 fl = face - rig.Left * r * 0.35f;
                 Vector2 fr = face + rig.Left * r * 0.35f;
-                Raylib.DrawLineEx(fl + rig.Forward * r * 0.23f, face + rig.Forward * r * 0.05f, 3f, crimson);
-                Raylib.DrawLineEx(fr + rig.Forward * r * 0.23f, face + rig.Forward * r * 0.05f, 3f, crimson);
-                Raylib.DrawLineEx(face - rig.Left * r * 0.2f + rig.Forward * r * 0.05f, face + rig.Left * r * 0.2f + rig.Forward * r * 0.05f, 2f, Darken(crimson, 0.3f));
+                Color war = new Color(178, 40, 44, 255);
+                Raylib.DrawLineEx(fl + rig.Forward * r * 0.25f, face + rig.Forward * r * 0.05f, 4f, Darken(war, 0.25f));
+                Raylib.DrawLineEx(fl + rig.Forward * r * 0.25f, face + rig.Forward * r * 0.05f, 2f, crimsonHi);
+                Raylib.DrawLineEx(fr + rig.Forward * r * 0.25f, face + rig.Forward * r * 0.05f, 4f, Darken(war, 0.25f));
+                Raylib.DrawLineEx(fr + rig.Forward * r * 0.25f, face + rig.Forward * r * 0.05f, 2f, crimsonHi);
+                Raylib.DrawLineEx(face - rig.Left * r * 0.22f + rig.Forward * r * 0.06f, face + rig.Left * r * 0.22f + rig.Forward * r * 0.06f, 2.5f, war);
                 break;
             }
-            case 31: // Crown Fragments — broken crown on head
+            case 31: // Crown Fragments — shattered gold crown
                 WithAccessoryRigRotation(rig, () =>
                 {
+                    DrawGlow(new Vector2(0f, -r * 0.7f), r * 0.8f, gold, 0.04f);
                     for (int frag = 0; frag < 3; frag++)
                     {
                         float fx = -r * 0.35f + frag * r * 0.35f;
-                        Raylib.DrawTriangle(new Vector2(fx, -r * 0.85f), new Vector2(fx - r * 0.12f, -r * 0.55f), new Vector2(fx + r * 0.12f, -r * 0.55f), copper);
+                        Raylib.DrawTriangle(new Vector2(fx, -r * 0.9f), new Vector2(fx - r * 0.12f, -r * 0.52f), new Vector2(fx + r * 0.12f, -r * 0.52f), gold);
+                        Raylib.DrawTriangle(new Vector2(fx, -r * 0.82f), new Vector2(fx - r * 0.05f, -r * 0.56f), new Vector2(fx + r * 0.05f, -r * 0.56f), goldHi);
+                        DrawTrinketGem(new Vector2(fx, -r * 0.6f), r * 0.05f, frag == 1 ? ruby : sapphire, time, 0.6f);
                     }
                 });
                 break;
-            case 32: // Bastion Wings — back
+            case 32: // Bastion Wings — steel angel wings
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawTriangle(new Vector2(-r * 0.2f, -r * 0.15f), new Vector2(-r * 1.05f, r * 0.15f), new Vector2(-r * 0.25f, r * 0.45f), slate);
-                    Raylib.DrawTriangle(new Vector2(r * 0.2f, -r * 0.15f), new Vector2(r * 1.05f, r * 0.15f), new Vector2(r * 0.25f, r * 0.45f), slate);
-                    Raylib.DrawLineEx(new Vector2(-r * 0.75f, r * 0.05f), new Vector2(r * 0.75f, r * 0.05f), 1.5f, ironHi);
+                    float flap = MathF.Sin(time * 2f) * r * 0.06f;
+                    for (int s = -1; s <= 1; s += 2)
+                    {
+                        float dir = s;
+                        Raylib.DrawTriangle(
+                            new Vector2(dir * r * 0.2f, -r * 0.15f),
+                            new Vector2(dir * r * 1.1f, -r * 0.1f - flap),
+                            new Vector2(dir * r * 0.28f, -r * 0.55f),
+                            Darken(steel, 0.25f));
+                        Raylib.DrawTriangle(
+                            new Vector2(dir * r * 0.22f, -r * 0.05f),
+                            new Vector2(dir * r * 0.85f, -r * 0.12f - flap),
+                            new Vector2(dir * r * 0.28f, -r * 0.48f),
+                            steel);
+                        for (int f = 0; f < 3; f++)
+                            Raylib.DrawLineEx(new Vector2(dir * r * 0.3f, -r * (0.1f + f * 0.1f)), new Vector2(dir * r * (0.7f - f * 0.12f), -r * (0.1f + f * 0.12f) - flap), 1f, WithAlpha(steelHi, 0.5f));
+                    }
                 });
                 break;
-            case 33: // Crypt Lantern — off-hand
+            case 33: // Crypt Lantern — spectral lantern
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Vector2 lantern = new Vector2(-r * 0.55f, -r * 0.25f);
-                    Raylib.DrawRectangleRounded(new Rectangle(lantern.X - 6f, lantern.Y - r * 0.2f, 12f, r * 0.4f), 0.15f, 2, ironDark);
-                    Raylib.DrawCircleV(lantern, 4f, WithAlpha(new Color(148, 88, 108, 255), 0.65f + pulse * 0.35f));
-                    Raylib.DrawLineEx(lantern + new Vector2(0, -r * 0.22f), lantern + new Vector2(0, -r * 0.42f), 1.5f, iron);
+                    Raylib.DrawLineEx(lantern + new Vector2(0, -r * 0.2f), lantern + new Vector2(0, -r * 0.42f), 1.5f, iron);
+                    var frame = new Rectangle(lantern.X - 6f, lantern.Y - r * 0.2f, 12f, r * 0.4f);
+                    Raylib.DrawRectangleRounded(frame, 0.18f, 3, new Color(30, 36, 32, 255));
+                    DrawGlow(lantern, r * 0.7f, new Color(90, 220, 150, 255), 0.1f + pulse * 0.07f);
+                    Raylib.DrawCircleV(lantern, 4f, WithAlpha(new Color(120, 240, 170, 255), 0.7f + pulse * 0.3f));
+                    Raylib.DrawCircleV(lantern, 1.6f, WithAlpha(boneHi, 0.85f));
+                    Raylib.DrawRectangleRoundedLines(frame, 0.18f, 3, WithAlpha(new Color(140, 200, 160, 255), 0.5f));
                 });
                 break;
-            case 34: // Throne Chain — chest chain
+            case 34: // Throne Chain — gold chain with pendant
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    for (int link = 0; link < 5; link++)
+                    for (int link = 0; link < 6; link++)
                     {
-                        float ly = -r * 0.65f + link * r * 0.18f;
-                        Raylib.DrawEllipse(0, (int)ly, 5, 3, iron);
+                        float lx = -r * 0.5f + link * r * 0.2f;
+                        float ly = -r * 0.5f + MathF.Abs(link - 2.5f) * r * 0.12f;
+                        Raylib.DrawCircleV(new Vector2(lx, ly), 3f, goldDark);
+                        Raylib.DrawCircleV(new Vector2(lx, ly), 2.2f, gold);
+                        Raylib.DrawCircleV(new Vector2(lx - 0.7f, ly - 0.7f), 0.9f, goldHi);
                     }
-                    Raylib.DrawCircleV(new Vector2(0f, r * 0.15f), 5f, copper);
+                    Vector2 pend = new Vector2(0f, r * 0.05f);
+                    Raylib.DrawLineEx(new Vector2(0f, -r * 0.2f), pend, 1.5f, gold);
+                    Raylib.DrawCircleV(pend, 5f, gold);
+                    DrawTrinketGem(pend, 3f, amethyst, time);
                 });
                 break;
-            case 35: // Last Oath — scroll on chest
+            case 35: // Last Oath — sealed vow scroll
                 WithAccessoryRigRotation(rig, () =>
                 {
-                    Raylib.DrawRectangleRounded(new Rectangle(-r * 0.12f, -r * 0.75f, r * 0.24f, r * 0.95f), 0.1f, 2, bone);
-                    Raylib.DrawLineEx(new Vector2(-r * 0.05f, -r * 0.55f), new Vector2(r * 0.05f, -r * 0.15f), 1f, ironDark);
-                    Raylib.DrawLineEx(new Vector2(-r * 0.04f, -r * 0.35f), new Vector2(r * 0.06f, -r * 0.05f), 1f, ironDark);
-                    Raylib.DrawCircleV(new Vector2(0f, -r * 0.82f), 3f, crimson);
+                    var scroll = new Rectangle(-r * 0.13f, -r * 0.75f, r * 0.26f, r * 0.95f);
+                    Raylib.DrawRectangleRounded(scroll, 0.12f, 3, bone);
+                    Raylib.DrawRectangleRounded(new Rectangle(scroll.X, scroll.Y, scroll.Width * 0.4f, scroll.Height), 0.12f, 3, boneHi);
+                    Raylib.DrawCircleV(new Vector2(0f, -r * 0.78f), 3.2f, new Color(150, 140, 120, 255));
+                    Raylib.DrawCircleV(new Vector2(0f, r * 0.2f), 3.2f, new Color(150, 140, 120, 255));
+                    for (int ln = 0; ln < 4; ln++)
+                        Raylib.DrawLineEx(new Vector2(-r * 0.07f, -r * 0.5f + ln * r * 0.16f), new Vector2(r * 0.07f, -r * 0.5f + ln * r * 0.16f), 1f, WithAlpha(ironDark, 0.6f));
+                    Vector2 seal = new Vector2(0f, -r * 0.15f);
+                    DrawGlow(seal, r * 0.3f, crimson, 0.05f);
+                    Raylib.DrawCircleV(seal, 3.5f, crimson);
+                    Raylib.DrawCircleV(seal, 1.6f, crimsonHi);
+                });
+                break;
+            case 36: // Cursor Crown — secret regal diadem
+                DrawCursorCrown(rig, time, r);
+                break;
+            case 37: // Storm Glass — crystalline foresight orb
+                WithAccessoryRigRotation(rig, () =>
+                {
+                    Vector2 orb = new Vector2(r * 0.42f, -r * 0.08f);
+                    Color stormCore = new Color(72, 148, 220, 255);
+                    Color stormHi = new Color(168, 220, 255, 255);
+                    Color stormDeep = new Color(28, 52, 96, 255);
+                    DrawGlow(orb, r * 0.95f, stormCore, 0.08f + pulse * 0.06f);
+                    Raylib.DrawCircleV(orb, r * 0.28f, WithAlpha(stormDeep, 0.92f));
+                    Raylib.DrawCircleV(orb, r * 0.24f, WithAlpha(stormCore, 0.55f));
+                    Raylib.DrawCircleV(orb, r * 0.2f, WithAlpha(stormHi, 0.35f + glint * 0.2f));
+                    for (int arc = 0; arc < 3; arc++)
+                    {
+                        float a0 = time * 1.8f + arc * 2.1f;
+                        Vector2 p0 = orb + new Vector2(MathF.Cos(a0), MathF.Sin(a0)) * r * 0.08f;
+                        Vector2 p1 = orb + new Vector2(MathF.Cos(a0 + 1.4f), MathF.Sin(a0 + 1.4f)) * r * 0.16f;
+                        Raylib.DrawLineEx(p0, p1, 1.2f, WithAlpha(stormHi, 0.45f + glint * 0.35f));
+                    }
+                    Raylib.DrawCircleV(orb + new Vector2(-r * 0.06f, -r * 0.07f), r * 0.05f, WithAlpha(Color.White, 0.55f + glint * 0.35f));
+                    Raylib.DrawLineEx(orb + new Vector2(0f, r * 0.18f), orb + new Vector2(0f, r * 0.34f), 1.4f, WithAlpha(steel, 0.75f));
+                    Raylib.DrawCircleV(orb + new Vector2(0f, r * 0.36f), 2.2f, steelHi);
                 });
                 break;
             default:
@@ -19769,6 +23814,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawFloaters()
     {
+        if (!floatingTextEnabled) return;
         foreach (FloatingText f in floaters)
         {
             float age = f.MaxLife - f.Life;
@@ -19840,7 +23886,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         Vector2 center = anchor + baseOffset + velOffset;
         float speedTilt = Math.Clamp(speed * 0.0016f, 0f, 0.22f);
 
-        const int layers = 6;
+        int layers = reduceMotion ? 2 : 4;
         for (int i = layers - 1; i >= 0; i--)
         {
             float t = (i + 1) / (float)layers;
@@ -19853,38 +23899,39 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawVignette()
     {
+        float vigMult = vignetteScale * (reduceMotion ? 0.72f : 1f);
         if (state == GameState.MainMenu)
         {
             int side = 110;
-            Raylib.DrawRectangle(0, 0, WindowWidth, WindowHeight, WithAlpha(new Color(2, 2, 4, 255), 0.28f));
-            Color edge = WithAlpha(ForestShadow, 0.28f);
+            Raylib.DrawRectangle(0, 0, WindowWidth, WindowHeight, WithAlpha(new Color(2, 2, 4, 255), 0.28f * vigMult));
+            Color edge = WithAlpha(ForestShadow, 0.28f * vigMult);
             Raylib.DrawRectangleGradientV(0, WindowHeight - side, WindowWidth, side, WithAlpha(ForestShadow, 0f), edge);
-            Raylib.DrawRectangleGradientH(0, 0, side, WindowHeight, WithAlpha(ForestShadow, 0.22f), WithAlpha(ForestShadow, 0f));
-            Raylib.DrawRectangleGradientH(WindowWidth - side, 0, side, WindowHeight, WithAlpha(ForestShadow, 0f), WithAlpha(ForestShadow, 0.22f));
+            Raylib.DrawRectangleGradientH(0, 0, side, WindowHeight, WithAlpha(ForestShadow, 0.22f * vigMult), WithAlpha(ForestShadow, 0f));
+            Raylib.DrawRectangleGradientH(WindowWidth - side, 0, side, WindowHeight, WithAlpha(ForestShadow, 0f), WithAlpha(ForestShadow, 0.22f * vigMult));
             return;
         }
 
         int t = 130;
-        float vigStrength = 0.55f + adrenaline * 0.22f + impactFlash * 0.15f;
+        float vigStrength = (0.55f + adrenaline * 0.22f + impactFlash * 0.15f) * vigMult;
         Color edgeFull = WithAlpha(ForestShadow, vigStrength);
         Raylib.DrawRectangleGradientV(0, 0, WindowWidth, t, edgeFull, WithAlpha(ForestShadow, 0f));
         Raylib.DrawRectangleGradientV(0, WindowHeight - t, WindowWidth, t, WithAlpha(ForestShadow, 0f), edgeFull);
         Raylib.DrawRectangleGradientH(0, 0, t, WindowHeight, WithAlpha(ForestShadow, vigStrength * 0.9f), WithAlpha(ForestShadow, 0f));
         Raylib.DrawRectangleGradientH(WindowWidth - t, 0, t, WindowHeight, WithAlpha(ForestShadow, 0f), WithAlpha(ForestShadow, vigStrength * 0.9f));
 
-        if (adrenaline > 0.08f)
+        if (!reduceMotion && adrenaline > 0.08f)
         {
-            Color pulse = WithAlpha(new Color(180, 48, 38, 255), adrenaline * glowPulse * 0.12f);
+            Color pulse = WithAlpha(new Color(180, 48, 38, 255), adrenaline * glowPulse * 0.12f * vigMult);
             Raylib.DrawRectangleGradientV(0, 0, WindowWidth, 90, pulse, WithAlpha(pulse, 0f));
             Raylib.DrawRectangleGradientV(0, WindowHeight - 90, WindowWidth, 90, WithAlpha(pulse, 0f), pulse);
         }
     }
 
     static void DrawGlow(Vector2 center, float radius, Color color, float intensity)
-        => DrawSmoothGlowCore(center, radius, color, intensity, 0.11f, steps: 36);
+        => DrawSmoothGlowCore(center, radius, color, intensity, 0.11f, steps: 24);
 
     static void DrawGlowFast(Vector2 center, float radius, Color color, float intensity)
-        => DrawSmoothGlowCore(center, radius, color, intensity, 0.11f, steps: 28);
+        => DrawSmoothGlowCore(center, radius, color, intensity, 0.11f, steps: 16);
 
     static float Approach(float current, float target, float rate, float dt)
         => current + (target - current) * (1f - MathF.Exp(-rate * dt));
@@ -20076,6 +24123,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawLevelUpBanner()
     {
+        if (!showLevelUpBanner) return;
         if (levelUpBannerTimer <= 0f) return;
         float a = Math.Clamp(levelUpBannerTimer / 2.8f, 0f, 1f);
         if (levelUpBannerTimer < 0.6f) a = levelUpBannerTimer / 0.6f;
@@ -20087,6 +24135,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawTopHud()
     {
+        if (!showTopHud) return;
         var panel = new Rectangle(14f, 10f, WindowWidth - 28f, 54f);
         DrawRichPanel(panel, UiPanel, UiBorder, 0.35f, accentStripe: true);
 
@@ -20112,10 +24161,18 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
         var rankBar = new Rectangle(panel.X + 12f, panel.Y + panel.Height + 6f, panel.Width - 24f, 36f);
         DrawLevelBar(rankBar, true);
+
+        if (runGunAffix != GunAffixType.None && state == GameState.Playing)
+        {
+            string affix = GunAffixName();
+            int aw = Raylib.MeasureText(affix, 11);
+            ShadowText(affix, (int)(panel.X + panel.Width - aw - 14f), (int)(panel.Y + 8f), 11, MossLight, 0.85f);
+        }
     }
 
     static void DrawComboMeter()
     {
+        if (!showComboMeter) return;
         if (combo < 2 || state != GameState.Playing) return;
 
         float dt = Raylib.GetFrameTime();
@@ -20144,6 +24201,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawWaveBanner()
     {
+        if (!showWaveBanner) return;
         if (waveBannerTimer <= 0f) return;
 
         float since = WaveBannerTime - waveBannerTimer;
@@ -20166,10 +24224,18 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         string sub = waveSubtext.Length > 0 ? waveSubtext : "FOOTSTEPS ON THE STONE";
         int sw = Raylib.MeasureText(sub, 16);
         Raylib.DrawText(sub, cx - sw / 2, y + fs + 6, 16, WithAlpha(UiAccent, a * 0.85f));
+
+        if (siegeObjective != SiegeObjectiveType.None && waveInProgress)
+        {
+            string obj = SiegeObjectiveLabel();
+            Color objCol = siegeObjectiveFailed ? Danger : siegeObjectiveDone ? UiAccent : Gold;
+            ShadowTextCentered(obj, cx, y + fs + 28, 13, WithAlpha(objCol, a * 0.9f));
+        }
     }
 
     static void DrawFloorEventHud()
     {
+        if (!showFloorEventHud) return;
         if (activeEvent == FloorEventType.None || state != GameState.Playing) return;
 
         float time = (float)Raylib.GetTime();
@@ -20299,7 +24365,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
                 FloorEventType.EmberGate => "SAFE: FIRE CORRIDOR",
                 FloorEventType.EmberTide => "SAFE: DRY GROUND",
                 FloorEventType.EmberCage => "SAFE: INNER CAGE",
-                FloorEventType.EmberAltar => "SAFE: ALTAR TILE",
+                FloorEventType.EmberAltar => "SAFE: ALTAR ZONE",
                 _ => "SAFE ZONE",
             };
             ShadowTextCentered(hint, cx, tall ? 188 : 168, 15, WithAlpha(hintColor, 0.95f), 1f);
@@ -20363,6 +24429,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawFloorEventWarningBorder()
     {
+        if (!showEventWarningBorder) return;
         if (activeEvent == FloorEventType.None || state != GameState.Playing) return;
 
         float time = (float)Raylib.GetTime();
@@ -20865,7 +24932,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         if (eventCountdown <= 0f && eventPhase == 0
             && activeEvent is not (FloorEventType.MarkedStrike or FloorEventType.CryptGrave or FloorEventType.TideStrike or FloorEventType.CrownBolt)) return;
 
-        float time = (float)Raylib.GetTime();
+        float time = frameTime > 0f ? frameTime : (float)Raylib.GetTime();
         float pulse = MathF.Sin(time * 14f) * 0.5f + 0.5f;
         float urgency = eventStartCountdown > 0.01f
             ? 1f - Math.Clamp(eventCountdown / eventStartCountdown, 0f, 1f)
@@ -21021,6 +25088,20 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
                 }
             }
         }
+
+        if (eventPhase == 1 && StormGlassPeekCount() > 0 && eventTileQueue.Count > 0)
+        {
+            int peek = 0;
+            Color glass = new Color(140, 200, 255, 255);
+            foreach ((int gx, int gy) in eventTileQueue)
+            {
+                if (peek >= StormGlassPeekCount()) break;
+                var gr = new Rectangle(gx * TileSize + 1f, gy * TileSize + 1f, TileSize - 2f, TileSize - 2f);
+                DrawPulseFrame(gr, glass, 0.2f, 10f, 0.45f + pulse * 0.3f);
+                Raylib.DrawRectangleRoundedLines(gr, 0.15f, 4, WithAlpha(glass, 0.85f));
+                peek++;
+            }
+        }
     }
 
     static string FormatEventCountdown(float seconds)
@@ -21088,6 +25169,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawEnemyAttackTelegraphs()
     {
+        if (!showEnemyTelegraphs) return;
         float time = (float)Raylib.GetTime();
         float touchDist = PlayerRadius;
 
@@ -21296,6 +25378,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawBossHud()
     {
+        if (!showBossHud) return;
         if (state != GameState.Playing) return;
 
         Enemy? bossEnemy = null;
@@ -21354,6 +25437,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawAbilityHud()
     {
+        if (!showAbilityHud) return;
         const int barW = 196;
         const int barH = 13;
         const int gap = 12;
@@ -21447,6 +25531,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     static void DrawWeaponHud()
     {
+        if (!showWeaponHud) return;
         ref readonly Gun g = ref Guns[equippedGun];
         int mag = GetMagazineSize(in g);
         bool reloading = reloadTimer > 0f;
@@ -21493,6 +25578,580 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     // ---------------------------------------------------------------- Menu
 
+    static void UpdateDifficultySelect(float dt)
+    {
+        if (Raylib.IsKeyPressed(KeyboardKey.Escape))
+        {
+            state = GameState.MainMenu;
+            return;
+        }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.Up) || Raylib.IsKeyPressed(KeyboardKey.W))
+        {
+            difficultyMenuIndex = Math.Max(0, difficultyMenuIndex - 1);
+        }
+        else if (Raylib.IsKeyPressed(KeyboardKey.Down) || Raylib.IsKeyPressed(KeyboardKey.S))
+        {
+            difficultyMenuIndex = Math.Min(DifficultyProfiles.Length - 1, difficultyMenuIndex + 1);
+        }
+
+        for (int i = 0; i < DifficultyProfiles.Length; i++)
+        {
+            if (Raylib.IsKeyPressed((KeyboardKey)((int)KeyboardKey.One + i)))
+            {
+                difficultyMenuIndex = i;
+            }
+        }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.Q)) runOathFlags ^= 1 << (int)OathType.NoVerdict;
+        if (Raylib.IsKeyPressed(KeyboardKey.E)) runOathFlags ^= 1 << (int)OathType.NoOath;
+        if (Raylib.IsKeyPressed(KeyboardKey.H)) runOathFlags ^= 1 << (int)OathType.HeraldryBound;
+        if (Raylib.IsKeyPressed(KeyboardKey.N) && difficultyMenuIndex == (int)Difficulty.FableNightmare)
+            runOathFlags ^= 1 << (int)OathType.PureNightmare;
+
+        runDifficulty = (Difficulty)difficultyMenuIndex;
+        difficultySelectAnim = Approach(difficultySelectAnim, difficultyMenuIndex, 14f, dt);
+
+        if (Raylib.IsKeyPressed(KeyboardKey.Enter) || Raylib.IsKeyPressed(KeyboardKey.Space))
+        {
+            SaveGame();
+            ResetGame();
+        }
+    }
+
+    static void DifficultyMeterValues(in DifficultyProfile p, out float foes, out float events, out float pace, out float chaos)
+    {
+        foes = Math.Clamp(p.EnemyHpMult * 0.34f + p.GruntCountMult * 0.33f + p.SwarmCountMult * 0.33f, 0.08f, 1f) / 1.65f;
+        pace = Math.Clamp(1.05f / p.WavePauseMult, 0.08f, 1f);
+        events = Math.Clamp((18f / Math.Max(6f, p.FirstEventCooldown)) * 0.42f + (12f / Math.Max(1, p.MinWaveForEvents)) * 0.28f
+            + p.EventIntensityMult * 0.3f, 0.08f, 1f);
+        chaos = Math.Clamp(p.EventStackChance * 1.8f + p.EventSurgeChance * 1.4f + (p.EventIntensityMult - 0.5f) * 0.32f, 0f, 1f);
+    }
+
+    static string DifficultyMeterLabel(float t) => t switch
+    {
+        < 0.22f => "GENTLE",
+        < 0.42f => "LOW",
+        < 0.58f => "STEADY",
+        < 0.76f => "HIGH",
+        < 0.92f => "BRUTAL",
+        _ => "LETHAL",
+    };
+
+    static void DrawDifficultyStatMeter(Rectangle area, string label, float value, Color accent, bool highlight)
+    {
+        float t = Math.Clamp(value, 0f, 1f);
+        DrawRichPanel(area, WithAlpha(UiPanelDeep, 0.72f), WithAlpha(accent, highlight ? 0.42f : 0.22f), 0.22f);
+        Raylib.DrawText(label, (int)area.X + 10, (int)area.Y + 5, 10, WithAlpha(Color.White, 0.5f));
+        string val = DifficultyMeterLabel(t);
+        int vw = Raylib.MeasureText(val, 10);
+        Raylib.DrawText(val, (int)(area.X + area.Width - vw - 10), (int)area.Y + 5, 10, WithAlpha(accent, highlight ? 0.95f : 0.72f));
+
+        var track = new Rectangle(area.X + 10f, area.Y + 22f, area.Width - 20f, 8f);
+        Raylib.DrawRectangleRounded(track, 1f, 4, WithAlpha(ForestShadow, 0.85f));
+        if (t > 0.02f)
+        {
+            var fill = new Rectangle(track.X, track.Y, track.Width * t, track.Height);
+            Raylib.DrawRectangleRounded(fill, 1f, 4, WithAlpha(accent, 0.88f));
+            Raylib.DrawRectangleGradientV((int)fill.X, (int)fill.Y, (int)fill.Width, (int)fill.Height,
+                WithAlpha(Lighten(accent, 0.35f), 0.55f), WithAlpha(Darken(accent, 0.15f), 0.95f));
+            Raylib.DrawRectangle((int)fill.X, (int)fill.Y, (int)fill.Width, 1, WithAlpha(Color.White, 0.22f));
+        }
+
+        Raylib.DrawRectangleRoundedLines(track, 1f, 4, WithAlpha(accent, 0.25f));
+    }
+
+    static void DrawDifficultySigil(Vector2 c, float r, int index, Color accent, Color accentHi, float time, bool nightmare)
+    {
+        float pulse = MathF.Sin(time * (nightmare ? 4f : 2.4f) + index) * 0.5f + 0.5f;
+        DrawGlow(c, r * 2.8f, accent, nightmare ? 0.08f + pulse * 0.06f : 0.04f + pulse * 0.03f);
+        Raylib.DrawCircleV(c, r + 2f, WithAlpha(Darken(accent, 0.45f), 0.85f));
+        Raylib.DrawCircleV(c, r, WithAlpha(accent, 0.92f));
+        Raylib.DrawCircleV(c - new Vector2(r * 0.28f, r * 0.32f), r * 0.34f, WithAlpha(accentHi, 0.55f + pulse * 0.25f));
+
+        switch (index)
+        {
+            case 0:
+                Raylib.DrawCircleLinesV(c, r * 0.55f, WithAlpha(accentHi, 0.75f));
+                Raylib.DrawLineEx(c + new Vector2(0, -r * 0.35f), c + new Vector2(0, r * 0.35f), 1.5f, accentHi);
+                break;
+            case 1:
+                Raylib.DrawLineEx(c + new Vector2(-r * 0.35f, r * 0.2f), c + new Vector2(r * 0.35f, -r * 0.2f), 1.5f, accentHi);
+                break;
+            case 2:
+                Raylib.DrawLineEx(c + new Vector2(-r * 0.38f, 0), c + new Vector2(r * 0.38f, 0), 2f, accentHi);
+                Raylib.DrawLineEx(c + new Vector2(0, -r * 0.38f), c + new Vector2(0, r * 0.38f), 2f, WithAlpha(accentHi, 0.65f));
+                break;
+            case 3:
+                for (int sp = 0; sp < 3; sp++)
+                {
+                    float fx = -r * 0.34f + sp * r * 0.34f;
+                    Raylib.DrawTriangle(c + new Vector2(fx, -r * 0.42f), c + new Vector2(fx - r * 0.12f, -r * 0.08f),
+                        c + new Vector2(fx + r * 0.12f, -r * 0.08f), accentHi);
+                }
+                break;
+            default:
+                Raylib.DrawCircleV(c + new Vector2(0, -r * 0.08f), r * 0.16f, WithAlpha(accentHi, 0.9f));
+                Raylib.DrawLineEx(c + new Vector2(-r * 0.22f, r * 0.18f), c + new Vector2(r * 0.22f, r * 0.18f), 1.5f, accentHi);
+                for (int drip = 0; drip < 3; drip++)
+                {
+                    float dx = -r * 0.18f + drip * r * 0.18f;
+                    Raylib.DrawLineEx(c + new Vector2(dx, r * 0.18f), c + new Vector2(dx, r * 0.42f + pulse * 3f), 1.2f,
+                        WithAlpha(accentHi, 0.55f));
+                }
+                break;
+        }
+    }
+
+    static void DrawDifficultyScreenFrame(Rectangle frame, Color accent, float time)
+    {
+        Color stoneMid = new Color(42, 40, 38, 255);
+        Color stoneLight = new Color(96, 92, 86, 255);
+        Color mortar = new Color(24, 22, 22, 255);
+        float pulse = MathF.Sin(time * 1.4f) * 0.5f + 0.5f;
+
+        DrawRichPanel(frame, WithAlpha(stoneMid, 0.78f), WithAlpha(stoneLight, 0.32f), 0.14f, accentStripe: true);
+        DrawStoneMasonry(frame, stoneMid, mortar, 8, 14, 0.42f);
+        DrawQuoinStripes(frame, stoneLight, MossLight);
+
+        var inner = new Rectangle(frame.X + 12f, frame.Y + 10f, frame.Width - 24f, frame.Height - 20f);
+        Raylib.DrawRectangleLinesEx(inner, 1f, WithAlpha(accent, 0.18f + pulse * 0.08f));
+        Raylib.DrawRectangleLinesEx(frame, 1.5f, WithAlpha(stoneLight, 0.28f));
+
+        float inset = 16f;
+        Color corner = WithAlpha(accent, 0.45f);
+        Raylib.DrawLineEx(new Vector2(frame.X + inset, frame.Y + inset), new Vector2(frame.X + inset + 26f, frame.Y + inset), 1.5f, corner);
+        Raylib.DrawLineEx(new Vector2(frame.X + inset, frame.Y + inset), new Vector2(frame.X + inset, frame.Y + inset + 26f), 1.5f, corner);
+        Raylib.DrawLineEx(new Vector2(frame.X + frame.Width - inset, frame.Y + inset), new Vector2(frame.X + frame.Width - inset - 26f, frame.Y + inset), 1.5f, corner);
+        Raylib.DrawLineEx(new Vector2(frame.X + frame.Width - inset, frame.Y + inset), new Vector2(frame.X + frame.Width - inset, frame.Y + inset + 26f), 1.5f, corner);
+        Raylib.DrawLineEx(new Vector2(frame.X + inset, frame.Y + frame.Height - inset), new Vector2(frame.X + inset + 26f, frame.Y + frame.Height - inset), 1.5f, WithAlpha(stoneLight, 0.35f));
+        Raylib.DrawLineEx(new Vector2(frame.X + frame.Width - inset, frame.Y + frame.Height - inset), new Vector2(frame.X + frame.Width - inset - 26f, frame.Y + frame.Height - inset), 1.5f, WithAlpha(stoneLight, 0.35f));
+    }
+
+    static void DrawDifficultyHeaderPlaque(int cx, float time, in DifficultyProfile chosen, bool nightmare)
+    {
+        var plaque = new Rectangle(cx - 290f, 46f, 580f, 88f);
+        Color stoneMid = new Color(44, 42, 40, 255);
+        Color stoneLight = new Color(98, 94, 88, 255);
+        Color mortar = new Color(26, 24, 24, 255);
+        float pulse = MathF.Sin(time * 1.6f) * 0.5f + 0.5f;
+
+        DrawRichPanel(plaque, WithAlpha(stoneMid, 0.82f), WithAlpha(chosen.Accent, nightmare ? 0.42f : 0.24f), 0.12f, accentStripe: true);
+        DrawStoneMasonry(plaque, stoneMid, mortar, 3, 12, 0.4f);
+        DrawQuoinStripes(plaque, stoneLight, nightmare ? chosen.AccentHi : MossLight);
+
+        ShadowTextCentered("CHOOSE YOUR TRIAL", cx, (int)plaque.Y + 16, 30, nightmare ? chosen.AccentHi : new Color(196, 188, 172, 255));
+        string lead = "Swear your oath before the stones begin to fall.";
+        ShadowTextCentered(lead, cx, (int)plaque.Y + 50, 13, WithAlpha(Color.White, 0.58f));
+
+        Vector2 gem = new Vector2(plaque.X + plaque.Width - 28f, plaque.Y + plaque.Height / 2f);
+        DrawTrinketGem(gem, 9f, chosen.Accent, time, nightmare ? 1.2f : 0.85f);
+        Raylib.DrawCircleV(gem, 12f + pulse * 2f, WithAlpha(chosen.Accent, nightmare ? 0.08f : 0.04f));
+    }
+
+    static void DrawDifficultyTimeline(float x, float y, float height, float cardH, float gap, float animIndex, float time)
+    {
+        float nodeStep = cardH + gap;
+        float markerY = y + animIndex * nodeStep + cardH * 0.5f;
+        Color rail = WithAlpha(new Color(88, 84, 78, 255), 0.55f);
+        Raylib.DrawLineEx(new Vector2(x, y + 8f), new Vector2(x, y + height - 8f), 2f, rail);
+
+        for (int i = 0; i < DifficultyProfiles.Length; i++)
+        {
+            float ny = y + i * nodeStep + cardH * 0.5f;
+            Color nodeCol = DifficultyProfiles[i].Accent;
+            float size = i == difficultyMenuIndex ? 6f : 4f;
+            Raylib.DrawCircleV(new Vector2(x, ny), size + 1.5f, WithAlpha(Darken(nodeCol, 0.4f), 0.8f));
+            Raylib.DrawCircleV(new Vector2(x, ny), size, WithAlpha(nodeCol, i == difficultyMenuIndex ? 0.95f : 0.45f));
+        }
+
+        DrawGlow(new Vector2(x, markerY), 28f, DifficultyProfiles[difficultyMenuIndex].Accent, 0.05f + MathF.Sin(time * 3f) * 0.02f);
+        Raylib.DrawRing(new Vector2(x, markerY), 7f, 10f, 0f, 360f, 24, WithAlpha(DifficultyProfiles[difficultyMenuIndex].AccentHi, 0.75f));
+    }
+
+    static bool DrawDifficultyPreviewPanel(Rectangle panel, in DifficultyProfile profile, bool nightmare, float time)
+    {
+        float pulse = MathF.Sin(time * (nightmare ? 3.6f : 2f)) * 0.5f + 0.5f;
+        Color fill = nightmare
+            ? LerpColor(new Color(24, 8, 12, 255), new Color(46, 10, 18, 255), 0.35f + pulse * 0.25f)
+            : WithAlpha(UiPanel, 0.9f);
+        DrawRichPanel(panel, fill, WithAlpha(profile.Accent, nightmare ? 0.62f : 0.38f), 0.18f, accentStripe: true);
+
+        if (nightmare)
+        {
+            Raylib.DrawRectangleGradientV((int)panel.X, (int)panel.Y, (int)panel.Width, (int)(panel.Height * 0.35f),
+                WithAlpha(new Color(80, 8, 16, 255), 0.22f + pulse * 0.1f), WithAlpha(new Color(80, 8, 16, 255), 0f));
+        }
+
+        Vector2 sigilCenter = new Vector2(panel.X + panel.Width / 2f, panel.Y + 44f);
+        DrawDifficultySigil(sigilCenter, 20f, difficultyMenuIndex, profile.Accent, profile.AccentHi, time, nightmare);
+
+        ShadowTextCentered(profile.Title, (int)(panel.X + panel.Width / 2f), (int)(panel.Y + 76f), nightmare ? 17 : 16, profile.AccentHi);
+        DrawTextTruncated(profile.Tagline, (int)(panel.X + panel.Width / 2f - (panel.Width - 28f) / 2f), (int)(panel.Y + 98f),
+            (int)(panel.Width - 28f), 11, WithAlpha(Color.White, 0.62f));
+
+        DifficultyMeterValues(profile, out float foes, out float events, out float pace, out _);
+        float meterH = 28f;
+        float meterGap = 5f;
+        float meterY = panel.Y + 118f;
+        float meterW = panel.Width - 24f;
+        DrawDifficultyStatMeter(new Rectangle(panel.X + 12f, meterY, meterW, meterH), "FOES", foes, profile.Accent, true);
+        DrawDifficultyStatMeter(new Rectangle(panel.X + 12f, meterY + meterH + meterGap, meterW, meterH), "EVENTS", events, profile.Accent, true);
+        DrawDifficultyStatMeter(new Rectangle(panel.X + 12f, meterY + (meterH + meterGap) * 2, meterW, meterH), "PACE", pace, profile.Accent, false);
+
+        float recordsY = meterY + (meterH + meterGap) * 3 + 10f;
+        int rdi = difficultyMenuIndex;
+        if (rdi >= 0 && rdi < difficultyRecords.Length)
+        {
+            ref DifficultyRecord rec = ref difficultyRecords[rdi];
+            string recLine = $"Your best — wave {rec.BestWave} · {rec.BestScore:N0} pts";
+            DrawTextTruncated(recLine, (int)(panel.X + 12f), (int)recordsY, (int)meterW, 10, WithAlpha(profile.Accent, 0.72f));
+        }
+
+        const float btnH = 44f;
+        const float oathH = 108f;
+        const float bottomPad = 10f;
+        float btnY = panel.Y + panel.Height - bottomPad - btnH;
+        float oathY = btnY - 10f - oathH;
+
+        var oathArea = new Rectangle(panel.X + 10f, oathY, panel.Width - 20f, oathH);
+        DrawDifficultyOathChips(oathArea, profile, time);
+
+        return Button(new Rectangle(panel.X + 10f, btnY, panel.Width - 20f, btnH), "BEGIN TRIAL  [ENTER]", 22, true, profile.Accent);
+    }
+
+    static void DrawDifficultyOathChips(Rectangle area, in DifficultyProfile profile, float time)
+    {
+        DrawRichPanel(area, WithAlpha(UiPanelDeep, 0.55f), WithAlpha(profile.Accent, 0.22f), 0.14f);
+        DrawUiSectionLabel("SWORN OATHS", area.X + 8f, area.Y + 6f, profile.Accent);
+
+        float gridY = area.Y + 26f;
+        float gap = 6f;
+        float chipW = (area.Width - 16f - gap) / 2f;
+        float chipH = 34f;
+
+        (OathType type, string key, string title, string bonus)[] oaths =
+        {
+            (OathType.NoVerdict, "Q", "No Verdict", "+15% rewards"),
+            (OathType.NoOath, "E", "No Oath", "+20% rewards"),
+            (OathType.HeraldryBound, "H", "Heraldry", "Lock colors"),
+            (OathType.PureNightmare, "N", "Pure Nightmare", "+25% Nightmare"),
+        };
+
+        Vector2 mouse = Raylib.GetMousePosition();
+        for (int i = 0; i < oaths.Length; i++)
+        {
+            int col = i % 2;
+            int row = i / 2;
+            var chip = new Rectangle(area.X + 8f + col * (chipW + gap), gridY + row * (chipH + gap), chipW, chipH);
+            (OathType type, string key, string title, string bonus) = oaths[i];
+            bool on = (runOathFlags & (1 << (int)type)) != 0;
+            bool disabled = type == OathType.PureNightmare && difficultyMenuIndex != (int)Difficulty.FableNightmare;
+            bool hover = !disabled && Raylib.CheckCollisionPointRec(mouse, chip);
+            float pulse = MathF.Sin(time * 3.2f + i) * 0.5f + 0.5f;
+
+            Color fill = disabled
+                ? WithAlpha(UiPanelDeep, 0.5f)
+                : on
+                    ? LerpColor(UiPanel, Gold, 0.22f + pulse * 0.08f)
+                    : hover
+                        ? WithAlpha(UiPanel, 0.95f)
+                        : WithAlpha(UiPanelDeep, 0.72f);
+            Color border = disabled
+                ? WithAlpha(UiBorder, 0.35f)
+                : on
+                    ? LerpColor(Gold, profile.Accent, 0.35f)
+                    : hover
+                        ? WithAlpha(profile.Accent, 0.65f)
+                        : WithAlpha(profile.Accent, 0.28f);
+
+            DrawRichPanel(chip, fill, border, 0.18f, accentStripe: on);
+            if (on) DrawPulseFrame(chip, Gold, 0.14f, 3.5f, 0.2f + pulse * 0.15f);
+
+            var keyBadge = new Rectangle(chip.X + 6f, chip.Y + 7f, 20f, 18f);
+            DrawRichPanel(keyBadge, WithAlpha(profile.Accent, disabled ? 0.25f : 0.55f), WithAlpha(profile.AccentHi, 0.4f), 0.2f);
+            ShadowText(key, (int)(keyBadge.X + 5f), (int)(keyBadge.Y + 2f), 11, disabled ? WithAlpha(Color.White, 0.35f) : Color.White);
+
+            Color titleCol = disabled ? WithAlpha(Color.White, 0.32f) : on ? Gold : Color.White;
+            DrawTextTruncated(title, (int)(chip.X + 30f), (int)(chip.Y + 7f), (int)(chip.Width - 36f), 11, titleCol);
+            DrawTextTruncated(bonus, (int)(chip.X + 30f), (int)(chip.Y + 20f), (int)(chip.Width - 36f), 8,
+                WithAlpha(on ? Gold : MossLight, disabled ? 0.28f : 0.65f));
+
+            if (on)
+            {
+                ShadowText("\u2713", (int)(chip.X + chip.Width - 16f), (int)(chip.Y + 9f), 12, Gold);
+            }
+
+            if (hover && Raylib.IsMouseButtonPressed(MouseButton.Left))
+            {
+                runOathFlags ^= 1 << (int)type;
+            }
+        }
+    }
+
+    static (string name, string desc, Color accent) GetBlessingInfo(BlessingType b) => b switch
+    {
+        BlessingType.SwiftMarch => ("Swift March", "+5% movement speed for the rest of the run.", MossLight),
+        BlessingType.DeepPockets => ("Deep Pockets", "+12% fables from every source.", Gold),
+        BlessingType.Stonecraft => ("Stonecraft", "Tiles underfoot wear down more slowly.", new Color(148, 142, 132, 255)),
+        BlessingType.LongFuse => ("Long Fuse", "+0.5s on event telegraphs — read the floor.", new Color(120, 170, 220, 255)),
+        BlessingType.ThornVolley => ("Thorn Volley", "Extra projectile splinter on each shot.", Danger),
+        BlessingType.LuckySigil => ("Lucky Sigil", "+8% fables and brighter fortune.", new Color(220, 190, 90, 255)),
+        BlessingType.IronSoles => ("Iron Soles", "Reduced durability loss while moving.", UiBorderLight),
+        BlessingType.KeenEye => ("Keen Eye", "Tighter spread and cleaner aim.", UiAccent),
+        BlessingType.BannerWard => ("Banner Ward", "Banner of Stillness lasts longer.", AbilityAccent(AbilityType.BannerOfStillness)),
+        BlessingType.SiegeRations => ("Siege Rations", "+10% end-of-run reward multiplier.", new Color(196, 128, 72, 255)),
+        BlessingType.LastLight => ("Last Light", "Stronger near-death vignette warning.", new Color(240, 230, 210, 255)),
+        BlessingType.WindBlessing => ("Wind Blessing", "Shorter dash cooldown between leaps.", AbilityAccent(AbilityType.WindStep)),
+        _ => ("Unknown", "A mystery boon from the crown.", Color.White),
+    };
+
+    static bool DrawBlessingCard(Rectangle card, BlessingType blessing, int slot, float time, bool selected)
+    {
+        (string name, string desc, Color accent) = GetBlessingInfo(blessing);
+        Vector2 mouse = Raylib.GetMousePosition();
+        bool hover = Raylib.CheckCollisionPointRec(mouse, card);
+        float pulse = MathF.Sin(time * 4f + slot * 1.7f) * 0.5f + 0.5f;
+        float lift = hover ? 6f : 0f;
+        var drawCard = new Rectangle(card.X, card.Y - lift, card.Width, card.Height);
+
+        Color fill = LerpColor(new Color(28, 26, 24, 255), UiPanel, 0.35f + pulse * 0.15f);
+        if (hover || selected) fill = LerpColor(fill, accent, 0.12f + pulse * 0.08f);
+        DrawRichPanel(drawCard, WithAlpha(fill, 0.96f), WithAlpha(accent, hover ? 0.75f : 0.38f), 0.2f, accentStripe: true);
+
+        if (hover)
+        {
+            DrawGlow(new Vector2(drawCard.X + drawCard.Width / 2f, drawCard.Y + drawCard.Height / 2f),
+                drawCard.Width * 0.55f, accent, 0.06f + pulse * 0.04f);
+            DrawPulseFrame(drawCard, accent, 0.16f, 4f, 0.28f + pulse * 0.2f);
+        }
+
+        Raylib.DrawRectangleGradientV((int)drawCard.X, (int)drawCard.Y, (int)drawCard.Width, (int)(drawCard.Height * 0.42f),
+            WithAlpha(accent, 0.14f + pulse * 0.1f), WithAlpha(accent, 0f));
+
+        Vector2 gemCenter = new Vector2(drawCard.X + drawCard.Width / 2f, drawCard.Y + 44f);
+        DrawTrinketGem(gemCenter, 16f, accent, time, hover ? 1.35f : 1f);
+        Raylib.DrawCircleLinesV(gemCenter, 24f + pulse * 4f, WithAlpha(accent, 0.35f + pulse * 0.25f));
+
+        var keyBadge = new Rectangle(drawCard.X + drawCard.Width / 2f - 14f, drawCard.Y + 10f, 28f, 24f);
+        DrawRichPanel(keyBadge, WithAlpha(Gold, 0.85f), WithAlpha(Gold, 0.4f), 0.22f);
+        ShadowTextCentered(slot.ToString(), (int)(keyBadge.X + keyBadge.Width / 2f), (int)(keyBadge.Y + 4f), 16, new Color(40, 32, 20, 255));
+
+        ShadowTextCentered(name.ToUpperInvariant(), (int)(drawCard.X + drawCard.Width / 2f), (int)(drawCard.Y + 78f), 17, accent);
+        DrawMedievalDivider(drawCard.X + drawCard.Width / 2f, drawCard.Y + 100f, drawCard.Width - 36f);
+
+        DrawTextTruncated(desc, (int)(drawCard.X + 16f), (int)(drawCard.Y + 112f), (int)(drawCard.Width - 32f), 12,
+            WithAlpha(Color.White, hover ? 0.82f : 0.62f));
+
+        string hint = hover ? "CLICK TO CLAIM" : "KEY " + slot;
+        ShadowTextCentered(hint, (int)(drawCard.X + drawCard.Width / 2f), (int)(drawCard.Y + drawCard.Height - 22f), 11,
+            WithAlpha(hover ? Color.White : accent, hover ? 0.9f : 0.55f));
+
+        return hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
+    }
+
+    static void DrawBlessingPickerScreen()
+    {
+        int cx = WindowWidth / 2;
+        int cy = WindowHeight / 2;
+        float time = (float)Raylib.GetTime();
+        float pulse = MathF.Sin(time * 2f) * 0.5f + 0.5f;
+
+        DrawScreenBackdrop(0.88f, 0.48f);
+        Raylib.DrawRectangleGradientV(0, 0, WindowWidth, WindowHeight,
+            WithAlpha(new Color(48, 38, 18, 255), 0.22f + pulse * 0.08f), WithAlpha(new Color(12, 14, 18, 255), 0.55f));
+
+        for (int ray = 0; ray < 8; ray++)
+        {
+            float ang = time * 0.35f + ray * MathF.PI / 4f;
+            Vector2 origin = new Vector2(cx, cy - 40f);
+            Vector2 tip = origin + new Vector2(MathF.Cos(ang), MathF.Sin(ang)) * 420f;
+            Raylib.DrawLineEx(origin, tip, 2f, WithAlpha(Gold, 0.04f + pulse * 0.03f));
+        }
+
+        var frame = new Rectangle(cx - 380f, cy - 230f, 760f, 460f);
+        DrawRichPanel(frame, WithAlpha(UiPanelDeep, 0.94f), WithAlpha(Gold, 0.45f + pulse * 0.2f), 0.15f, accentStripe: true);
+        DrawPulseFrame(frame, Gold, 0.1f, 2.5f, 0.15f + pulse * 0.12f);
+
+        ShadowTextCentered("A BLESSING DESCENDS", cx, (int)(frame.Y + 28f), 32, Gold);
+        string sub = $"Wave {waveNumber} cleared  ·  choose one boon for the siege ahead";
+        ShadowTextCentered(sub, cx, (int)(frame.Y + 66f), 13, WithAlpha(Color.White, 0.62f));
+        DrawMedievalDivider(cx, frame.Y + 88f, 420f);
+
+        if (activeBlessingCount > 0)
+        {
+            string stacked = activeBlessingCount + " blessing" + (activeBlessingCount == 1 ? "" : "s") + " already sworn";
+            ShadowTextCentered(stacked, cx, (int)(frame.Y + 98f), 11, WithAlpha(MossLight, 0.75f));
+        }
+
+        const float cardW = 220f;
+        const float cardH = 300f;
+        const float cardGap = 18f;
+        float cardsTotal = cardW * 3f + cardGap * 2f;
+        float cardX = cx - cardsTotal / 2f;
+        float cardY = frame.Y + 118f;
+
+        for (int i = 0; i < blessingChoices.Length; i++)
+        {
+            var card = new Rectangle(cardX + i * (cardW + cardGap), cardY, cardW, cardH);
+            if (DrawBlessingCard(card, blessingChoices[i], i + 1, time, false))
+            {
+                if (activeBlessingCount < activeBlessings.Length)
+                    activeBlessings[activeBlessingCount++] = blessingChoices[i];
+                blessingPickActive = false;
+                state = GameState.Playing;
+                AddFlash(Gold, 0.18f);
+                SpawnFloatingText(playerPos + new Vector2(0, -50f), GetBlessingInfo(blessingChoices[i]).name.ToUpperInvariant(), Gold, 22);
+            }
+        }
+
+        DrawUiHintBar("1 · 2 · 3 quick pick", "Click a card to claim", "Blessings stack up to 6");
+    }
+
+    static void DrawDifficultySelect()
+    {
+        int cx = WindowWidth / 2;
+        float time = (float)Raylib.GetTime();
+        DifficultyProfile chosen = DifficultyProfiles[difficultyMenuIndex];
+        bool nightmare = difficultyMenuIndex == (int)Difficulty.FableNightmare;
+
+        DrawScreenBackdrop(0.86f, nightmare ? 0.52f : 0.38f);
+        if (nightmare)
+        {
+            float pulse = MathF.Sin(time * 2.2f) * 0.5f + 0.5f;
+            Raylib.DrawRectangle(0, 0, WindowWidth, WindowHeight, WithAlpha(new Color(48, 4, 10, 255), 0.14f + pulse * 0.07f));
+            Raylib.DrawRectangleGradientV(0, 0, WindowWidth, WindowHeight / 2,
+                WithAlpha(new Color(72, 8, 16, 255), 0.12f + pulse * 0.06f), WithAlpha(new Color(72, 8, 16, 255), 0f));
+        }
+
+        DrawDifficultyHeaderPlaque(cx, time, chosen, nightmare);
+
+        var frame = new Rectangle(20f, 142f, WindowWidth - 40f, 598f);
+        DrawDifficultyScreenFrame(frame, chosen.Accent, time);
+
+        float cardH = 76f;
+        float gap = 5f;
+        float listX = frame.X + 36f;
+        float listY = frame.Y + 24f;
+        float cardW = 396f;
+        float timelineX = listX - 18f;
+        float listHeight = DifficultyProfiles.Length * cardH + (DifficultyProfiles.Length - 1) * gap;
+        DrawDifficultyTimeline(timelineX, listY, listHeight, cardH, gap, difficultySelectAnim, time);
+
+        for (int i = 0; i < DifficultyProfiles.Length; i++)
+        {
+            DifficultyProfile profile = DifficultyProfiles[i];
+            bool selected = i == difficultyMenuIndex;
+            bool cardNightmare = i == (int)Difficulty.FableNightmare;
+            var card = new Rectangle(listX, listY + i * (cardH + gap), cardW, cardH);
+            if (DrawDifficultyCard(card, profile, selected, cardNightmare, time, i + 1))
+            {
+                difficultyMenuIndex = i;
+                runDifficulty = (Difficulty)i;
+                SaveGame();
+                ResetGame();
+            }
+            else if (Raylib.CheckCollisionPointRec(Raylib.GetMousePosition(), card))
+            {
+                difficultyMenuIndex = i;
+                runDifficulty = (Difficulty)i;
+            }
+        }
+
+        var preview = new Rectangle(frame.X + 452f, frame.Y + 24f, frame.Width - 476f, listHeight);
+        if (DrawDifficultyPreviewPanel(preview, chosen, nightmare, time))
+        {
+            SaveGame();
+            ResetGame();
+        }
+
+        if (Button(new Rectangle(30f, UiBackButtonY, 180f, 40f), "BACK  [ESC]", 20, true, UiBorder))
+        {
+            state = GameState.MainMenu;
+        }
+
+        DrawUiHintBar("Click a trial · ↑↓ move", "Q E H N oaths · click chips", "ENTER begin · ESC back");
+    }
+
+    static bool DrawDifficultyCard(Rectangle card, in DifficultyProfile profile, bool selected, bool nightmare, float time, int rank)
+    {
+        Vector2 mouse = Raylib.GetMousePosition();
+        bool hover = Raylib.CheckCollisionPointRec(mouse, card);
+        float pulse = MathF.Sin(time * (nightmare ? 3.4f : 2.1f) + rank) * 0.5f + 0.5f;
+        float lift = selected ? 1f : hover ? 0.55f : 0f;
+
+        Color fill = nightmare
+            ? LerpColor(new Color(26, 8, 12, 255), new Color(50, 12, 20, 255), 0.35f + pulse * 0.28f)
+            : LerpColor(new Color(32, 30, 28, 255), UiPanel, 0.25f + lift * 0.35f);
+        Color border = selected
+            ? LerpColor(profile.Accent, profile.AccentHi, 0.35f + pulse * 0.4f)
+            : hover
+                ? WithAlpha(profile.Accent, nightmare ? 0.58f : 0.42f)
+                : WithAlpha(profile.Accent, nightmare ? 0.26f : 0.16f);
+
+        if (selected || hover)
+        {
+            DrawGlow(new Vector2(card.X + card.Width / 2f, card.Y + card.Height / 2f),
+                nightmare ? 110f : 72f, profile.Accent, (nightmare ? 0.06f : 0.03f) + lift * 0.03f);
+        }
+
+        DrawRichPanel(card, WithAlpha(fill, 0.94f), border, 0.2f, accentStripe: selected || nightmare);
+
+        var rail = new Rectangle(card.X + 4f, card.Y + 6f, 5f, card.Height - 12f);
+        Raylib.DrawRectangleRounded(rail, 1f, 4, WithAlpha(Darken(profile.Accent, 0.35f), 0.9f));
+        Raylib.DrawRectangleRounded(new Rectangle(rail.X, rail.Y, rail.Width, rail.Height * (0.45f + lift * 0.35f)), 1f, 4,
+            WithAlpha(profile.Accent, 0.85f));
+        Raylib.DrawRectangle((int)(rail.X + 1f), (int)(rail.Y + 1f), (int)(rail.Width - 2f), 1, WithAlpha(profile.AccentHi, 0.45f));
+
+        if (nightmare)
+        {
+            Raylib.DrawRectangleGradientH((int)card.X, (int)card.Y, (int)card.Width, (int)(card.Height * 0.35f),
+                WithAlpha(new Color(88, 10, 20, 255), 0.16f + pulse * 0.08f), WithAlpha(new Color(88, 10, 20, 255), 0f));
+        }
+
+        DrawDifficultySigil(new Vector2(card.X + 46f, card.Y + card.Height / 2f), 14f, rank - 1, profile.Accent, profile.AccentHi, time, nightmare);
+
+        int titleFs = nightmare ? 16 : 15;
+        ShadowText(profile.Title, (int)(card.X + 72f), (int)(card.Y + 14f), titleFs, profile.AccentHi);
+        DrawTextTruncated(profile.Tagline, (int)(card.X + 72f), (int)(card.Y + 36f), (int)(card.Width - 118f), 11,
+            WithAlpha(Color.White, selected ? 0.78f : 0.55f));
+
+        DifficultyMeterValues(profile, out float foes, out _, out _, out float chaos);
+        float pipY = card.Y + card.Height - 16f;
+        for (int pip = 0; pip < 5; pip++)
+        {
+            float t = (pip + 1) / 5f;
+            bool on = pip < (int)MathF.Round(foes * 5f);
+            Color pipCol = on ? profile.Accent : WithAlpha(ForestShadow, 0.75f);
+            if (nightmare && on && pip >= 3)
+            {
+                pipCol = LerpColor(profile.Accent, profile.AccentHi, pulse);
+            }
+
+            Raylib.DrawCircleV(new Vector2(card.X + 72f + pip * 10f, pipY), 2.6f, pipCol);
+        }
+
+        if (chaos > 0.12f)
+        {
+            ShadowText("STACK", (int)(card.X + card.Width - 58f), (int)(card.Y + card.Height - 18f), 9,
+                WithAlpha(profile.AccentHi, selected ? 0.85f : 0.55f));
+        }
+
+        ShadowText(rank.ToString(), (int)(card.X + card.Width - 24f), (int)(card.Y + 10f), 14,
+            WithAlpha(profile.AccentHi, selected ? 0.9f : 0.45f));
+
+        if (selected)
+        {
+            DrawPulseFrame(new Rectangle(card.X + 2f, card.Y + 2f, card.Width - 4f, card.Height - 4f),
+                profile.Accent, 0.22f, nightmare ? 4.2f : 3.2f, nightmare ? 0.3f : 0.18f);
+            Raylib.DrawTriangle(new Vector2(card.X + card.Width - 16f, card.Y + card.Height / 2f - 6f),
+                new Vector2(card.X + card.Width - 6f, card.Y + card.Height / 2f),
+                new Vector2(card.X + card.Width - 16f, card.Y + card.Height / 2f + 6f), profile.AccentHi);
+        }
+
+        return hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
+    }
+
     // Perfectly centers all text and buttons, removes messy rule lines.
     static void DrawMainMenu()
     {
@@ -21515,9 +26174,9 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         DrawMedievalMenuDivider(cx, yStart);
         yStart += gap + 2;
 
-        float chipW = 98f;
-        float chipH = 40f;
-        float chipGap = 8f;
+        float chipW = 108f;
+        float chipH = 44f;
+        float chipGap = 10f;
         float chipsTotal = chipW * 3f + chipGap * 2f;
         float chipX = cx - chipsTotal / 2f;
         DrawUiStatChip(new Rectangle(chipX, yStart, chipW, chipH), "RANK", playerLevel.ToString(), UiAccent, ghost: true);
@@ -21530,13 +26189,33 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         DrawLevelBar(levelRect, true, ghost: true);
         yStart += 44;
 
-        // Vertical stack centered under the title block.
         float btnY = yStart + 4f;
-        if (MenuTextButton(cx, btnY, "Play", "enter", true, primary: true)) ResetGame();
-        btnY += 48f;
-        if (MenuTextButton(cx, btnY, "Armory", "c", true)) state = GameState.Customize;
-        btnY += 44f;
-        if (MenuTextButton(cx, btnY, "Settings", "s", true)) state = GameState.Settings;
+        ComputeMainMenuButtonLayout(cx, yStart, out _, out float rowY, out float halfW, out float halfGap, out float btnH);
+        bool playClick = MenuTextButton(cx, btnY, "Play", "enter", true, primary: true);
+        var armoryRect = new Rectangle(cx - halfGap / 2f - halfW, rowY, halfW, btnH);
+        var settingsRect = new Rectangle(cx + halfGap / 2f, rowY, halfW, btnH);
+        bool armoryClick = MenuTextButton(armoryRect, "Armory", "c", true);
+        bool settingsClick = MenuTextButton(settingsRect, "Settings", "s", true);
+
+        if (playClick)
+        {
+            difficultyMenuIndex = (int)runDifficulty;
+            difficultySelectAnim = difficultyMenuIndex;
+            uiInputBlockFrames = 2;
+            state = GameState.DifficultySelect;
+        }
+        else if (armoryClick)
+        {
+            OpenArmory();
+        }
+        else if (settingsClick)
+        {
+            uiInputBlockFrames = 2;
+            state = GameState.Settings;
+        }
+
+        string diffLabel = "Last run: " + GetDifficultyProfile(runDifficulty).Title;
+        ShadowTextCentered(diffLabel, cx, (int)(rowY + 48f), 11, WithAlpha(MossLight, 0.62f));
 
         DrawUiHintBar("WASD move", "LMB fire · RMB reload", "F3 fps");
     }
@@ -21630,8 +26309,19 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         DrawGlow(new Vector2(cx, y), 14f, MossLight, 0.04f);
     }
 
-    // Now takes centered X coordinate (cx) and centers text/hint around it.
     static bool MenuTextButton(int cx, float y, string label, string key, bool medieval = false, bool primary = false)
+    {
+        int size = primary ? 26 : 22;
+        string hint = "[" + key + "]";
+        int labelW = Raylib.MeasureText(label, size);
+        int hintW = Raylib.MeasureText(hint, 14);
+        int totalW = labelW + 12 + hintW;
+        int btnW = Math.Max(totalW + 40, primary ? 260 : 220);
+        int btnH = primary ? 44 : 40;
+        return MenuTextButton(new Rectangle(cx - btnW / 2f, y, btnW, btnH), label, key, medieval, primary);
+    }
+
+    static bool MenuTextButton(Rectangle hit, string label, string key, bool medieval = false, bool primary = false)
     {
         Vector2 mouse = Raylib.GetMousePosition();
         int size = primary ? 26 : 22;
@@ -21640,13 +26330,10 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         int hintW = Raylib.MeasureText(hint, 14);
         int hintGap = 12;
         int totalW = labelW + hintGap + hintW;
-        int btnW = Math.Max(totalW + 40, primary ? 260 : 220);
-        int btnH = primary ? 44 : 40;
-
-        int x = cx - totalW / 2;
-        var hit = new Rectangle(cx - btnW / 2f, y, btnW, btnH);
+        float cx = hit.X + hit.Width / 2f;
+        int x = (int)(cx - totalW / 2f);
         bool hover = Raylib.CheckCollisionPointRec(mouse, hit);
-        bool click = hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
+        bool click = UiClickAllowed() && hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
 
         Color text = hover ? Color.White : medieval ? new Color(196, 192, 184, 255) : new Color(210, 220, 205, 255);
         Color hintColor = WithAlpha(primary ? Gold : Color.White, hover ? 0.75f : 0.42f);
@@ -21660,10 +26347,10 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         DrawRichPanel(hit, panelFill, panelBorder, 0.28f, accentStripe: primary || hover);
         if (hover)
         {
-            DrawGlow(new Vector2(cx, y + btnH / 2f), primary ? 64f : 48f, primary ? UiAccent : MossLight, primary ? 0.04f : 0.03f);
+            DrawGlow(new Vector2(cx, hit.Y + hit.Height / 2f), primary ? 64f : 48f, primary ? UiAccent : MossLight, primary ? 0.04f : 0.03f);
         }
 
-        int textY = (int)(y + (btnH - size) / 2);
+        int textY = (int)(hit.Y + (hit.Height - size) / 2f);
         ShadowText(label, x, textY, size, text);
         Raylib.DrawText(hint, x + labelW + hintGap, textY + 4, 14, hintColor);
 
@@ -21674,6 +26361,12 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
     {
         int cx = WindowWidth / 2;
         DrawScreenBackdrop(0.74f, 0.38f);
+
+        if (blessingPickActive)
+        {
+            DrawBlessingPickerScreen();
+            return;
+        }
 
         var card = new Rectangle(cx - 270f, 210f, 540f, 390f);
         DrawRichPanel(card, UiPanel, UiBorder, 0.15f, accentStripe: true);
@@ -21699,6 +26392,12 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             infoY += 20f;
         }
 
+        if (!string.IsNullOrEmpty(GunAffixName()))
+        {
+            ShadowTextCentered("Affix: " + GunAffixName(), cx, (int)infoY, 12, MossLight);
+            infoY += 18f;
+        }
+
         if (verdictHaltTimer > 0f)
         {
             string halt = "Events halted: " + Math.Ceiling(verdictHaltTimer).ToString("0") + "s";
@@ -21709,6 +26408,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         if (Button(new Rectangle(cx - bw / 2f, 486f, bw, 48f), "RESUME  [ESC]", 22, true, UiAccent))
         {
             state = GameState.Playing;
+            autoPausedForFocus = false;
         }
         if (Button(new Rectangle(cx - bw / 2f, 542f, bw, 42f), "MAIN MENU", 18, true, UiBorder))
         {
@@ -21736,7 +26436,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         ShadowTextCentered(tip, cx, 262, 13, WithAlpha(UiAccent, 0.9f), 1f);
 
         float sx = cx - 204f;
-        float sy = 292f;
+        float sy = 298f;
         const float cw = 196f;
         const float ch = 48f;
         const float cg = 16f;
@@ -21762,9 +26462,30 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
 
     // ---------------------------------------------------------------- Customize
 
-    const float ArmoryTabY = 128f;
-    const float ArmoryBannerY = 174f;
-    const float ArmoryContentTop = 204f;
+    const float ArmoryTabY = 132f;
+    const float ArmoryBannerY = 226f;
+    const float ArmoryContentTop = 260f;
+    const float ArmoryCosmeticsPinnedH = 204f; // fallback; use ArmoryCosmeticsPinnedHeight() when layout matters
+
+    static void ComputeHeraldryGrid(out float padX, out float gap, out int cols, out float cell, out float rowH)
+    {
+        padX = 28f;
+        gap = 6f;
+        const float labelGap = 12f;
+        int count = BodyPalette.Length;
+        float gridW = WindowWidth - padX * 2f;
+        cols = Math.Clamp((count + 1) / 2, 8, count);
+        cell = (gridW - (cols - 1) * gap) / cols;
+        rowH = cell + labelGap;
+    }
+
+    static float ArmoryCosmeticsPinnedHeight()
+    {
+        ComputeHeraldryGrid(out _, out _, out int cols, out _, out float rowH);
+        int rows = (BodyPalette.Length + cols - 1) / cols;
+        const float previewH = 92f;
+        return previewH + 10f + 22f + rows * rowH + 10f;
+    }
     static float ArmoryContentBottom => UiFooterTop;
     static float ArmoryViewportHeight => ArmoryContentBottom - ArmoryContentTop;
 
@@ -21839,95 +26560,343 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         return cy - y;
     }
 
+    static float ArmoryScrollContentY() => ArmoryContentTop;
+    static float ArmoryScrollViewportH() => ArmoryContentBottom - ArmoryContentTop;
+
+    static float MeasureBestiaryContentHeight()
+    {
+        const float headerH = 82f;
+        const float rowH = 76f;
+        const float gap = 8f;
+        return headerH + EnemyCatalog.Length * (rowH + gap) + 20f;
+    }
+
+    static float MeasureGlossaryContentHeight()
+    {
+        float h = 48f;
+        EventFamily family = EventFamily.General;
+        for (int i = 1; i < FloorEventNames.Length; i++)
+        {
+            FloorEventType ev = (FloorEventType)i;
+            EventFamily f = GetEventFamily(ev);
+            if (f != family)
+            {
+                family = f;
+                h += 40f;
+            }
+
+            if (string.IsNullOrEmpty(FloorEventNames[i])) continue;
+            h += 56f;
+        }
+
+        return h + 20f;
+    }
+
     static float ArmoryScrollMax()
     {
+        float viewport = ArmoryScrollViewportH();
         switch (customizeTab)
         {
             case CustomizeTab.Cosmetics:
             {
-                const int sw = 50;
-                const int acols = 6;
-                int rows = (AccessoryNames.Length + acols - 1) / acols;
-                float trinketH = 30f + rows * (sw + 18f);
-                float trinketViewport = ArmoryViewportHeight - 196f;
+                ComputeTrinketGrid(out _, out _, out int acols, out _, out float rowH);
+                int rows = (ArmoryAccessoryCount() + acols - 1) / acols;
+                float trinketH = 34f + rows * rowH;
+                float trinketViewport = ArmoryViewportHeight - ArmoryCosmeticsPinnedHeight();
                 return Math.Max(0f, trinketH - trinketViewport);
             }
             case CustomizeTab.Weapons:
             {
                 const int cols = 3;
-                const float cardH = 108f;
-                const float gy = 12f;
+                const float cardH = 118f;
+                const float gy = 14f;
                 int gunRows = (Guns.Length + cols - 1) / cols;
-                float contentH = gunRows * (cardH + gy);
-                return Math.Max(0f, contentH - ArmoryViewportHeight);
+                float contentH = 36f + gunRows * (cardH + gy);
+                return Math.Max(0f, contentH - viewport);
             }
             case CustomizeTab.Upgrades:
             {
-                const float rowH = 64f;
+                const float rowH = 72f;
                 const float gap = 10f;
-                float contentH = UpgradeCount * (rowH + gap);
-                return Math.Max(0f, contentH - ArmoryViewportHeight);
+                float contentH = 36f + UpgradeCount * (rowH + gap);
+                return Math.Max(0f, contentH - viewport);
             }
             case CustomizeTab.Abilities:
             {
                 const float cardH = 196f;
                 const float gap = 14f;
-                float contentH = 118f + AbilityCount * (cardH + gap) + 24f;
-                return Math.Max(0f, contentH - ArmoryViewportHeight);
+                float contentH = 132f + AbilityCount * (cardH + gap) + 24f;
+                return Math.Max(0f, contentH - viewport);
             }
             case CustomizeTab.Rank:
-            {
-                float h = 52f;
-                int shown = 0;
-                for (int lv = playerLevel + 1; lv <= playerLevel + 20 && shown < 8; lv++)
-                {
-                    for (int i = 0; i < Guns.Length; i++)
-                    {
-                        if (Guns[i].LevelReq != lv) continue;
-                        h += 54f;
-                        shown++;
-                        break;
-                    }
-                }
-
-                h += 36f;
-                int siegeShown = 0;
-                for (int i = 0; i < Guns.Length && siegeShown < 5; i++)
-                {
-                    if (Guns[i].WaveReq <= 0 || Guns[i].LevelReq > 0) continue;
-                    h += 48f;
-                    siegeShown++;
-                }
-
-                h += 40f;
-                return Math.Max(0f, h - ArmoryViewportHeight);
-            }
+                return Math.Max(0f, MeasureRankTabContentHeight() - viewport);
+            case CustomizeTab.Bestiary:
+                return Math.Max(0f, MeasureBestiaryContentHeight() - viewport);
+            case CustomizeTab.Glossary:
+                return Math.Max(0f, MeasureGlossaryContentHeight() - viewport);
             default:
                 return 0f;
         }
     }
 
+    static void DrawArmoryScrollBar(float viewportH)
+    {
+        float maxScroll = ArmoryScrollMax();
+        if (maxScroll <= 1f) return;
+
+        float trackX = WindowWidth - 18f;
+        float trackY = ArmoryScrollContentY() + 6f;
+        float trackH = viewportH - 12f;
+        float thumbH = Math.Max(36f, trackH * (viewportH / (maxScroll + viewportH)));
+        float thumbY = trackY + (trackH - thumbH) * (customizeScroll / maxScroll);
+        var track = new Rectangle(trackX, trackY, 5f, trackH);
+        var thumb = new Rectangle(trackX - 1f, thumbY, 7f, thumbH);
+        Raylib.DrawRectangleRounded(track, 1f, 4, WithAlpha(UiPanelDeep, 0.65f));
+        Raylib.DrawRectangleRounded(thumb, 1f, 4, WithAlpha(UiAccent, 0.55f + MathF.Sin((float)Raylib.GetTime() * 2f) * 0.08f));
+    }
+
+    static Color EventFamilyAccent(EventFamily family) => family switch
+    {
+        EventFamily.Tide => new Color(88, 156, 214, 255),
+        EventFamily.Ember => new Color(214, 128, 72, 255),
+        EventFamily.Crypt => new Color(148, 124, 196, 255),
+        EventFamily.Crown => Gold,
+        _ => MossLight,
+    };
+
+    static string EnemyBehaviorLabel(EnemyBehavior behavior) => behavior switch
+    {
+        EnemyBehavior.Chase => "Chaser",
+        EnemyBehavior.FastChase => "Swift",
+        EnemyBehavior.CrushTiles => "Crusher",
+        EnemyBehavior.Orbit => "Orbiter",
+        EnemyBehavior.Zigzag => "Zigzag",
+        EnemyBehavior.Hop => "Leaper",
+        EnemyBehavior.BlightTrail => "Blight trail",
+        EnemyBehavior.TileLeech => "Tile leech",
+        EnemyBehavior.Kite => "Kiter",
+        EnemyBehavior.Charge => "Charger",
+        EnemyBehavior.PulseBlight => "Pulse blight",
+        EnemyBehavior.Phaser => "Phaser",
+        EnemyBehavior.Rotburst => "Rotburst",
+        EnemyBehavior.Splitter => "Splitter",
+        EnemyBehavior.Sapper => "Sapper",
+        EnemyBehavior.Lurker => "Lurker",
+        EnemyBehavior.BossBlight => "Boss · Blight",
+        EnemyBehavior.BossDash => "Boss · Dash",
+        EnemyBehavior.BossSmash => "Boss · Smash",
+        _ => behavior.ToString(),
+    };
+
+    static void DrawBestiaryPortrait(Vector2 center, float scale, ref readonly EnemyDef def, bool known, float time)
+    {
+        if (!known)
+        {
+            Raylib.DrawCircleV(center, 18f * scale, WithAlpha(UiPanelDeep, 0.9f));
+            Raylib.DrawCircleLinesV(center, 18f * scale, WithAlpha(UiBorder, 0.45f));
+            ShadowText("?", (int)center.X - 4, (int)center.Y - 10, 18, WithAlpha(Color.White, 0.28f));
+            return;
+        }
+
+        float r = def.Radius * scale;
+        float rot = time * def.RotSpeed * 0.14f;
+        if (def.Boss) DrawGlow(center, r * 1.8f, Danger, 0.07f);
+        else DrawGlow(center, r * 1.4f, def.Color, 0.06f);
+        Raylib.DrawPoly(center, def.Sides, r, rot, def.Color);
+        Raylib.DrawPolyLinesEx(center, def.Sides, r, rot, 2f, WithAlpha(Lighten(def.Color, 0.35f), 0.9f));
+        Raylib.DrawPoly(center, def.Sides, r * 0.42f, -rot, WithAlpha(MossLight, 0.48f));
+    }
+
+    static void DrawArmoryHeader(int cx)
+    {
+        var header = new Rectangle(18f, 12f, WindowWidth - 36f, 66f);
+        DrawRichPanel(header, WithAlpha(UiPanel, 0.94f), UiBorder, 0.22f, accentStripe: true);
+        ShadowText("ARMORY", 30, 20, 28, UiAccent);
+        DrawTextTruncated("Heraldry, arms, perks, and siege lore.", 30, 50, (int)header.Width / 2, 12, WithAlpha(Color.White, 0.58f));
+
+        float chipW = 108f;
+        float chipH = 40f;
+        float chipY = header.Y + 14f;
+        float chipX = header.X + header.Width - chipW * 2f - 18f;
+        DrawUiStatChip(new Rectangle(chipX, chipY, chipW, chipH), "RANK", playerLevel.ToString(), UiAccent);
+        DrawUiStatChip(new Rectangle(chipX + chipW + 10f, chipY, chipW, chipH), "FABLES", fables.ToString("N0"), Gold);
+
+        DrawLevelBar(new Rectangle(header.X + 10f, header.Y + header.Height + 8f, header.Width - 20f, 40f), true);
+    }
+
+    static bool DrawArmoryTab(Rectangle r, string label, string key, bool active, bool lore = false)
+    {
+        Vector2 m = Raylib.GetMousePosition();
+        bool hover = Raylib.CheckCollisionPointRec(m, r);
+        bool clicked = UiClickAllowed() && hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
+        Color accent = lore ? MossLight : UiAccent;
+
+        Color fill = active
+            ? LerpColor(UiPanel, accent, lore ? 0.22f : 0.3f)
+            : hover ? WithAlpha(accent, 0.12f) : WithAlpha(UiPanel, 0.88f);
+        DrawRichPanel(r, fill, active ? accent : WithAlpha(UiBorder, hover ? 0.55f : 0.38f), 0.26f, accentStripe: active);
+
+        if (active)
+        {
+            DrawPulseFrame(r, accent, 0.24f, lore ? 3.2f : 4f, 0.22f);
+            Raylib.DrawRectangle((int)r.X + 5, (int)(r.Y + r.Height - 3), (int)r.Width - 10, 3, accent);
+        }
+
+        int labelW = Raylib.MeasureText(label, 15);
+        ShadowText(label, (int)(r.X + r.Width / 2 - labelW / 2), (int)(r.Y + 9), 15, active ? Color.White : new Color(220, 230, 220, 255), active ? 1f : 0.78f);
+        string hint = "[" + key + "]";
+        int hintW = Raylib.MeasureText(hint, 10);
+        Raylib.DrawText(hint, (int)(r.X + r.Width / 2 - hintW / 2), (int)(r.Y + r.Height - 16), 10, WithAlpha(accent, active ? 0.75f : 0.42f));
+        return clicked;
+    }
+
+    static void DrawArmoryTabBar(int cx)
+    {
+        const float tw = 104f;
+        const float th = 40f;
+        const float gap = 6f;
+        float row1W = tw * 5 + gap * 4;
+        float startX = cx - row1W / 2f;
+        float y1 = ArmoryTabY;
+
+        if (DrawArmoryTab(new Rectangle(startX, y1, tw, th), "LOOK", "1", customizeTab == CustomizeTab.Cosmetics))
+        { customizeTab = CustomizeTab.Cosmetics; customizeScroll = 0f; }
+        if (DrawArmoryTab(new Rectangle(startX + (tw + gap), y1, tw, th), "ARMS", "2", customizeTab == CustomizeTab.Weapons))
+        { customizeTab = CustomizeTab.Weapons; customizeScroll = 0f; }
+        if (DrawArmoryTab(new Rectangle(startX + (tw + gap) * 2, y1, tw, th), "PERKS", "3", customizeTab == CustomizeTab.Upgrades))
+        { customizeTab = CustomizeTab.Upgrades; customizeScroll = 0f; }
+        if (DrawArmoryTab(new Rectangle(startX + (tw + gap) * 3, y1, tw, th), "SKILLS", "4", customizeTab == CustomizeTab.Abilities))
+        { customizeTab = CustomizeTab.Abilities; customizeScroll = 0f; }
+        if (DrawArmoryTab(new Rectangle(startX + (tw + gap) * 4, y1, tw, th), "RANK", "5", customizeTab == CustomizeTab.Rank))
+        { customizeTab = CustomizeTab.Rank; customizeScroll = 0f; }
+
+        float row2W = tw * 2 + gap;
+        float row2X = cx - row2W / 2f;
+        float y2 = y1 + th + 8f;
+        if (DrawArmoryTab(new Rectangle(row2X, y2, tw, th), "BESTIARY", "6", customizeTab == CustomizeTab.Bestiary, lore: true))
+        { customizeTab = CustomizeTab.Bestiary; customizeScroll = 0f; }
+        if (DrawArmoryTab(new Rectangle(row2X + tw + gap, y2, tw, th), "GLOSSARY", "7", customizeTab == CustomizeTab.Glossary, lore: true))
+        { customizeTab = CustomizeTab.Glossary; customizeScroll = 0f; }
+    }
+
+    static void DrawArmoryContextStrip()
+    {
+        var strip = new Rectangle(18f, ArmoryBannerY, WindowWidth - 36f, 30f);
+        DrawRichPanel(strip, WithAlpha(UiPanelDeep, 0.88f), WithAlpha(UiAccent, 0.35f), 0.3f);
+        ShadowText(CustomizeTabTitle().ToUpperInvariant(), (int)strip.X + 12, (int)strip.Y + 4, 13, UiAccent, 0.92f);
+        DrawTextTruncated(CustomizeTabSubtitle(), (int)strip.X + 12, (int)strip.Y + 16, (int)strip.Width - 24, 10, WithAlpha(Color.White, 0.55f));
+    }
+
+    static float DrawBestiarySummary(float y)
+    {
+        int known = 0;
+        int totalKills = 0;
+        for (int i = 0; i < EnemyCatalog.Length; i++)
+        {
+            if (bestiaryKills[i] > 0) known++;
+            totalKills += bestiaryKills[i];
+        }
+
+        var bar = new Rectangle(24f, y, WindowWidth - 48f, 48f);
+        DrawRichPanel(bar, WithAlpha(UiPanel, 0.9f), UiBorder, 0.18f, accentStripe: true);
+        float chipW = (bar.Width - 32f) / 3f;
+        DrawUiStatChip(new Rectangle(bar.X + 8f, bar.Y + 6f, chipW, 36f), "DISCOVERED", known + " / " + EnemyCatalog.Length, UiAccent);
+        DrawUiStatChip(new Rectangle(bar.X + 14f + chipW, bar.Y + 6f, chipW, 36f), "TOTAL SLAIN", totalKills.ToString("N0"), MossLight);
+        DrawUiStatChip(new Rectangle(bar.X + 20f + chipW * 2f, bar.Y + 6f, chipW, 36f), "BOSSES", CountKnownBosses().ToString(), Danger);
+        return bar.Height + 10f;
+    }
+
+    static int CountKnownBosses()
+    {
+        int n = 0;
+        for (int i = 0; i < EnemyCatalog.Length; i++)
+        {
+            if (EnemyCatalog[i].Boss && bestiaryKills[i] > 0) n++;
+        }
+
+        return n;
+    }
+
+    static float DrawBestiaryEntry(float y, int index, float time)
+    {
+        const float rowH = 76f;
+        ref readonly EnemyDef def = ref EnemyCatalog[index];
+        int kills = bestiaryKills[index];
+        bool known = kills > 0;
+        Color accent = def.Boss ? Danger : known ? UiAccent : UiBorder;
+        var row = new Rectangle(24f, y, WindowWidth - 48f, rowH);
+        DrawRichPanel(row, WithAlpha(UiPanel, known ? 0.92f : 0.62f), accent, 0.16f, accentStripe: known && def.Boss);
+
+        var iconFrame = new Rectangle(row.X + 10f, row.Y + 10f, 56f, 56f);
+        DrawRichPanel(iconFrame, WithAlpha(UiPanelDeep, 0.82f), WithAlpha(accent, 0.4f), 0.2f);
+        DrawBestiaryPortrait(new Vector2(iconFrame.X + iconFrame.Width / 2f, iconFrame.Y + iconFrame.Height / 2f + 2f), 0.95f, in def, known, time);
+
+        float textX = iconFrame.X + iconFrame.Width + 12f;
+        int textW = (int)(row.Width - (textX - row.X) - 88f);
+        string title = known ? def.Name : "Unknown Foe";
+        ShadowText(title, (int)textX, (int)row.Y + 12, 16, known ? Color.White : WithAlpha(Color.White, 0.42f));
+
+        if (def.Boss)
+        {
+            var pill = new Rectangle(textX, row.Y + 34f, 52f, 16f);
+            DrawRichPanel(pill, WithAlpha(Danger, 0.18f), WithAlpha(Danger, 0.55f), 0.35f);
+            Raylib.DrawText("BOSS", (int)pill.X + 10, (int)pill.Y + 3, 9, Danger);
+        }
+        else if (known)
+        {
+            string tag = EnemyBehaviorLabel(def.Behavior);
+            Raylib.DrawText(tag, (int)textX, (int)row.Y + 34, 10, WithAlpha(MossLight, 0.72f));
+        }
+
+        if (known)
+        {
+            DrawTextTruncated(def.Desc, (int)textX, (int)row.Y + 50, textW, 10, WithAlpha(Color.White, 0.52f));
+            var killChip = new Rectangle(row.X + row.Width - 78f, row.Y + 24f, 66f, 28f);
+            DrawRichPanel(killChip, WithAlpha(UiPanelDeep, 0.85f), UiAccent, 0.28f);
+            ShadowText(kills.ToString("N0"), (int)killChip.X + 8, (int)killChip.Y + 4, 14, UiAccent);
+            Raylib.DrawText("slain", (int)killChip.X + 8, (int)killChip.Y + 18, 9, WithAlpha(Color.White, 0.45f));
+        }
+        else
+        {
+            Raylib.DrawText("Slay this foe to reveal its lore.", (int)textX, (int)row.Y + 50, 10, WithAlpha(Color.White, 0.32f));
+        }
+
+        return rowH + 8f;
+    }
+
+    static float DrawGlossaryFamilyHeader(float y, EventFamily family)
+    {
+        Color accent = EventFamilyAccent(family);
+        var header = new Rectangle(24f, y, WindowWidth - 48f, 32f);
+        DrawRichPanel(header, WithAlpha(UiPanelDeep, 0.9f), WithAlpha(accent, 0.5f), 0.24f, accentStripe: true);
+        Raylib.DrawRectangle((int)header.X, (int)header.Y + 6, 4, (int)header.Height - 12, accent);
+        ShadowText(family.ToString().ToUpperInvariant(), (int)header.X + 14, (int)header.Y + 8, 14, accent);
+        return header.Height + 8f;
+    }
+
+    static float DrawGlossaryEntry(float y, FloorEventType ev, string name, string tip, Color accent)
+    {
+        const float rowH = 48f;
+        var row = new Rectangle(32f, y, WindowWidth - 64f, rowH);
+        DrawRichPanel(row, WithAlpha(UiPanel, 0.88f), WithAlpha(accent, 0.28f), 0.14f);
+        Raylib.DrawRectangle((int)row.X, (int)row.Y + 8, 3, (int)row.Height - 16, WithAlpha(accent, 0.65f));
+        ShadowText(name, (int)row.X + 12, (int)row.Y + 8, 13, Color.White, 0.9f);
+        DrawTextTruncated(tip, (int)row.X + 12, (int)row.Y + 26, (int)row.Width - 20, 10, WithAlpha(MossLight, 0.72f));
+        return rowH + 8f;
+    }
+
     static void DrawCustomize()
     {
         int cx = WindowWidth / 2;
-        DrawScreenBackdrop(0.66f, 0.28f);
+        DrawScreenBackdrop(0.72f, 0.34f);
 
-        DrawUiScreenHeader("ARMORY", "Looks, arms, perks, and skills.", fables.ToString("N0") + " fables");
+        DrawArmoryHeader(cx);
+        DrawArmoryTabBar(cx);
+        DrawArmoryContextStrip();
 
-        DrawLevelBar(new Rectangle(24f, 82f, WindowWidth - 48f, 44f), true);
-
-        float tw = 108f, th = 38f, gap = 6f;
-        float totalW = tw * 5 + gap * 4;
-        float startX = cx - totalW / 2f;
-        if (TabButton(new Rectangle(startX, ArmoryTabY, tw, th), "LOOK", customizeTab == CustomizeTab.Cosmetics)) { customizeTab = CustomizeTab.Cosmetics; customizeScroll = 0f; }
-        if (TabButton(new Rectangle(startX + (tw + gap), ArmoryTabY, tw, th), "ARMS", customizeTab == CustomizeTab.Weapons)) { customizeTab = CustomizeTab.Weapons; customizeScroll = 0f; }
-        if (TabButton(new Rectangle(startX + (tw + gap) * 2, ArmoryTabY, tw, th), "PERKS", customizeTab == CustomizeTab.Upgrades)) { customizeTab = CustomizeTab.Upgrades; customizeScroll = 0f; }
-        if (TabButton(new Rectangle(startX + (tw + gap) * 3, ArmoryTabY, tw, th), "SKILLS", customizeTab == CustomizeTab.Abilities)) { customizeTab = CustomizeTab.Abilities; customizeScroll = 0f; }
-        if (TabButton(new Rectangle(startX + (tw + gap) * 4, ArmoryTabY, tw, th), "RANK", customizeTab == CustomizeTab.Rank)) { customizeTab = CustomizeTab.Rank; customizeScroll = 0f; }
-
-        DrawUiContextBanner(ArmoryBannerY, CustomizeTabTitle() + " — " + CustomizeTabShortHint(), UiAccent);
-
-        var clip = new Rectangle(16f, ArmoryContentTop, WindowWidth - 32f, ArmoryViewportHeight);
+        customizeScroll = Math.Clamp(customizeScroll, 0f, ArmoryScrollMax());
+        float viewportH = ArmoryScrollViewportH();
+        var clip = new Rectangle(18f, ArmoryScrollContentY(), WindowWidth - 36f, viewportH);
         Raylib.BeginScissorMode((int)clip.X, (int)clip.Y, (int)clip.Width, (int)clip.Height);
 
         switch (customizeTab)
@@ -21937,12 +26906,15 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             case CustomizeTab.Upgrades: DrawUpgradesTab(); break;
             case CustomizeTab.Abilities: DrawAbilitiesTab(); break;
             case CustomizeTab.Rank: DrawRankTab(); break;
+            case CustomizeTab.Bestiary: DrawBestiaryTab(); break;
+            case CustomizeTab.Glossary: DrawGlossaryTab(); break;
             default: throw new UnreachableException();
         }
 
         Raylib.EndScissorMode();
+        DrawArmoryScrollBar(viewportH);
 
-        string scrollHint = ArmoryScrollMax() > 1f ? "Scroll for more" : "Click to equip or unlock";
+        string scrollHint = ArmoryScrollMax() > 1f ? "Scroll wheel · more below" : "Click to equip or unlock";
         DrawUiHintBar(scrollHint, CustomizeTabTitle(), "ESC back");
 
         if (Button(new Rectangle(30f, UiBackButtonY, 180f, 40f), "BACK  [ESC]", 20, true, UiBorder))
@@ -21952,87 +26924,246 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         }
     }
 
+    static void DrawBestiaryTab()
+    {
+        float time = (float)Raylib.GetTime();
+        float y = ArmoryScrollContentY() - customizeScroll;
+        DrawUiSectionLabel("BESTIARY", 28f, y, UiAccent);
+        y += 24f;
+        y += DrawBestiarySummary(y);
+        for (int i = 0; i < EnemyCatalog.Length; i++)
+        {
+            y += DrawBestiaryEntry(y, i, time);
+        }
+    }
+
+    static void DrawGlossaryTab()
+    {
+        float y = ArmoryScrollContentY() - customizeScroll;
+        DrawUiSectionLabel("EVENT GLOSSARY", 28f, y, MossLight);
+        y += 28f;
+        EventFamily family = EventFamily.General;
+        for (int i = 1; i < FloorEventNames.Length; i++)
+        {
+            FloorEventType ev = (FloorEventType)i;
+            EventFamily f = GetEventFamily(ev);
+            if (f != family)
+            {
+                family = f;
+                y += DrawGlossaryFamilyHeader(y, family);
+            }
+
+            string name = FloorEventNames[i];
+            if (string.IsNullOrEmpty(name)) continue;
+            y += DrawGlossaryEntry(y, ev, name, GetEventGlossaryTip(ev), EventFamilyAccent(family));
+        }
+    }
+
     static void DrawCosmeticsTab()
     {
         float time = (float)Raylib.GetTime();
         float y = ArmoryContentTop;
+        customizeScroll = Math.Clamp(customizeScroll, 0f, ArmoryScrollMax());
+        float pinnedHeaderH = ArmoryCosmeticsPinnedHeight();
+        const float previewPadX = 28f;
 
-        var preview = new Rectangle(28f, y, 148f, 128f);
-        DrawRichPanel(preview, WithAlpha(UiPanel, 0.85f), UiBorder, 0.2f, accentStripe: true);
+        var preview = new Rectangle(previewPadX, y, 112f, 92f);
+        DrawRichPanel(preview, WithAlpha(UiPanel, 0.9f), UiAccent, 0.22f, accentStripe: true);
+        DrawGlow(new Vector2(preview.X + preview.Width / 2f, preview.Y + preview.Height / 2f), 44f, BodyColor(), 0.14f);
         Vector2 pv = new Vector2(preview.X + preview.Width / 2f, preview.Y + preview.Height / 2f + 6f);
-        DrawGlow(pv, 44f, BodyColor(), 0.22f);
-        Raylib.DrawCircleV(pv, 26f, BodyColor());
-        Raylib.DrawCircleLinesV(pv, 26f, WithAlpha(BodyBright(), 0.9f));
-        Vector2 iris = pv + new Vector2(0, 1) * 8f;
-        Raylib.DrawCircleV(iris, 9f, BodyBright());
-        Raylib.DrawCircleV(iris, 4f, Color.White);
-        DrawAccessory(pv, 26f, time, accessoryIndex);
-        Raylib.DrawText("PREVIEW", (int)preview.X + 10, (int)preview.Y + 8, 11, WithAlpha(Color.White, 0.55f));
+        Raylib.DrawCircleV(pv, 24f, BodyColor());
+        Raylib.DrawCircleLinesV(pv, 24f, WithAlpha(BodyBright(), 0.9f));
+        Vector2 iris = pv + new Vector2(0, 1) * 7f;
+        Raylib.DrawCircleV(iris, 8f, BodyBright());
+        Raylib.DrawCircleV(iris, 3.5f, Color.White);
+        DrawAccessory(pv, 24f, time, accessoryIndex, AccessoryPreviewForward);
+        ShadowText("KNIGHT", (int)preview.X + 10, (int)preview.Y + 8, 10, WithAlpha(Color.White, 0.55f));
+        DrawTextTruncated(AccessoryNames[accessoryIndex], (int)preview.X + 10, (int)(preview.Y + preview.Height - 16), (int)preview.Width - 16, 9, Gold);
 
-        float hx = 196f;
-        Raylib.DrawText("HERALDRY", (int)hx, (int)y, 16, WithAlpha(Color.White, 0.82f));
-        int sw = 50, sgap = 8, cols = 5;
-        float gridY = y + 24f;
+        ComputeHeraldryGrid(out float heraldryPadX, out float hgap, out int hcols, out float hcell, out float hrowH);
+        float heraldryY = y + preview.Height + 10f;
+        DrawUiSectionLabel("HERALDRY", heraldryPadX, heraldryY, UiAccent);
+        float gridY = heraldryY + 22f;
         for (int i = 0; i < BodyPalette.Length; i++)
         {
-            int col = i % cols;
-            int row = i / cols;
-            var r = new Rectangle(hx + col * (sw + sgap), gridY + row * (sw + 18f), sw, sw);
+            int col = i % hcols;
+            int row = i / hcols;
+            var r = new Rectangle(heraldryPadX + col * (hcell + hgap), gridY + row * hrowH, hcell, hcell);
             bool unlocked = bodyUnlocked[i];
             bool sel = bodyColorIndex == i;
             string lockText = CosmeticLockLabel(BodyFableCost[i], BodyLevelReq[i], BodyWaveReq[i]);
             bool ready = CanPurchaseBody(i);
             if (Swatch(r, BodyPalette[i], sel, unlocked, lockText, ready))
             {
-                if (unlocked) { bodyColorIndex = i; SaveGame(); }
+                if (runLockedBodyIndex >= 0 && state == GameState.Playing) { }
+                else if (unlocked) { bodyColorIndex = i; SaveGame(); }
                 else if (TryUnlockBody(i)) { bodyColorIndex = i; SaveGame(); }
             }
 
-            int labelW = sw + 8;
-            DrawTextTruncated(BodyNames[i], (int)(r.X + sw / 2 - labelW / 2), (int)(r.Y + sw + 3), labelW, 9, WithAlpha(Color.White, 0.55f));
+            int labelW = (int)hcell + 4;
+            DrawTextTruncated(BodyNames[i], (int)(r.X + hcell / 2 - labelW / 2), (int)(r.Y + hcell + 2), labelW, 9, WithAlpha(Color.White, 0.55f));
         }
 
-        float trinketY = y + 196f - customizeScroll;
-        Raylib.DrawText("TRINKETS", 28, (int)trinketY, 16, WithAlpha(Color.White, 0.82f));
-        int acols = 6;
-        float agx = 28f;
-        float gridStartY = trinketY + 26f;
+        float trinketClipTop = y + pinnedHeaderH;
+        float trinketClipH = Math.Max(0f, ArmoryContentBottom - trinketClipTop);
+        var trinketClip = new Rectangle(16f, trinketClipTop, WindowWidth - 32f, trinketClipH);
+        Raylib.BeginScissorMode((int)trinketClip.X, (int)trinketClip.Y, (int)trinketClip.Width, (int)trinketClip.Height);
+
+        ComputeTrinketGrid(out float padX, out float tgap, out int acols, out float cell, out float rowH);
+        float gridW = WindowWidth - padX * 2f;
+
+        float trinketY = trinketClipTop - customizeScroll;
+        DrawUiSectionLabel("TRINKETS", padX, trinketY, MossLight);
+        Raylib.DrawLine((int)padX, (int)(trinketY + 22f), (int)(padX + gridW), (int)(trinketY + 22f), WithAlpha(UiBorder, 0.35f));
+
+        float gridStartY = trinketY + 34f;
+        int display = 0;
         for (int i = 0; i < AccessoryNames.Length; i++)
         {
-            int col = i % acols;
-            int row = i / acols;
-            var r = new Rectangle(agx + col * (sw + sgap), gridStartY + row * (sw + 18f), sw, sw);
+            if (IsSecretAccessory(i) && !accessoryUnlocked[i]) continue;
+
+            int col = display % acols;
+            int row = display / acols;
+            display++;
+            float tx = padX + col * (cell + tgap);
+            float ty = gridStartY + row * rowH;
+            var r = new Rectangle(tx, ty, cell, cell);
 
             bool unlocked = accessoryUnlocked[i];
             bool sel = accessoryIndex == i;
             string lockText = CosmeticLockLabel(AccessoryFableCost[i], AccessoryLevelReq[i], AccessoryWaveReq[i]);
             bool ready = CanPurchaseAccessory(i);
-            if (Swatch(r, UiPanel, sel, unlocked, lockText, ready))
+            bool trinketVisible = r.Y + r.Height + 16f >= trinketClipTop && r.Y <= trinketClipTop + trinketClipH;
+            if (DrawTrinketTile(r, time, i, sel, unlocked, lockText, ready) && trinketVisible)
             {
                 if (unlocked) { accessoryIndex = i; SaveGame(); }
                 else if (TryUnlockAccessory(i)) { accessoryIndex = i; SaveGame(); }
             }
 
-            DrawAccessory(new Vector2(r.X + sw / 2f, r.Y + sw / 2f + 4f), 13f, time, i);
-            int labelW = sw + 10;
-            DrawTextTruncated(AccessoryNames[i], (int)(r.X + sw / 2 - labelW / 2), (int)(r.Y + sw + 3), labelW, 8, WithAlpha(Color.White, 0.5f));
+            DrawTextTruncated(AccessoryNames[i], (int)tx, (int)(ty + cell + 4f), (int)cell, 10,
+                WithAlpha(Color.White, unlocked ? 0.72f : 0.42f));
+            if (i == AccessoryKeepBanner && accessoryIndex == AccessoryKeepBanner && upgradeLevels[UpLockstep] > 0)
+                ShadowText("SYNERGY", (int)tx, (int)(ty - 1), 8, Gold);
+            if (i == AccessoryStormGlass && accessoryIndex == AccessoryStormGlass && upgradeLevels[UpPierce] > 0)
+                ShadowText("SYNERGY", (int)tx, (int)(ty - 1), 8, Gold);
         }
+
+        Raylib.EndScissorMode();
+    }
+
+    static bool UiClickAllowed() => uiInputBlockFrames <= 0;
+
+    static void OpenArmory()
+    {
+        customizeTab = CustomizeTab.Cosmetics;
+        customizeScroll = 0f;
+        uiInputBlockFrames = 3;
+        state = GameState.Customize;
+    }
+
+    static void ComputeMainMenuButtonLayout(int cx, int yStart, out float playY, out float rowY, out float halfW, out float halfGap, out float btnH)
+    {
+        playY = yStart + 4f;
+        rowY = playY + 52f;
+        halfW = 252f;
+        halfGap = 12f;
+        btnH = 40f;
+    }
+
+    static void ComputeTrinketGrid(out float padX, out float gap, out int cols, out float cell, out float rowH)
+    {
+        padX = 20f;
+        gap = 10f;
+        const float labelGap = 18f;
+        float gridW = WindowWidth - padX * 2f;
+        const float minCell = 84f;
+        cols = Math.Clamp((int)MathF.Floor((gridW + gap) / (minCell + gap)), 5, 10);
+        cell = (gridW - (cols - 1) * gap) / cols;
+        rowH = cell + labelGap;
+    }
+
+    static void DrawLockBadge(Vector2 center, float size, Color color)
+    {
+        float sh = size * 0.52f;
+        float sw = size * 0.72f;
+        var shackle = new Rectangle(center.X - sw * 0.5f, center.Y - size * 0.42f, sw, sh);
+        Raylib.DrawRectangleRounded(shackle, 0.55f, 4, WithAlpha(color, 0.55f));
+        Raylib.DrawRectangleRoundedLines(shackle, 0.55f, 4, WithAlpha(color, 0.85f));
+        var body = new Rectangle(center.X - sw * 0.62f, center.Y - size * 0.06f, sw * 1.24f, size * 0.62f);
+        Raylib.DrawRectangleRounded(body, 0.28f, 4, WithAlpha(color, 0.9f));
+        Raylib.DrawRectangleRoundedLines(body, 0.28f, 4, WithAlpha(Lighten(color, 0.25f), 0.95f));
+        Raylib.DrawCircleV(new Vector2(center.X, center.Y + size * 0.14f), size * 0.08f, WithAlpha(ForestShadow, 0.75f));
+    }
+
+    static bool DrawTrinketTile(Rectangle r, float time, int idx, bool selected, bool unlocked, string lockText, bool readyToBuy)
+    {
+        Vector2 m = Raylib.GetMousePosition();
+        bool hover = Raylib.CheckCollisionPointRec(m, r);
+        bool clicked = UiClickAllowed() && hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
+
+        Color border = selected ? UiBorderLight : hover ? UiAccent : UiBorder;
+        DrawRichPanel(r, WithAlpha(UiPanel, 0.94f), border, 0.24f, accentStripe: selected || readyToBuy);
+
+        var iconArea = new Rectangle(r.X + 7f, r.Y + 7f, r.Width - 14f, r.Height - 14f);
+        DrawRichPanel(iconArea, WithAlpha(UiPanelDeep, 0.72f), WithAlpha(UiBorder, 0.4f), 0.16f);
+
+        float iconR = MathF.Min(iconArea.Width, iconArea.Height) * 0.34f;
+        Vector2 iconCenter = new Vector2(iconArea.X + iconArea.Width / 2f, iconArea.Y + iconArea.Height * 0.46f);
+        DrawAccessory(iconCenter, iconR, time, idx, AccessoryPreviewForward);
+
+        if (!unlocked)
+        {
+            Raylib.DrawRectangleRounded(iconArea, 0.18f, 4, WithAlpha(ForestShadow, 0.48f));
+            Color lockCol = readyToBuy ? Gold : WithAlpha(Color.White, 0.72f);
+            DrawLockBadge(new Vector2(iconCenter.X, iconCenter.Y - iconR * 0.08f), iconR * 0.95f, lockCol);
+
+            if (!string.IsNullOrEmpty(lockText))
+            {
+                int fs = lockText.Length > 12 ? 8 : lockText.Length > 9 ? 9 : 10;
+                string fit = TruncateText(lockText, (int)iconArea.Width - 8, fs);
+                int tw = Raylib.MeasureText(fit, fs);
+                ShadowText(fit,
+                    (int)(iconArea.X + iconArea.Width / 2f - tw / 2f),
+                    (int)(iconArea.Y + iconArea.Height - fs - 6f),
+                    fs, readyToBuy ? Gold : WithAlpha(Color.White, 0.58f));
+            }
+
+            if (readyToBuy)
+            {
+                DrawPulseFrame(new Rectangle(r.X + 2f, r.Y + 2f, r.Width - 4f, r.Height - 4f), Gold, 0.22f, 5f, 0.2f);
+            }
+        }
+        else if (selected)
+        {
+            ShadowText("\u2713", (int)(r.X + r.Width - 18f), (int)(r.Y + 6f), 16, UiAccent);
+            DrawGlow(iconCenter, iconR * 1.6f, UiAccent, 0.045f);
+        }
+
+        if (hover && unlocked)
+        {
+            DrawGlow(iconCenter, iconR * 1.4f, UiAccent, 0.03f);
+        }
+
+        return clicked;
     }
 
     static void DrawWeaponsTab()
     {
         const int cols = 3;
         const float cardW = 236f;
-        const float cardH = 108f;
+        const float cardH = 118f;
         const float gx = 12f;
-        const float gy = 12f;
+        const float gy = 14f;
         float totalW = cols * cardW + (cols - 1) * gx;
         float startX = WindowWidth / 2f - totalW / 2f;
-        float startY = ArmoryContentTop - customizeScroll;
+        float startY = ArmoryScrollContentY() - customizeScroll;
         customizeScroll = Math.Clamp(customizeScroll, 0f, ArmoryScrollMax());
         float dt = Raylib.GetFrameTime();
         float time = (float)Raylib.GetTime();
         int textW = (int)cardW - 24;
+
+        DrawUiSectionLabel("SIEGE ARMS", startX, startY, UiAccent);
+        startY += 28f;
 
         for (int i = 0; i < Guns.Length; i++)
         {
@@ -22084,7 +27215,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
                 if (ready && fableGun) DrawPulseFrame(r, Gold, 0.18f, 4.5f, 0.16f);
             }
 
-            if (hover && Raylib.IsMouseButtonPressed(MouseButton.Left))
+            if (UiClickAllowed() && hover && Raylib.IsMouseButtonPressed(MouseButton.Left))
             {
                 if (unlocked) { equippedGun = i; SaveGame(); }
                 else if (TryUnlockGun(i)) { equippedGun = i; SaveGame(); }
@@ -22093,66 +27224,317 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         }
     }
 
-    static void DrawRankTab()
+    readonly struct RankUnlockLine
     {
-        float y = ArmoryContentTop - customizeScroll;
-        customizeScroll = Math.Clamp(customizeScroll, 0f, ArmoryScrollMax());
-        int textW = WindowWidth - 120;
+        public readonly string Kind;
+        public readonly string Name;
+        public readonly int GunIndex;
 
-        DrawLevelBar(new Rectangle(28f, y, WindowWidth - 56f, 40f), true);
-        y += 52f;
-
-        Raylib.DrawText("NEXT REWARDS", 28, (int)y, 18, UiAccent);
-        y += 28f;
-
-        int shown = 0;
-        for (int lv = playerLevel + 1; lv <= playerLevel + 20 && shown < 8; lv++)
+        public RankUnlockLine(string kind, string name, int gunIndex = -1)
         {
-            for (int i = 0; i < Guns.Length; i++)
+            Kind = kind;
+            Name = name;
+            GunIndex = gunIndex;
+        }
+    }
+
+    static int CountRankUnlocks(int level)
+    {
+        int count = 0;
+        for (int i = 0; i < Guns.Length; i++)
+        {
+            if (Guns[i].LevelReq == level) count++;
+        }
+
+        for (int i = 0; i < BodyPalette.Length; i++)
+        {
+            if (BodyLevelReq[i] == level && BodyFableCost[i] == 0 && BodyWaveReq[i] == 0) count++;
+        }
+
+        for (int i = 0; i < AccessoryNames.Length; i++)
+        {
+            if (AccessoryLevelReq[i] == level && AccessoryFableCost[i] == 0 && AccessoryWaveReq[i] == 0) count++;
+        }
+
+        return count;
+    }
+
+    static void CollectRankUnlocks(int level, List<RankUnlockLine> dest)
+    {
+        for (int i = 0; i < Guns.Length; i++)
+        {
+            if (Guns[i].LevelReq == level)
             {
-                if (Guns[i].LevelReq != lv) continue;
-                var row = new Rectangle(28f, y, WindowWidth - 56f, 50f);
-                DrawRichPanel(row, UiPanel, UiBorder, 0.14f);
-                DrawGunIcon(i, new Vector2(row.X + 44f, row.Y + 25f), 10f, (float)Raylib.GetTime());
-                Raylib.DrawText($"RANK {lv}", (int)row.X + 12, (int)row.Y + 8, 13, UiAccent);
-                DrawTextTruncated(Guns[i].Name, (int)row.X + 88, (int)row.Y + 8, textW - 88, 15, Color.White);
-                DrawTextTruncated(Guns[i].Desc, (int)row.X + 88, (int)row.Y + 28, textW - 88, 11, WithAlpha(Color.White, 0.5f));
-                y += 54f;
-                shown++;
-                break;
+                dest.Add(new RankUnlockLine("Arm", Guns[i].Name, i));
             }
         }
 
-        Raylib.DrawText("SIEGE ARMS (wave + fables)", 28, (int)(y + 6f), 16, WithAlpha(Color.White, 0.75f));
-        y += 32f;
+        for (int i = 0; i < BodyPalette.Length; i++)
+        {
+            if (BodyLevelReq[i] == level && BodyFableCost[i] == 0 && BodyWaveReq[i] == 0)
+            {
+                dest.Add(new RankUnlockLine("Heraldry", BodyNames[i]));
+            }
+        }
 
-        int siegeShown = 0;
-        for (int i = 0; i < Guns.Length && siegeShown < 5; i++)
+        for (int i = 0; i < AccessoryNames.Length; i++)
+        {
+            if (AccessoryLevelReq[i] == level && AccessoryFableCost[i] == 0 && AccessoryWaveReq[i] == 0)
+            {
+                dest.Add(new RankUnlockLine("Trinket", AccessoryNames[i]));
+            }
+        }
+    }
+
+    static float RankMilestoneRowHeight(int level)
+    {
+        int unlocks = CountRankUnlocks(level);
+        if (unlocks == 0) return level == playerLevel ? 58f : 44f;
+        return 52f + unlocks * 20f;
+    }
+
+    static float MeasureRankTabContentHeight()
+    {
+        float h = 122f;
+        h += 26f;
+
+        int rows = 0;
+        if (playerLevel > 1)
+        {
+            h += RankMilestoneRowHeight(playerLevel - 1) + 8f;
+            rows++;
+        }
+
+        for (int lv = playerLevel; lv <= playerLevel + 18 && rows < 14; lv++)
+        {
+            if (lv == playerLevel || CountRankUnlocks(lv) > 0)
+            {
+                h += RankMilestoneRowHeight(lv) + 8f;
+                rows++;
+            }
+        }
+
+        h += 18f;
+        h += 40f;
+
+        for (int i = 0; i < Guns.Length; i++)
+        {
+            ref readonly Gun g = ref Guns[i];
+            if (g.WaveReq > 0 && g.LevelReq == 0) h += 56f;
+        }
+
+        return h + 16f;
+    }
+
+    static float DrawRankSummaryCard(float y)
+    {
+        const float cardH = 112f;
+        float padX = 24f;
+        var card = new Rectangle(padX, y, WindowWidth - padX * 2f, cardH);
+        DrawRichPanel(card, WithAlpha(UiPanel, 0.92f), UiAccent, 0.22f, accentStripe: true);
+        DrawLevelBar(new Rectangle(card.X + 10f, card.Y + 8f, card.Width - 20f, 46f), true);
+
+        float chipW = (card.Width - 36f) / 3f;
+        float chipY = card.Y + 62f;
+        DrawUiStatChip(new Rectangle(card.X + 10f, chipY, chipW, 42f), "RANK", playerLevel.ToString(), UiAccent);
+        DrawUiStatChip(new Rectangle(card.X + 16f + chipW, chipY, chipW, 42f), "BEST WAVE", maxWaveReached.ToString(), MossLight);
+        DrawUiStatChip(new Rectangle(card.X + 22f + chipW * 2f, chipY, chipW, 42f), "FABLES", fables.ToString("N0"), Gold);
+
+        string motto = GetUnlockedMotto();
+        if (!string.IsNullOrEmpty(motto))
+        {
+            DrawTextTruncated("\"" + motto + "\"", (int)card.X + 12, (int)(chipY + 48f), (int)card.Width - 24, 11, WithAlpha(Gold, 0.8f));
+        }
+
+        int di = (int)runDifficulty;
+        if (di >= 0 && di < difficultyRecords.Length)
+        {
+            ref DifficultyRecord rec = ref difficultyRecords[di];
+            string recs = activeDifficulty.Title + ": wave " + rec.BestWave + " · " + rec.BestKills + " kills";
+            DrawTextTruncated(recs, (int)card.X + 12, (int)(chipY + (string.IsNullOrEmpty(motto) ? 48f : 64f)), (int)card.Width - 24, 10, WithAlpha(MossLight, 0.72f));
+        }
+
+        return cardH + 10f + (string.IsNullOrEmpty(motto) ? 0f : 16f) + 16f;
+    }
+
+    static float DrawRankMilestoneRow(float y, int level, bool drawLineBelow)
+    {
+        float padX = 24f;
+        float rowH = RankMilestoneRowHeight(level);
+        float timelineX = padX + 16f;
+        bool isCurrent = level == playerLevel;
+        bool isPast = level < playerLevel;
+
+        Color dot = isCurrent ? Gold : isPast ? UiAccent : WithAlpha(Color.White, 0.45f);
+        Raylib.DrawCircleV(new Vector2(timelineX, y + 14f), isCurrent ? 7f : 5f, dot);
+        if (isCurrent)
+        {
+            Raylib.DrawCircleLinesV(new Vector2(timelineX, y + 14f), 10f, WithAlpha(Gold, 0.55f));
+        }
+
+        if (drawLineBelow)
+        {
+            Raylib.DrawLineEx(new Vector2(timelineX, y + 22f), new Vector2(timelineX, y + rowH + 6f), 2f, WithAlpha(UiBorder, 0.35f));
+        }
+
+        var card = new Rectangle(padX + 34f, y, WindowWidth - padX * 2f - 34f, rowH);
+        Color border = isCurrent ? Gold : isPast ? WithAlpha(UiBorder, 0.55f) : UiBorder;
+        DrawRichPanel(card, WithAlpha(UiPanel, isPast ? 0.72f : 0.9f), border, 0.18f, accentStripe: isCurrent);
+
+        string title = isCurrent ? $"RANK {level}  ·  YOU ARE HERE" : isPast ? $"RANK {level}  ·  COMPLETE" : $"RANK {level}  ·  NEXT";
+        Color titleCol = isCurrent ? Gold : isPast ? WithAlpha(UiAccent, 0.85f) : WithAlpha(Color.White, 0.82f);
+        Raylib.DrawText(title, (int)card.X + 12, (int)card.Y + 8, isCurrent ? 14 : 13, titleCol);
+
+        var unlocks = new List<RankUnlockLine>();
+        CollectRankUnlocks(level, unlocks);
+        float lineY = card.Y + 30f;
+        float time = (float)Raylib.GetTime();
+
+        if (unlocks.Count == 0)
+        {
+            string empty = isCurrent
+                ? "Keep earning XP in runs to reach the next reward."
+                : isPast ? "Rank reached." : "No automatic unlocks at this rank.";
+            DrawTextTruncated(empty, (int)card.X + 12, (int)lineY, (int)card.Width - 24, 11, WithAlpha(Color.White, 0.48f));
+        }
+        else
+        {
+            for (int u = 0; u < unlocks.Count; u++)
+            {
+                RankUnlockLine entry = unlocks[u];
+                Color kindCol = entry.Kind switch
+                {
+                    "Arm" => UiAccent,
+                    "Heraldry" => MossLight,
+                    "Trinket" => Gold,
+                    _ => throw new UnreachableException(),
+                };
+                bool earned = isPast || isCurrent;
+                Raylib.DrawText(entry.Kind.ToUpperInvariant(), (int)card.X + 12, (int)lineY, 10, WithAlpha(kindCol, earned ? 0.9f : 0.55f));
+                if (entry.GunIndex >= 0)
+                {
+                    DrawGunIcon(entry.GunIndex, new Vector2(card.X + 62f, lineY + 8f), 8f, time, earned ? 1f : 0.45f);
+                }
+
+                int nameX = entry.GunIndex >= 0 ? 82 : 72;
+                DrawTextTruncated(entry.Name, (int)card.X + nameX, (int)lineY, (int)card.Width - nameX - 56, 12,
+                    WithAlpha(Color.White, earned ? 0.88f : 0.58f));
+                if (earned)
+                {
+                    ShadowText("\u2713", (int)(card.X + card.Width - 22f), (int)lineY - 1, 14, UiAccent);
+                }
+
+                lineY += 20f;
+            }
+        }
+
+        return rowH + 8f;
+    }
+
+    static void DrawRankStatusPill(Rectangle row, string text, Color accent)
+    {
+        int fs = 10;
+        int tw = Raylib.MeasureText(text, fs);
+        var pill = new Rectangle(row.X + row.Width - tw - 22f, row.Y + 10f, tw + 16f, 22f);
+        DrawRichPanel(pill, WithAlpha(accent, 0.16f), WithAlpha(accent, 0.55f), 0.35f);
+        Raylib.DrawText(text, (int)(pill.X + 8f), (int)(pill.Y + 5f), fs, WithAlpha(Color.White, 0.92f));
+    }
+
+    static float DrawRankSiegeSection(float y)
+    {
+        float padX = 24f;
+        DrawUiSectionLabel("SIEGE ARMS", padX, y, Gold);
+        y += 24f;
+        DrawTextTruncated("Clear waves in runs, then buy these in the ARMS tab with fables.", (int)padX, (int)y,
+            WindowWidth - (int)padX * 2, 11, WithAlpha(Color.White, 0.5f));
+        y += 20f;
+
+        float time = (float)Raylib.GetTime();
+        int textW = (int)(WindowWidth - padX * 2f - 120f);
+
+        for (int i = 0; i < Guns.Length; i++)
         {
             ref readonly Gun g = ref Guns[i];
             if (g.WaveReq <= 0 || g.LevelReq > 0) continue;
-            var row = new Rectangle(28f, y, WindowWidth - 56f, 44f);
-            DrawRichPanel(row, UiPanel, UiBorder, 0.12f);
-            DrawGunIcon(i, new Vector2(row.X + 36f, row.Y + 22f), 9f, (float)Raylib.GetTime());
-            string req = $"wave {g.WaveReq}  ·  {g.FableCost} fables";
-            DrawTextTruncated(g.Name, (int)row.X + 12, (int)row.Y + 8, textW - 12, 14, gunUnlocked[i] ? UiAccent : Color.White);
-            DrawTextTruncated(req, (int)row.X + 12, (int)row.Y + 26, textW - 12, 11, WithAlpha(Gold, gunUnlocked[i] ? 0.9f : 0.55f));
-            y += 48f;
-            siegeShown++;
+
+            var row = new Rectangle(padX, y, WindowWidth - padX * 2f, 50f);
+            bool owned = gunUnlocked[i];
+            bool waveMet = maxWaveReached >= g.WaveReq;
+            bool canBuy = CanPurchaseGun(i);
+            Color border = owned ? UiAccent : canBuy ? Gold : WithAlpha(UiBorder, 0.55f);
+            DrawRichPanel(row, WithAlpha(UiPanel, 0.88f), border, 0.16f, accentStripe: owned || canBuy);
+
+            DrawGunIcon(i, new Vector2(row.X + 34f, row.Y + 25f), 10f, time, owned ? 1f : waveMet ? 0.7f : 0.4f);
+            DrawTextTruncated(g.Name, (int)row.X + 56, (int)row.Y + 8, textW, 14, owned ? UiAccent : Color.White);
+            string req = $"Requires wave {g.WaveReq} cleared  ·  {g.FableCost:N0} fables";
+            DrawTextTruncated(req, (int)row.X + 56, (int)row.Y + 28, textW, 11,
+                WithAlpha(Gold, waveMet ? 0.9f : 0.45f));
+
+            if (owned)
+            {
+                DrawRankStatusPill(row, "OWNED", UiAccent);
+            }
+            else if (canBuy)
+            {
+                DrawRankStatusPill(row, "READY", Gold);
+            }
+            else if (!waveMet)
+            {
+                DrawRankStatusPill(row, $"WAVE {g.WaveReq}", Danger);
+            }
+            else
+            {
+                DrawRankStatusPill(row, "NEED FABLES", WithAlpha(Gold, 0.75f));
+            }
+
+            y += 56f;
         }
 
-        Raylib.DrawText($"highest wave cleared: {maxWaveReached}", 28, (int)(y + 8f), 13, WithAlpha(Color.White, 0.5f));
+        return y;
+    }
+
+    static void DrawRankTab()
+    {
+        float y = ArmoryScrollContentY() - customizeScroll;
+        customizeScroll = Math.Clamp(customizeScroll, 0f, ArmoryScrollMax());
+
+        DrawUiSectionLabel("SIEGE RANK", 24f, y, Gold);
+        y += 24f;
+        y += DrawRankSummaryCard(y);
+        DrawUiSectionLabel("RANK ROADMAP", 24f, y, UiAccent);
+        y += 26f;
+
+        var milestoneLevels = new List<int>();
+        if (playerLevel > 1) milestoneLevels.Add(playerLevel - 1);
+        for (int lv = playerLevel; lv <= playerLevel + 18 && milestoneLevels.Count < 14; lv++)
+        {
+            if (lv == playerLevel || CountRankUnlocks(lv) > 0)
+            {
+                milestoneLevels.Add(lv);
+            }
+        }
+
+        for (int i = 0; i < milestoneLevels.Count; i++)
+        {
+            y += DrawRankMilestoneRow(y, milestoneLevels[i], drawLineBelow: i < milestoneLevels.Count - 1);
+        }
+
+        y += 10f;
+        DrawRankSiegeSection(y);
     }
 
     static void DrawUpgradesTab()
     {
-        const float rowH = 64f;
+        const float rowH = 72f;
         const float gap = 10f;
         float rowW = WindowWidth - 48f;
         float startX = 24f;
-        float startY = ArmoryContentTop - customizeScroll;
+        float startY = ArmoryScrollContentY() - customizeScroll;
         customizeScroll = Math.Clamp(customizeScroll, 0f, ArmoryScrollMax());
         int descW = (int)rowW - 300;
+
+        DrawUiSectionLabel("PERMANENT PERKS", startX, startY, UiAccent);
+        startY += 28f;
 
         for (int i = 0; i < UpgradeCount; i++)
         {
@@ -22285,14 +27667,16 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         const float gap = 14f;
         float cardW = WindowWidth - 48f;
         float startX = 24f;
-        float startY = ArmoryContentTop - customizeScroll;
+        float startY = ArmoryScrollContentY() - customizeScroll;
         customizeScroll = Math.Clamp(customizeScroll, 0f, ArmoryScrollMax());
         float time = (float)Raylib.GetTime();
         int descW = (int)cardW - 210;
         int descX = 196;
 
-        Raylib.DrawText("EQUIPPED ABILITIES", 28, (int)startY, 16, UiAccent);
-        startY += 26f;
+        DrawUiSectionLabel("BATTLE SKILLS", startX, startY, UiAccent);
+        startY += 24f;
+        Raylib.DrawText("EQUIPPED", (int)startX, (int)startY, 12, WithAlpha(Color.White, 0.55f));
+        startY += 18f;
 
         float slotW = (cardW - 12f) / 2f;
         var slot1Panel = new Rectangle(startX, startY, slotW, 82f);
@@ -22301,8 +27685,8 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         DrawAbilitySlotPanel(1, abilitySlot2, abilityKey2, slot2Panel, time);
         startY += 92f;
 
-        Raylib.DrawText("UNLOCK & ASSIGN", 28, (int)startY, 14, WithAlpha(Color.White, 0.7f));
-        startY += 24f;
+        Raylib.DrawText("UNLOCK & ASSIGN", (int)startX, (int)startY, 12, WithAlpha(Color.White, 0.55f));
+        startY += 20f;
 
         for (int i = 0; i < AbilityCount; i++)
         {
@@ -22387,13 +27771,47 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         const float gap = 8f;
         const float sectionGap = 8f;
         const float sectionLabel = 20f;
+        ReadOnlySpan<int> sectionRows = stackalloc int[] { 7, 3, 4, 11, 7, 2 };
         float contentH = 0f;
-        contentH += sectionLabel + sectionGap + (rowH + gap) * 2;
-        contentH += sectionGap + sectionLabel + sectionGap + (rowH + gap) * 3;
-        contentH += sectionGap + sectionLabel + sectionGap + (rowH + gap) * 2;
-        contentH += sectionGap + sectionLabel + sectionGap + (rowH + gap) * 2;
+        for (int s = 0; s < sectionRows.Length; s++)
+        {
+            contentH += sectionLabel + gap + (rowH + gap) * sectionRows[s];
+            contentH += sectionGap;
+        }
+
         float viewportH = UiFooterTop - 88f;
         return Math.Max(0f, contentH - viewportH);
+    }
+
+    static void DrawSettingsToggleRow(ref float y, float startX, float rowW, float rowH, float gap, string title, string desc, ref bool value)
+    {
+        var r = new Rectangle(startX, y, rowW, rowH);
+        DrawRichPanel(r, UiPanel, UiBorder, 0.18f);
+        Raylib.DrawText(title, (int)r.X + 18, (int)r.Y + 10, 20, Color.White);
+        DrawTextTruncated(desc, (int)r.X + 18, (int)r.Y + 34, (int)rowW - 160, 11, WithAlpha(Color.White, 0.5f));
+        if (Button(new Rectangle(r.X + rowW - 130f, r.Y + 12f, 114f, 32f), value ? "ON" : "OFF", 16, true, value ? UiAccent : UiBorder))
+        {
+            value = !value;
+            SaveGame();
+        }
+
+        y += rowH + gap;
+    }
+
+    static void DrawSettingsSliderRow(ref float y, float startX, float rowW, float rowH, float gap, string title, ref float value, Color accent)
+    {
+        var r = new Rectangle(startX, y, rowW, rowH);
+        DrawRichPanel(r, UiPanel, UiBorder, 0.18f);
+        Raylib.DrawText(title, (int)r.X + 18, (int)r.Y + 10, 20, Color.White);
+        Raylib.DrawText((int)(value * 100f) + "%", (int)r.X + 18, (int)r.Y + 34, 12, WithAlpha(accent, 0.9f));
+        float nv = Slider(new Rectangle(r.X + 230f, r.Y + rowH / 2f - 6f, rowW - 260f, 12f), value);
+        if (MathF.Abs(nv - value) > 0.001f)
+        {
+            value = nv;
+            SaveGame();
+        }
+
+        y += rowH + gap;
     }
 
     static void DrawSettings()
@@ -22433,7 +27851,35 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         Raylib.DrawText("Auto-Pilot", (int)r5.X + 18, (int)r5.Y + 10, 20, Color.White);
         DrawTextTruncated("Press \\ in-game. Experimental.", (int)r5.X + 18, (int)r5.Y + 34, (int)rowW - 160, 11, WithAlpha(new Color(196, 168, 108, 255), 0.85f));
 
-        y += rowH + gap + sectionGap;
+        y += rowH + gap;
+        var rLegend = new Rectangle(startX, y, rowW, rowH);
+        DrawRichPanel(rLegend, UiPanel, UiBorder, 0.18f);
+        Raylib.DrawText("Control Hints", (int)rLegend.X + 18, (int)rLegend.Y + 10, 20, Color.White);
+        DrawTextTruncated("Wave 1 overlay with move, fire, and skill keys.", (int)rLegend.X + 18, (int)rLegend.Y + 34, (int)rowW - 160, 11, WithAlpha(Color.White, 0.5f));
+        if (Button(new Rectangle(rLegend.X + rowW - 130f, rLegend.Y + 12f, 114f, 32f), showControlLegend ? "ON" : "OFF", 16, true, showControlLegend ? UiAccent : UiBorder))
+        {
+            showControlLegend = !showControlLegend;
+            SaveGame();
+        }
+
+        y += rowH + gap;
+        var rFloat = new Rectangle(startX, y, rowW, rowH);
+        DrawRichPanel(rFloat, UiPanel, UiBorder, 0.18f);
+        Raylib.DrawText("Damage Numbers", (int)rFloat.X + 18, (int)rFloat.Y + 10, 20, Color.White);
+        DrawTextTruncated("Floating combat text for hits, pickups, and alerts.", (int)rFloat.X + 18, (int)rFloat.Y + 34, (int)rowW - 160, 11, WithAlpha(Color.White, 0.5f));
+        if (Button(new Rectangle(rFloat.X + rowW - 130f, rFloat.Y + 12f, 114f, 32f), floatingTextEnabled ? "ON" : "OFF", 16, true, floatingTextEnabled ? UiAccent : UiBorder))
+        {
+            floatingTextEnabled = !floatingTextEnabled;
+            SaveGame();
+        }
+
+        y += rowH + gap;
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Hit-Stop", "Brief freeze on heavy hits for impact feel.", ref hitStopEnabled);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Heraldry Patterns", "Diagonal hatch on body colors for colorblind clarity.", ref heraldryPatterns);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Lock Cursor", "Hide and lock the mouse while playing.", ref lockCursorInGame);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Pause When Unfocused", "Auto-pause when you alt-tab away.", ref pauseOnFocusLoss);
+
+        y += sectionGap;
         DrawUiSectionLabel("CONTROLS", startX, y, MossLight);
         y += 20f + gap;
 
@@ -22491,7 +27937,42 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             SaveGame();
         }
 
+        y += rowH + gap;
+        var rMotion = new Rectangle(startX, y, rowW, rowH);
+        DrawRichPanel(rMotion, UiPanel, UiBorder, 0.18f);
+        Raylib.DrawText("Reduce Motion", (int)rMotion.X + 18, (int)rMotion.Y + 10, 20, Color.White);
+        DrawTextTruncated("Less shake, hit-stop, zoom punch, and pulse effects.", (int)rMotion.X + 18, (int)rMotion.Y + 34, (int)rowW - 160, 11, WithAlpha(Color.White, 0.5f));
+        if (Button(new Rectangle(rMotion.X + rowW - 130f, rMotion.Y + 12f, 114f, 32f), reduceMotion ? "ON" : "OFF", 16, true, reduceMotion ? UiAccent : UiBorder))
+        {
+            reduceMotion = !reduceMotion;
+            SaveGame();
+        }
+
+        y += rowH + gap;
+        var rVig = new Rectangle(startX, y, rowW, rowH);
+        DrawRichPanel(rVig, UiPanel, UiBorder, 0.18f);
+        Raylib.DrawText("Vignette Intensity", (int)rVig.X + 18, (int)rVig.Y + 10, 20, Color.White);
+        Raylib.DrawText((int)(vignetteScale * 100f) + "%", (int)rVig.X + 18, (int)rVig.Y + 34, 12, WithAlpha(Gold, 0.9f));
+        float nv = Slider(new Rectangle(rVig.X + 230f, rVig.Y + rowH / 2f - 6f, rowW - 260f, 12f), vignetteScale);
+        if (MathF.Abs(nv - vignetteScale) > 0.001f) { vignetteScale = nv; }
+
         y += rowH + gap + sectionGap;
+        DrawUiSectionLabel("HUD", startX, y, new Color(148, 196, 220, 255));
+        y += 20f + gap;
+
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Top Bar", "Score, wave, and fables across the top.", ref showTopHud);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Weapon Panel", "Equipped arm, ammo count, and reload bar.", ref showWeaponHud);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Ability Bar", "Skill cooldowns and readiness at the bottom.", ref showAbilityHud);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Combo Meter", "Combo multiplier banner during chains.", ref showComboMeter);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Wave Banner", "Large wave title when a new swarm begins.", ref showWaveBanner);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Event HUD", "Active floor catastrophe name and timer.", ref showFloorEventHud);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Event Border", "Pulsing screen edge during catastrophes.", ref showEventWarningBorder);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Attack Telegraphs", "Warnings before enemy tile breaks and dashes.", ref showEnemyTelegraphs);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Enemy Health Bars", "HP bars above damaged foes.", ref showEnemyHealthBars);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Boss Health Bar", "Dedicated boss HP panel at the top.", ref showBossHud);
+        DrawSettingsToggleRow(ref y, startX, rowW, rowH, gap, "Level-Up Banner", "Rank-up toast when you gain a level.", ref showLevelUpBanner);
+
+        y += sectionGap;
         DrawUiSectionLabel("VISUAL QUALITY", startX, y, UiBorderLight);
         y += 20f + gap;
 
@@ -22518,9 +27999,80 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             SaveGame();
         }
 
+        y += rowH + gap;
+        var rPart = new Rectangle(startX, y, rowW, rowH);
+        DrawRichPanel(rPart, UiPanel, UiBorder, 0.18f);
+        Raylib.DrawText("Particle Effects", (int)rPart.X + 18, (int)rPart.Y + 10, 20, Color.White);
+        Raylib.DrawText((int)(particleDensity * 100f) + "%", (int)rPart.X + 18, (int)rPart.Y + 34, 12, WithAlpha(UiAccent, 0.9f));
+        float np = Slider(new Rectangle(rPart.X + 230f, rPart.Y + rowH / 2f - 6f, rowW - 260f, 12f), (particleDensity - 0.15f) / 0.85f);
+        particleDensity = 0.15f + np * 0.85f;
+
+        y += rowH + gap;
+        var rMotes = new Rectangle(startX, y, rowW, rowH);
+        DrawRichPanel(rMotes, UiPanel, UiBorder, 0.18f);
+        Raylib.DrawText("Background Motes", (int)rMotes.X + 18, (int)rMotes.Y + 10, 20, Color.White);
+        DrawTextTruncated("Drifting leaves and fireflies behind the arena.", (int)rMotes.X + 18, (int)rMotes.Y + 34, (int)rowW - 160, 11, WithAlpha(Color.White, 0.5f));
+        if (Button(new Rectangle(rMotes.X + rowW - 130f, rMotes.Y + 12f, 114f, 32f), backgroundMotes ? "ON" : "OFF", 16, true, backgroundMotes ? UiAccent : UiBorder))
+        {
+            backgroundMotes = !backgroundMotes;
+            SaveGame();
+        }
+
+        y += rowH + gap;
+        var rCastle = new Rectangle(startX, y, rowW, rowH);
+        DrawRichPanel(rCastle, UiPanel, UiBorder, 0.18f);
+        Raylib.DrawText("Menu Castle", (int)rCastle.X + 18, (int)rCastle.Y + 10, 20, Color.White);
+        DrawTextTruncated("Detailed castle backdrop on the main menu.", (int)rCastle.X + 18, (int)rCastle.Y + 34, (int)rowW - 160, 11, WithAlpha(Color.White, 0.5f));
+        if (Button(new Rectangle(rCastle.X + rowW - 130f, rCastle.Y + 12f, 114f, 32f), menuCastleEnabled ? "ON" : "OFF", 16, true, menuCastleEnabled ? UiAccent : UiBorder))
+        {
+            menuCastleEnabled = !menuCastleEnabled;
+            SaveGame();
+        }
+
+        DrawSettingsSliderRow(ref y, startX, rowW, rowH, gap, "Film Grain", ref filmGrainScale, Gold);
+        DrawSettingsSliderRow(ref y, startX, rowW, rowH, gap, "Bloom Glow", ref bloomScale, UiAccent);
+
+        y += sectionGap;
+        DrawUiSectionLabel("DISPLAY", startX, y, new Color(120, 220, 140, 255));
+        y += 20f + gap;
+
+        var rFps = new Rectangle(startX, y, rowW, rowH);
+        DrawRichPanel(rFps, UiPanel, UiBorder, 0.18f);
+        Raylib.DrawText("Show FPS", (int)rFps.X + 18, (int)rFps.Y + 10, 20, Color.White);
+        DrawTextTruncated("Performance overlay. F3 also toggles this.", (int)rFps.X + 18, (int)rFps.Y + 34, (int)rowW - 160, 11, WithAlpha(Color.White, 0.5f));
+        if (Button(new Rectangle(rFps.X + rowW - 130f, rFps.Y + 12f, 114f, 32f), showFps ? "ON" : "OFF", 16, true, showFps ? UiAccent : UiBorder))
+        {
+            showFps = !showFps;
+            SaveGame();
+        }
+
+        y += rowH + gap;
+        var rCap = new Rectangle(startX, y, rowW, rowH);
+        DrawRichPanel(rCap, UiPanel, UiBorder, 0.18f);
+        Raylib.DrawText("FPS Cap", (int)rCap.X + 18, (int)rCap.Y + 10, 20, Color.White);
+        DrawTextTruncated("Limit frame rate to save power or reduce heat.", (int)rCap.X + 18, (int)rCap.Y + 34, (int)rowW - 160, 11, WithAlpha(Color.White, 0.5f));
+        if (Button(new Rectangle(rCap.X + rowW - 130f, rCap.Y + 12f, 114f, 32f), FpsCapLabel(), 14, true, UiBorder))
+        {
+            CycleFpsCap();
+        }
+
         Raylib.EndScissorMode();
 
-        string centerHint = rebindTarget != RebindTarget.None ? "Listening..." : SettingsScrollMax() > 1f ? "Scroll for more" : "F3 toggles FPS";
+        if (settingsEggBannerTimer > 0f)
+        {
+            float a = Math.Clamp(settingsEggBannerTimer / 5f, 0f, 1f);
+            if (settingsEggBannerTimer < 0.8f) a = settingsEggBannerTimer / 0.8f;
+            int bannerCx = WindowWidth / 2;
+            var banner = new Rectangle(bannerCx - 220f, 92f, 440f, 72f);
+            DrawRichPanel(banner, WithAlpha(UiPanel, a * 0.95f), WithAlpha(Gold, a), 0.2f, accentStripe: true);
+            DrawPulseFrame(banner, Gold, 0.14f, 3f, 0.12f * a);
+            ShadowTextCentered("CURSOR CROWN UNLOCKED", bannerCx, 108, 22, Gold, a);
+            ShadowTextCentered("Equip it in the Armory · Look tab", bannerCx, 134, 12, WithAlpha(Color.White, 0.72f), a);
+            var iconCenter = new Vector2(bannerCx, banner.Y + banner.Height + 38f);
+            DrawAccessory(iconCenter, 28f, frameTime, AccessoryCursorCrown, AccessoryPreviewForward);
+        }
+
+        string centerHint = rebindTarget != RebindTarget.None ? "Listening..." : SettingsScrollMax() > 1f ? "Scroll for more" : "F3 toggles FPS overlay";
         DrawUiHintBar("Click to rebind keys", centerHint, "ESC back");
 
         if (Button(new Rectangle(30f, UiBackButtonY, 180f, 40f), "BACK  [ESC]", 20, true, UiBorder))
@@ -22608,6 +28160,8 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         CustomizeTab.Upgrades => "Perks",
         CustomizeTab.Abilities => "Skills",
         CustomizeTab.Rank => "Rank",
+        CustomizeTab.Bestiary => "Bestiary",
+        CustomizeTab.Glossary => "Glossary",
         _ => throw new UnreachableException(),
     };
 
@@ -22617,7 +28171,9 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         CustomizeTab.Weapons => "Click an arm to equip or purchase it.",
         CustomizeTab.Upgrades => "Spend fables on permanent stat boosts.",
         CustomizeTab.Abilities => "Click a card to assign battle skills.",
-        CustomizeTab.Rank => "Track rank rewards and siege unlocks.",
+        CustomizeTab.Rank => "Earn XP in runs to rank up. Roadmap shows auto-unlocks; siege arms need waves + fables.",
+        CustomizeTab.Bestiary => "Enemy lore unlocks as you slay each foe type.",
+        CustomizeTab.Glossary => "Quick reference for every floor catastrophe family.",
         _ => throw new UnreachableException(),
     };
 
@@ -22627,12 +28183,15 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
         CustomizeTab.Weapons => "Click an unlocked arm to equip it. Spend fables on locked siege weapons.",
         CustomizeTab.Upgrades => "Permanent stat boosts bought with fables between runs.",
         CustomizeTab.Abilities => "Choose two skills for your battle loadout. Click a card to assign a slot.",
-        CustomizeTab.Rank => "Track rank rewards, siege arms, and your highest wave cleared.",
+        CustomizeTab.Rank => "Your rank, upcoming unlocks, and every siege arm with clear status pills.",
+        CustomizeTab.Bestiary => "Kill counts and lore for every enemy in the siege.",
+        CustomizeTab.Glossary => "Grouped tips for reading floor events during a run.",
         _ => throw new UnreachableException(),
     };
 
     static void DrawPlayControlLegend()
     {
+        if (!showControlLegend) return;
         if (state != GameState.Playing) return;
         if (waveNumber > 1) return;
         var panel = new Rectangle(WindowWidth - 196f, 118f, 182f, 72f);
@@ -22649,7 +28208,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
     {
         Vector2 m = Raylib.GetMousePosition();
         bool hover = enabled && Raylib.CheckCollisionPointRec(m, r);
-        bool clicked = hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
+        bool clicked = UiClickAllowed() && hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
 
         if (enabled)
         {
@@ -22675,7 +28234,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
     {
         Vector2 m = Raylib.GetMousePosition();
         bool hover = Raylib.CheckCollisionPointRec(m, r);
-        bool clicked = hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
+        bool clicked = UiClickAllowed() && hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
 
         Color fill = active ? LerpColor(UiPanel, UiAccent, 0.28f) : hover ? WithAlpha(UiAccent, 0.14f) : UiPanel;
         DrawRichPanel(r, fill, active ? UiAccent : UiBorder, 0.28f, accentStripe: active);
@@ -22699,7 +28258,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
     {
         Vector2 m = Raylib.GetMousePosition();
         bool hover = Raylib.CheckCollisionPointRec(m, r);
-        bool clicked = hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
+        bool clicked = UiClickAllowed() && hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
 
         Color border = selected ? UiBorderLight : hover ? UiAccent : UiBorder;
         if (unlocked && color.A > 200)
@@ -22732,6 +28291,7 @@ var body = new Rectangle(origin.X, origin.Y, width, height);
             ShadowText("\u2713", (int)(r.X + r.Width / 2 - 6), (int)(r.Y + r.Height / 2 - 8), 18, Color.White);
         }
 
+        if (unlocked) DrawHeraldryHatch(r, color, (int)(r.X + r.Y));
         return clicked;
     }
 
