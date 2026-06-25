@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -736,7 +736,7 @@ class Program
     static readonly string[] BodyNames =
     {
         "Ash", "Slate", "Iron", "Parchment", "Marble", "Charcoal", "Silver", "Basalt", "Obsidian", "Ivory",
-        "Gules", "Azure", "Vert", "Or", "Purpure", "Sanguine", "Celeste", "Tenné", "Murrey", "Sable", "Bronze", "Cendrée",
+        "Gules", "Azure", "Vert", "Or", "Purpure", "Sanguine", "Celeste", "Tenn�", "Murrey", "Sable", "Bronze", "Cendr�e",
     };
     static readonly int[] BodyFableCost = { 0, 0, 0, 80, 0, 140, 0, 200, 0, 260, 0, 300, 0, 340, 0, 380, 0, 420, 0, 460, 0, 500 };
     static readonly int[] BodyLevelReq = { 0, 0, 0, 0, 5, 0, 12, 0, 20, 0, 28, 0, 32, 0, 36, 0, 40, 0, 44, 0, 48, 0 };
@@ -1051,32 +1051,32 @@ class Program
     static readonly DifficultyProfile[] DifficultyProfiles =
     {
         new("TOTAL BEGINNER", "Learn the stones in peace.",
-            "Fewer foes · gentle swarms · catastrophes arrive very late and stay mild.",
+            "Fewer foes � gentle swarms � catastrophes arrive very late and stay mild.",
             new Color(118, 176, 138, 255), new Color(168, 220, 182, 255),
             0.52f, 0.68f, 0.45f, 0.55f,
             6, 0f, 10f, 15f, 0.55f, 1.55f, 1.45f, 0f, 0f, true, 4),
         new("SQUIRE", "A forgiving tour of the siege.",
-            "Reduced pressure · slower catastrophes · room to learn your kit.",
+            "Reduced pressure � slower catastrophes � room to learn your kit.",
             new Color(132, 158, 196, 255), new Color(178, 204, 236, 255),
             0.72f, 0.82f, 0.65f, 0.75f,
             5, 0f, 8f, 14f, 0.72f, 1.25f, 1.2f, 0f, 0f, false, 2),
         new("KNIGHT", "The siege as it was meant to be felt.",
-            "Balanced waves · standard arena rhythm · fair but unforgiving.",
+            "Balanced waves � standard arena rhythm � fair but unforgiving.",
             new Color(196, 168, 108, 255), new Color(228, 206, 156, 255),
             1f, 1f, 1f, 1f,
             4, 0f, FloorEventCooldownMin, FloorEventCooldownMax, 1f, 1f, 1f, 0f, 0f, false, 0),
         new("CHAMPION", "The walls remember every mistake.",
-            "Heavier swarms · faster catastrophes · elite foes arrive sooner.",
+            "Heavier swarms � faster catastrophes � elite foes arrive sooner.",
             new Color(196, 128, 72, 255), new Color(236, 176, 108, 255),
             1.22f, 1.12f, 1.28f, 1.22f,
             3, 0f, 4f, 10f, 1.22f, 0.82f, 0.82f, 0.15f, 0.18f, false, -1),
         new("FABLE (NIGHTMARE)", "The story ends in blood and falling stone.",
-            "Events from the first breath · catastrophes stack · the arena never rests.",
+            "Events from the first breath � catastrophes stack � the arena never rests.",
             new Color(132, 10, 22, 255), new Color(210, 34, 48, 255),
             1.58f, 1.38f, 1.65f, 1.5f,
             0, 0f, 2f, 6f, 1.65f, 0.58f, 0.62f, 0.42f, 0.35f, false, -3),
         new("PRACTICE HALL", "Learn catastrophes without the swarm.",
-            "No grunts · gentle event timers · scores stay off the record.",
+            "No grunts � gentle event timers � scores stay off the record.",
             new Color(148, 168, 196, 255), new Color(196, 214, 236, 255),
             0f, 0f, 0f, 0f,
             0, 2f, 6f, 12f, 0.45f, 2f, 2.5f, 0f, 0f, true, 99),
@@ -1906,7 +1906,7 @@ class Program
     {
         ref readonly Gun g = ref Guns[i];
         if (g.LevelReq > 0) return $"RANK {g.LevelReq}";
-        if (g.WaveReq > 0 && g.FableCost > 0) return $"WAVE {g.WaveReq}  ·  {g.FableCost}";
+        if (g.WaveReq > 0 && g.FableCost > 0) return $"WAVE {g.WaveReq}  �  {g.FableCost}";
         if (g.FableCost > 0) return g.FableCost.ToString();
         return "LOCKED";
     }
@@ -1914,7 +1914,7 @@ class Program
     static string CosmeticLockLabel(int fableCost, int levelReq, int waveReq)
     {
         if (levelReq > 0 && fableCost == 0 && waveReq == 0) return $"RANK {levelReq}";
-        if (waveReq > 0 && fableCost > 0) return $"W{waveReq} · {fableCost}";
+        if (waveReq > 0 && fableCost > 0) return $"W{waveReq} � {fableCost}";
         if (fableCost > 0) return fableCost.ToString();
         if (waveReq > 0) return $"WAVE {waveReq}";
         return "";
@@ -2230,7 +2230,7 @@ class Program
     static void PushChronicleEntry()
     {
         var (cause, _) = GetDeathCauseCopy();
-        ChronicleBuffer[chronicleWrite % ChronicleBuffer.Length] = $"Wave {waveNumber} — {cause} — {activeDifficulty.Title}";
+        ChronicleBuffer[chronicleWrite % ChronicleBuffer.Length] = $"Wave {waveNumber} - {cause} - {activeDifficulty.Title}";
         chronicleWrite++;
         chronicleCount = Math.Min(chronicleCount + 1, ChronicleBuffer.Length);
     }
@@ -2305,13 +2305,13 @@ class Program
     static string GetEventGlossaryTip(FloorEventType ev) => ev switch
     {
         FloorEventType.SafeZoneRush or FloorEventType.TideBeacon or FloorEventType.EmberGate => "Reach the glowing safe band before time runs out.",
-        FloorEventType.CenterSnare or FloorEventType.CryptSeal or FloorEventType.TideWhirlpool => "The center dies — sprint for the rim.",
+        FloorEventType.CenterSnare or FloorEventType.CryptSeal or FloorEventType.TideWhirlpool => "The center dies - sprint for the rim.",
         FloorEventType.StoneIslands or FloorEventType.TideAnchor or FloorEventType.CrownIsles => "Find the safe islands; marked stone collapses.",
         FloorEventType.MarkedStrike or FloorEventType.TideStrike or FloorEventType.CryptGrave => "Leave marked tiles before they fall in sequence.",
-        FloorEventType.MossRot or FloorEventType.CrownRot => "One half of the arena rots faster — stay on the healthy side.",
-        FloorEventType.SallyForth => "The safe rim rotates — keep moving along the wall.",
-        FloorEventType.Portcullis => "Columns fall in order — read the telegraph lanes.",
-        FloorEventType.HeraldsCall => "Only your herald's footing holds — stay on the safe island.",
+        FloorEventType.MossRot or FloorEventType.CrownRot => "One half of the arena rots faster - stay on the healthy side.",
+        FloorEventType.SallyForth => "The safe rim rotates - keep moving along the wall.",
+        FloorEventType.Portcullis => "Columns fall in order - read the telegraph lanes.",
+        FloorEventType.HeraldsCall => "Only your herald's footing holds - stay on the safe island.",
         _ => "Unmarked tiles are safe until the countdown ends.",
     };
 
@@ -2501,9 +2501,9 @@ class Program
         int di = Math.Clamp((int)runDifficulty, 0, 4);
         return boss switch
         {
-            EnemyType.BrambleLord => di switch { 0 => "Even a beginner smells fear.", 1 => "The thorns remember your name.", 2 => "The marshal rides for the bailey.", 3 => "Champion — the brambles hunger.", _ => "Nightmare or not, you bleed." },
-            EnemyType.FoxWarden => di switch { 0 => "A fox outruns a novice.", 1 => "Scarlet crest — do not blink.", 2 => "The warden tests your nerve.", 3 => "Champion's blood paints the wall.", _ => "Run. You cannot." },
-            EnemyType.GroveTitan => di switch { 0 => "The colossus barely notices you.", 1 => "Stone shakes for the titan.", 2 => "The keep groans under its tread.", 3 => "Champion — the walls split.", _ => "The nightmare walks." },
+            EnemyType.BrambleLord => di switch { 0 => "Even a beginner smells fear.", 1 => "The thorns remember your name.", 2 => "The marshal rides for the bailey.", 3 => "Champion - the brambles hunger.", _ => "Nightmare or not, you bleed." },
+            EnemyType.FoxWarden => di switch { 0 => "A fox outruns a novice.", 1 => "Scarlet crest - do not blink.", 2 => "The warden tests your nerve.", 3 => "Champion's blood paints the wall.", _ => "Run. You cannot." },
+            EnemyType.GroveTitan => di switch { 0 => "The colossus barely notices you.", 1 => "Stone shakes for the titan.", 2 => "The keep groans under its tread.", 3 => "Champion - the walls split.", _ => "The nightmare walks." },
             _ => "",
         };
     }
@@ -4867,7 +4867,7 @@ class Program
     }
 
     // ---------------------------------------------------------------- AI GRANDMASTER BRAIN
-    // Self-contained in Program.cs — pathfinding, prediction, events, behaviors, scenario engine.
+    // Self-contained in Program.cs - pathfinding, prediction, events, behaviors, scenario engine.
 
     enum AiSurvivalPhase { Calm, Patrol, Combat, EventPrep, EventActive, BossFight, TileCritical, LastStand }
 
@@ -7810,7 +7810,7 @@ class Program
 
         if (dashing || abilityIFrameTimer > 0f)
         {
-            return; // i-frames — leap over the earth pit or oath ward
+            return; // i-frames - leap over the earth pit or oath ward
         }
 
         if (TryGetTileUnder(playerPos, out int tileX, out int tileY))
@@ -8451,71 +8451,71 @@ class Program
     static readonly string[] FloorEventSubtitles =
     {
         "",
-        "The stone bleeds — flee the marked earth!",
-        "A sanctified band appears — reach the moss-lit edge.",
-        "Black and white — the dark squares fall!",
+        "The stone bleeds - flee the marked earth!",
+        "A sanctified band appears - reach the moss-lit edge.",
+        "Black and white - the dark squares fall!",
         "The outer ring crumbles inward!",
         "Leap between the last stone islands!",
-        "Pits open one by one — keep moving!",
+        "Pits open one by one - keep moving!",
         "Moss creeps across half the arena!",
-        "Runes ignite — bolts fall from above!",
-        "The heart collapses — hug the walls!",
-        "Blight lightning — then total ruin!",
-        "A tidal surge erupts from the depths — flee the flood!",
-        "The floor splits along a rift — leap the drowning gap!",
-        "The tide recedes — only the outer bastion holds!",
+        "Runes ignite - bolts fall from above!",
+        "The heart collapses - hug the walls!",
+        "Blight lightning - then total ruin!",
+        "A tidal surge erupts from the depths - flee the flood!",
+        "The floor splits along a rift - leap the drowning gap!",
+        "The tide recedes - only the outer bastion holds!",
         "Columns of brine hammer down in relentless waves!",
         "Echoing ripples shatter stone in widening rings!",
         "An undertow drags the center into the abyss!",
-        "The crest rises — higher ground or drowning!",
-        "A wall of water advances — outrun the deluge!",
+        "The crest rises - higher ground or drowning!",
+        "A wall of water advances - outrun the deluge!",
         "Drop anchor on the last dry stones or sink!",
         "Foaming chaos devours every unmarked tile!",
-        "Burning columns sweep the arena — dodge the rain!",
-        "A fiery corridor opens — sprint through the gate!",
+        "Burning columns sweep the arena - dodge the rain!",
+        "A fiery corridor opens - sprint through the gate!",
         "Pulse waves radiate from a molten heart!",
-        "A blazing cross sears the floor — flee the arms!",
-        "Twin ember bridges — leap the chasm between!",
+        "A blazing cross sears the floor - flee the arms!",
+        "Twin ember bridges - leap the chasm between!",
         "Stand still and the stone ignites beneath you!",
         "A serpent of flame coils across the tiles!",
         "Only the central hive remains untouched!",
         "A rising tide of embers devours the floor!",
-        "The cage shrinks — cling to the dying center!",
-        "The earth quakes — tiles fall before the storm!",
+        "The cage shrinks - cling to the dying center!",
+        "The earth quakes - tiles fall before the storm!",
         "Four ember seeds bloom into infernal gardens!",
-        "One altar tile survives — kneel or perish!",
-        "Ancient wax seals the inner vault — only the outer ring endures!",
-        "A banshee wail sweeps the catacombs — outrun the sound!",
-        "Ghost-torches blaze along the cross — walk the lit path!",
-        "Iron chains rattle column by column — the floor unbinds!",
-        "Cold crypt-mist chokes the stones — then the grave claims all!",
-        "Your tomb is already marked — flee before the lid falls!",
+        "One altar tile survives - kneel or perish!",
+        "Ancient wax seals the inner vault - only the outer ring endures!",
+        "A banshee wail sweeps the catacombs - outrun the sound!",
+        "Ghost-torches blaze along the cross - walk the lit path!",
+        "Iron chains rattle column by column - the floor unbinds!",
+        "Cold crypt-mist chokes the stones - then the grave claims all!",
+        "Your tomb is already marked - flee before the lid falls!",
         "Funeral shrouds spread along the crossed diagonals!",
-        "For one heartbeat the safe stones glow — then oblivion!",
+        "For one heartbeat the safe stones glow - then oblivion!",
         "Bone-rattle diagonals march across the burial hall!",
         "Echoes collapse the rings in alternating waves of ruin!",
-        "Fresh graves open one by one — do not linger above the dead!",
-        "A lantern spiral winds through darkness — follow the light!",
-        "The veil rotates — stand in the lit quadrant or perish!",
-        "A whirlpool gnaws the edges — cling to the dry heart!",
-        "A lone beacon flickers — reach it before the flood!",
-        "Tidal bolts strike in sequence — dodge the salvo!",
-        "The regent's gauntlet awakens — prove your right to rule!",
+        "Fresh graves open one by one - do not linger above the dead!",
+        "A lantern spiral winds through darkness - follow the light!",
+        "The veil rotates - stand in the lit quadrant or perish!",
+        "A whirlpool gnaws the edges - cling to the dry heart!",
+        "A lone beacon flickers - reach it before the flood!",
+        "Tidal bolts strike in sequence - dodge the salvo!",
+        "The regent's gauntlet awakens - prove your right to rule!",
         "Gilded squares of the old dynasty plummet into shadow!",
         "Jagged crown-shards erupt beneath every careless foot!",
-        "The vacant throne beckons — seize it before the court crumbles!",
-        "A royal edict sanctifies one border — obey or be cast out!",
+        "The vacant throne beckons - seize it before the court crumbles!",
+        "A royal edict sanctifies one border - obey or be cast out!",
         "Usurper's rot creeps across half the coronation hall!",
         "Judgment bolts hammer the condemned from the heights!",
         "The coronation ring collapses inward upon the unworthy!",
         "Leap between the last bastions of a shattered crown!",
-        "Blight tempests ravage the gilded stones — then annihilation!",
+        "Blight tempests ravage the gilded stones - then annihilation!",
         "Only the coronation dais survives the sacred ritual!",
         "Cross-shaped betrayal splits the hall asunder!",
         "Diagonal scars of reckoning tear the floor apart!",
-        "The safe rim marches — keep pace with the rotating band!",
+        "The safe rim marches - keep pace with the rotating band!",
         "Iron portcullis columns slam down in ordered ruin!",
-        "Your heraldry alone holds — the rest of the stone rots!",
+        "Your heraldry alone holds - the rest of the stone rots!",
     };
 
     static int TileEdgeDistance(int x, int y)
@@ -9273,7 +9273,7 @@ class Program
         if (nextFloorEventTimer < nextFloorEventCooldown) return;
 
         // Don't open a deadly event while the wave-intro banner is still covering the
-        // screen — give the player a fair moment to read the arena first.
+        // screen - give the player a fair moment to read the arena first.
         if (waveBannerTimer > 0f) return;
 
         nextFloorEventTimer = 0f;
@@ -9387,8 +9387,8 @@ class Program
         int qx = Math.Clamp((int)(playerPos.X / TileSize), 0, GridSize - 1);
         int qy = Math.Clamp((int)(playerPos.Y / TileSize), 0, GridSize - 1);
         string subtitle = FloorEventSubtitles[(int)ev];
-        if (eventChainActive) subtitle = "THE SIEGE DEEPENS — " + subtitle;
-        subtitle += " — " + GetArenaQuadrantName(qx, qy);
+        if (eventChainActive) subtitle = "THE SIEGE DEEPENS - " + subtitle;
+        subtitle += " - " + GetArenaQuadrantName(qx, qy);
         SpawnFloatingText(new Vector2(WindowWidth / 2f, 118f), subtitle, WithAlpha(Color.White, 0.85f), 15);
         eventChainActive = false;
 
@@ -10213,10 +10213,10 @@ class Program
 
     static string TideWallHint() => eventSide switch
     {
-        0 => "FLEE EAST — WALL FROM WEST",
-        1 => "FLEE WEST — WALL FROM EAST",
-        2 => "FLEE SOUTH — WALL FROM NORTH",
-        3 => "FLEE NORTH — WALL FROM SOUTH",
+        0 => "FLEE EAST - WALL FROM WEST",
+        1 => "FLEE WEST - WALL FROM EAST",
+        2 => "FLEE SOUTH - WALL FROM NORTH",
+        3 => "FLEE NORTH - WALL FROM SOUTH",
         _ => "",
     };
 
@@ -13427,7 +13427,7 @@ class Program
         Raylib.DrawRectangleLinesEx(new Rectangle(8f, 8f, WindowWidth - 16f, WindowHeight - 16f), 2f, WithAlpha(gold, 0.22f + pulse * 0.18f));
 
         int cx = WindowWidth / 2;
-        string label = "VERDICT  ·  EVENTS HALTED  " + Math.Ceiling(verdictHaltTimer).ToString("0") + "s";
+        string label = "VERDICT  �  EVENTS HALTED  " + Math.Ceiling(verdictHaltTimer).ToString("0") + "s";
         int lw = Raylib.MeasureText(label, 14);
         var banner = new Rectangle(cx - lw / 2f - 16f, 18f, lw + 32f, 28f);
         DrawRichPanel(banner, WithAlpha(UiPanel, 0.88f), gold, 0.2f, accentStripe: true);
@@ -13443,7 +13443,7 @@ class Program
         float time = (float)Raylib.GetTime();
         float pulse = MathF.Sin(time * 5f) * 0.5f + 0.5f;
         Color gold = AbilityAccent(AbilityType.Verdict);
-        ShadowTextCentered("VERDICT READY — END THE EVENT", WindowWidth / 2, WindowHeight - 118, 12, WithAlpha(gold, 0.55f + pulse * 0.35f), 1f);
+        ShadowTextCentered("VERDICT READY - END THE EVENT", WindowWidth / 2, WindowHeight - 118, 12, WithAlpha(gold, 0.55f + pulse * 0.35f), 1f);
     }
 
     static void SpawnWalkDust(float dt)
@@ -14651,7 +14651,7 @@ class Program
     {
         int skyH = (int)(WindowHeight * 0.58f);
 
-        // Obsidian night: true black zenith, charcoal horizon — zero blue cast.
+        // Obsidian night: true black zenith, charcoal horizon - zero blue cast.
         Color zenith = new Color(0, 0, 0, 255);
         Color upperDeep = new Color(2, 2, 2, 255);
         Color upperMid = new Color(4, 3, 3, 255);
@@ -14687,7 +14687,7 @@ class Program
 
     static void DrawMenuCastleSkyAtmosphereLayers(float time, int skyH)
     {
-        // Zenith pole darkening — real night skies are darkest straight overhead.
+        // Zenith pole darkening - real night skies are darkest straight overhead.
         int zenithR = (int)(MathF.Min(WindowWidth, skyH) * 0.72f);
         Vector2 zenith = new Vector2(WindowWidth * 0.5f, skyH * 0.12f);
         for (int ring = 8; ring >= 1; ring--)
@@ -14710,7 +14710,7 @@ class Program
                 haze, 0.004f + band * 0.0015f, 2);
         }
 
-        // Aerial perspective — stars and sky fade toward the horizon.
+        // Aerial perspective - stars and sky fade toward the horizon.
         Raylib.DrawRectangleGradientV(0, (int)(skyH * 0.34f), WindowWidth, (int)(skyH * 0.28f),
             WithAlpha(new Color(0, 0, 0, 255), 0f), WithAlpha(new Color(0, 0, 0, 255), 0.22f));
         Raylib.DrawRectangleGradientV(0, (int)(skyH * 0.52f), WindowWidth, (int)(skyH * 0.18f),
@@ -14787,7 +14787,7 @@ class Program
         float horizonFadeStart = WindowHeight * 0.34f;
         float horizonFadeEnd = WindowHeight * 0.50f;
 
-        // Far field — tiny, dense, slow twinkle
+        // Far field - tiny, dense, slow twinkle
         const int farCount = 320;
         for (int i = 0; i < farCount; i++)
         {
@@ -14802,7 +14802,7 @@ class Program
             Raylib.DrawCircleV(new Vector2(sx, sy), 0.4f + Hash(i * 11) * 0.5f, WithAlpha(star, alpha));
         }
 
-        // Mid field — varied color temperature (warm/neutral, no blue bias)
+        // Mid field - varied color temperature (warm/neutral, no blue bias)
         const int midCount = 96;
         for (int i = 0; i < midCount; i++)
         {
@@ -14831,7 +14831,7 @@ class Program
             }
         }
 
-        // Bright anchors — prominent stars with soft neutral halos
+        // Bright anchors - prominent stars with soft neutral halos
         ReadOnlySpan<(float x, float y, float size, float phase)> anchors =
         [
             (0.14f, 0.08f, 1.8f, 0.0f),
@@ -14876,7 +14876,7 @@ class Program
 
     static void DrawMenuCastleShootingStar(float time)
     {
-        // One slow cycle — a brief streak every ~14 seconds
+        // One slow cycle - a brief streak every ~14 seconds
         float cycle = (time * 0.07f) % 1f;
         if (cycle > 0.12f) return;
 
@@ -15194,7 +15194,7 @@ for (int i = 0; i < density; i++)
     static void DrawMenuCastleTower(Vector2 origin, float width, float height, MenuCastlePalette p,
         float time, bool left, float phase)
     {
-        // Slight batter — walls widen toward the base like real keep towers
+        // Slight batter - walls widen toward the base like real keep towers
         var batter = new Rectangle(origin.X - 4f, origin.Y + height * 0.72f, width + 8f, height * 0.28f);
         Raylib.DrawRectangleRounded(batter, 0.04f, 6, WithAlpha(p.StoneDark, 0.92f));
         Raylib.DrawLineEx(new Vector2(batter.X + 2f, batter.Y), new Vector2(batter.X + 2f, batter.Y + batter.Height), 1.5f, WithAlpha(p.StoneHi, 0.12f));
@@ -15634,7 +15634,7 @@ for (int i = 0; i < density; i++)
         Raylib.DrawRectangleGradientV(0, (int)(MenuCastleLayoutCurrent.ForecourtY - 4f), WindowWidth, (int)MenuCastleLayoutCurrent.ForecourtH + 4,
             WithAlpha(ForestShadow, 0.22f), WithAlpha(ForestShadow, 0f));
 
-        // Gatehouse string courses — horizontal masonry bands for visual weight
+        // Gatehouse string courses - horizontal masonry bands for visual weight
         for (int course = 0; course < 3; course++)
         {
             float cy = gatehouse.Y + gatehouse.Height * (0.22f + course * 0.22f);
@@ -15700,7 +15700,7 @@ for (int i = 0; i < density; i++)
                 win.Width * 0.7f, win.Height * 0.65f, 0f, p.TorchWarm, 0.012f + pulse * 0.01f, 2);
         }
 
-        // Shield emblem polish — subtle gold edge catch
+        // Shield emblem polish - subtle gold edge catch
         Vector2 shieldCenter = new Vector2(WindowWidth / 2f, gatehouse.Y + gatehouse.Height * 0.12f);
         Raylib.DrawCircleLines((int)shieldCenter.X, (int)(shieldCenter.Y - 2f), 14f, WithAlpha(Gold, 0.12f + gateFlicker * 0.08f));
 
@@ -16000,7 +16000,7 @@ for (int i = 0; i < density; i++)
 
         DrawMenuCastleConstellationMap(time);
 
-        // Faint atmospheric band just above the horizon — warm charcoal, not blue.
+        // Faint atmospheric band just above the horizon - warm charcoal, not blue.
         int bandY = (int)(WindowHeight * 0.46f);
         Raylib.DrawRectangleGradientV(0, bandY - 20, WindowWidth, 40,
             WithAlpha(new Color(6, 5, 5, 255), 0f), WithAlpha(new Color(10, 9, 8, 255), 0.22f));
@@ -20577,7 +20577,7 @@ for (int i = 0; i < density; i++)
     }
 
     // -------------------------------------------------------------------------
-    // Menu castle — production master suite (backdrop / architecture / finalize)
+    // Menu castle - production master suite (backdrop / architecture / finalize)
     // -------------------------------------------------------------------------
 
     enum MenuCastleProductionPhase { Backdrop, Architecture, Finalize }
@@ -21021,7 +21021,7 @@ for (int i = 0; i < density; i++)
     }
 
     // -------------------------------------------------------------------------
-    // Menu castle — ultimate beauty suite
+    // Menu castle - ultimate beauty suite
     // -------------------------------------------------------------------------
 
     static void DrawMenuCastleGodRays(float time)
@@ -22193,7 +22193,7 @@ for (int i = 0; i < density; i++)
         float alpha = 0.62f + pulse * 0.12f + prominent * 0.2f;
 
         const string title = "GRANDMASTER PILOT";
-        const string warn = "Deep survival AI — pathfinding, prediction, scenario matrix.";
+        const string warn = "Deep survival AI - pathfinding, prediction, scenario matrix.";
         int titleSize = prominent > 0.2f ? 15 : 13;
         int warnSize = 11;
         int titleW = Raylib.MeasureText(title, titleSize);
@@ -23213,7 +23213,7 @@ for (int i = 0; i < density; i++)
                 DrawMetalBead(pearlPos, r * 0.045f, pearl);
             }
 
-            // Main crown body — arched gallery
+            // Main crown body - arched gallery
             Raylib.DrawRing(crownBase, r * 0.48f, r * 0.56f, 196f, 344f, 30, goldDark);
             Raylib.DrawRing(crownBase, r * 0.50f, r * 0.54f, 198f, 342f, 28, gold);
             for (int arch = 0; arch < 7; arch++)
@@ -23331,7 +23331,7 @@ for (int i = 0; i < density; i++)
 
         switch (idx)
         {
-            case 1: // Iron Circlet — golden jeweled circlet
+            case 1: // Iron Circlet - golden jeweled circlet
             {
                 Vector2 head = rig.At(-0.55f, 0f);
                 DrawJeweledBand(head, r * 0.6f, r * 0.74f, rot + 196f, rot + 344f, 24, gold, goldHi);
@@ -23340,7 +23340,7 @@ for (int i = 0; i < density; i++)
                 DrawTrinketGem(rig.At(-0.92f, 0f), r * 0.13f, ruby, time);
                 break;
             }
-            case 2: // Hood — draped cloth with shadowed opening
+            case 2: // Hood - draped cloth with shadowed opening
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Vector2 hc = new Vector2(0f, -r * 0.2f);
@@ -23351,7 +23351,7 @@ for (int i = 0; i < density; i++)
                     Raylib.DrawRing(hc, r * 0.99f, r * 1.06f, 192f, 348f, 26, WithAlpha(clothHi, 0.5f));
                 });
                 break;
-            case 3: // Pauldrons — layered steel shoulder guards
+            case 3: // Pauldrons - layered steel shoulder guards
                 WithAccessoryRigRotation(rig, () =>
                 {
                     for (int s = -1; s <= 1; s += 2)
@@ -23366,7 +23366,7 @@ for (int i = 0; i < density; i++)
                     }
                 });
                 break;
-            case 4: // Cloak Pin — golden clasp with gem
+            case 4: // Cloak Pin - golden clasp with gem
             {
                 Vector2 clasp = rig.Screen(0.58f, -0.08f);
                 Vector2 anchor = rig.Screen(-0.15f, -0.35f);
@@ -23376,7 +23376,7 @@ for (int i = 0; i < density; i++)
                 DrawTrinketGem(clasp, 3.2f, ruby, time);
                 break;
             }
-            case 5: // Torch Bearer — lit torch with living flame
+            case 5: // Torch Bearer - lit torch with living flame
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Vector2 local = new Vector2(-r * 0.78f, -r * 0.12f);
@@ -23390,7 +23390,7 @@ for (int i = 0; i < density; i++)
                     Raylib.DrawCircleV(fb + new Vector2(0, -3.5f), 1.8f * fl, WithAlpha(boneHi, 0.9f));
                 });
                 break;
-            case 6: // Chain Coif — interlocking mail
+            case 6: // Chain Coif - interlocking mail
                 WithAccessoryRigRotation(rig, () =>
                 {
                     for (int row = 0; row < 4; row++)
@@ -23406,7 +23406,7 @@ for (int i = 0; i < density; i++)
                     }
                 });
                 break;
-            case 7: // Belt Pouch — leather satchel with gold buckle
+            case 7: // Belt Pouch - leather satchel with gold buckle
                 WithAccessoryRigRotation(rig, () =>
                 {
                     var belt = new Rectangle(-r * 0.5f, r * 0.16f, r * 1.0f, r * 0.14f);
@@ -23419,7 +23419,7 @@ for (int i = 0; i < density; i++)
                     Raylib.DrawCircleV(new Vector2(0f, r * 0.25f), 1.6f, goldHi);
                 });
                 break;
-            case 8: // Signet Ring — gold band with engraved gem
+            case 8: // Signet Ring - gold band with engraved gem
             {
                 Vector2 finger = rig.Screen(-0.58f, 0.12f);
                 Raylib.DrawCircleV(finger, 6f, goldDark);
@@ -23428,7 +23428,7 @@ for (int i = 0; i < density; i++)
                 DrawTrinketGem(finger, 2.8f, sapphire, time, 0.8f);
                 break;
             }
-            case 9: // Warden Cape — flowing cape with trim
+            case 9: // Warden Cape - flowing cape with trim
                 WithAccessoryRigRotation(rig, () =>
                 {
                     float sway = MathF.Sin(time * 1.6f) * r * 0.05f;
@@ -23439,7 +23439,7 @@ for (int i = 0; i < density; i++)
                     Raylib.DrawLineEx(new Vector2(-r * 0.9f + sway, -r * 0.88f), new Vector2(r * 0.9f + sway, -r * 0.88f), 2.5f, WithAlpha(plumHi, 0.55f));
                 });
                 break;
-            case 10: // Skull Brooch — bone skull on gold mount
+            case 10: // Skull Brooch - bone skull on gold mount
             {
                 Vector2 brooch = rig.Screen(0.62f, -0.05f);
                 DrawGlow(brooch, 14f, gold, 0.05f);
@@ -23451,7 +23451,7 @@ for (int i = 0; i < density; i++)
                 Raylib.DrawLineEx(brooch + rig.Forward * 5f - rig.Left * 3f, brooch + rig.Forward * 5f + rig.Left * 3f, 1f, ironDark);
                 break;
             }
-            case 11: // Battle Scarf — windblown scarf
+            case 11: // Battle Scarf - windblown scarf
                 WithAccessoryRigRotation(rig, () =>
                 {
                     float w = MathF.Sin(time * 2.4f) * r * 0.12f;
@@ -23462,7 +23462,7 @@ for (int i = 0; i < density; i++)
                     Raylib.DrawLineEx(new Vector2(r * 0.9f + w, r * 0.6f), new Vector2(r * 0.7f + w, r * 0.85f), 3f, Darken(crimson, 0.2f));
                 });
                 break;
-            case 12: // Spiked Collar — studded steel collar
+            case 12: // Spiked Collar - studded steel collar
             {
                 Vector2 cc = rig.At(0.05f, 0f);
                 Raylib.DrawRing(cc, r * 0.72f, r * 0.88f, 0f, 360f, 28, Darken(steel, 0.3f));
@@ -23479,7 +23479,7 @@ for (int i = 0; i < density; i++)
                 }
                 break;
             }
-            case 13: // Lantern Hook — hanging lantern
+            case 13: // Lantern Hook - hanging lantern
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Vector2 hook = new Vector2(-r * 0.65f, -r * 0.2f);
@@ -23493,7 +23493,7 @@ for (int i = 0; i < density; i++)
                     Raylib.DrawCircleV(lflame, 1.2f, boneHi);
                 });
                 break;
-            case 14: // Prayer Beads — polished rosary
+            case 14: // Prayer Beads - polished rosary
                 for (int bead = 0; bead < 9; bead++)
                 {
                     float t = bead / 8f;
@@ -23501,7 +23501,7 @@ for (int i = 0; i < density; i++)
                     DrawMetalBead(bp, bead % 3 == 0 ? 2.8f : 2f, bead % 3 == 0 ? amethyst : bone);
                 }
                 break;
-            case 15: // Royal Mantle — regal cape with ermine collar
+            case 15: // Royal Mantle - regal cape with ermine collar
                 WithAccessoryRigRotation(rig, () =>
                 {
                     float sway = MathF.Sin(time * 1.3f) * r * 0.05f;
@@ -23515,7 +23515,7 @@ for (int i = 0; i < density; i++)
                     DrawTrinketGem(new Vector2(0f, -r * 0.18f), r * 0.1f, amethyst, time);
                 });
                 break;
-            case 16: // Black Hood — deep shadowed cowl
+            case 16: // Black Hood - deep shadowed cowl
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Vector2 hc = new Vector2(0f, -r * 0.15f);
@@ -23525,7 +23525,7 @@ for (int i = 0; i < density; i++)
                     Raylib.DrawRing(hc, r * 1.0f, r * 1.08f, 188f, 352f, 26, WithAlpha(clothHi, 0.22f));
                 });
                 break;
-            case 17: // Tower Crest — heraldic crest
+            case 17: // Tower Crest - heraldic crest
                 WithAccessoryRigRotation(rig, () =>
                 {
                     var keep = new Rectangle(-r * 0.34f, -r * 0.96f, r * 0.68f, r * 0.5f);
@@ -23537,7 +23537,7 @@ for (int i = 0; i < density; i++)
                     DrawTrinketGem(new Vector2(0f, -r * 0.52f), r * 0.07f, sapphire, time, 0.7f);
                 });
                 break;
-            case 18: // Ash Veil — drifting translucent veil
+            case 18: // Ash Veil - drifting translucent veil
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Raylib.DrawCircleSector(new Vector2(0f, -r * 0.1f), r * 0.9f, 180f, 360f, 20, WithAlpha(new Color(120, 116, 128, 255), 0.5f));
@@ -23550,7 +23550,7 @@ for (int i = 0; i < density; i++)
                     }
                 });
                 break;
-            case 19: // Blood Sash — crimson sash with medallion
+            case 19: // Blood Sash - crimson sash with medallion
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Raylib.DrawLineEx(new Vector2(-r * 0.78f, r * 0.0f), new Vector2(r * 0.78f, r * 0.4f), 7f, Darken(crimson, 0.25f));
@@ -23562,7 +23562,7 @@ for (int i = 0; i < density; i++)
                     DrawTrinketGem(med, 2.2f, ruby, time, 0.7f);
                 });
                 break;
-            case 20: // Iron Halo — radiant ringed halo
+            case 20: // Iron Halo - radiant ringed halo
             {
                 Vector2 halo = rig.At(-0.75f, 0f);
                 DrawGlow(halo, r * 1.1f, goldHi, 0.05f + glint * 0.03f);
@@ -23576,7 +23576,7 @@ for (int i = 0; i < density; i++)
                 }
                 break;
             }
-            case 21: // Keep Banner — waving heraldic banner
+            case 21: // Keep Banner - waving heraldic banner
                 WithAccessoryRigRotation(rig, () =>
                 {
                     float wave = MathF.Sin(time * 2.5f) * r * 0.1f;
@@ -23588,7 +23588,7 @@ for (int i = 0; i < density; i++)
                     Raylib.DrawCircleV(new Vector2(-r * 0.32f + wave * 0.5f, -r * 0.62f), r * 0.1f, gold);
                 });
                 break;
-            case 22: // Dungeon Keys — ornate key ring
+            case 22: // Dungeon Keys - ornate key ring
             {
                 Vector2 keyRing = rig.Screen(-0.45f, 0.15f);
                 Raylib.DrawCircleLinesV(keyRing, 6f, gold);
@@ -23603,14 +23603,14 @@ for (int i = 0; i < density; i++)
                 }
                 break;
             }
-            case 23: // Oath Band — gilded brow band
+            case 23: // Oath Band - gilded brow band
             {
                 Vector2 brow = rig.At(-0.45f, 0f);
                 DrawJeweledBand(brow, r * 0.46f, r * 0.58f, rot + 208f, rot + 332f, 18, gold, goldHi);
                 DrawTrinketGem(rig.At(-0.78f, 0f), r * 0.1f, emerald, time);
                 break;
             }
-            case 24: // Siege Gloves — plated gauntlets
+            case 24: // Siege Gloves - plated gauntlets
                 WithAccessoryRigRotation(rig, () =>
                 {
                     for (int s = -1; s <= 1; s += 2)
@@ -23625,7 +23625,7 @@ for (int i = 0; i < density; i++)
                     }
                 });
                 break;
-            case 25: // Grave Shawl — tattered funeral shawl
+            case 25: // Grave Shawl - tattered funeral shawl
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Vector2 top = new Vector2(0f, -r * 0.25f);
@@ -23640,7 +23640,7 @@ for (int i = 0; i < density; i++)
                         Raylib.DrawCircleV(new Vector2(-r * 0.35f + stitch * r * 0.18f, -r * 0.35f), 1.5f, WithAlpha(boneHi, 0.5f));
                 });
                 break;
-            case 26: // Rampart Pin — shield brooch
+            case 26: // Rampart Pin - shield brooch
             {
                 Vector2 pin = rig.Screen(0.62f, 0.05f);
                 Raylib.DrawLineEx(rig.Screen(0.2f, -0.25f), pin, 2f, goldDark);
@@ -23651,7 +23651,7 @@ for (int i = 0; i < density; i++)
                 Raylib.DrawLineEx(pin - rig.Forward * 3f, pin + rig.Forward * 3f, 1f, WithAlpha(gold, 0.7f));
                 break;
             }
-            case 27: // Lord's Mask — gilded visage
+            case 27: // Lord's Mask - gilded visage
             {
                 Vector2 face = rig.At(0.15f, 0f);
                 Vector2 faceLeft = face - rig.Left * r * 0.18f;
@@ -23665,7 +23665,7 @@ for (int i = 0; i < density; i++)
                 Raylib.DrawCircleV(face + rig.Forward * r * 0.05f, 1.4f, goldHi);
                 break;
             }
-            case 28: // Bell Cord — golden bell on cord
+            case 28: // Bell Cord - golden bell on cord
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Raylib.DrawLineEx(new Vector2(0f, -r * 0.85f), new Vector2(0f, r * 0.12f), 2f, new Color(72, 58, 46, 255));
@@ -23678,7 +23678,7 @@ for (int i = 0; i < density; i++)
                     Raylib.DrawCircleV(bell + new Vector2(0, r * 0.07f), 1.6f, goldDark);
                 });
                 break;
-            case 29: // Stone Rosary — carved bead loop
+            case 29: // Stone Rosary - carved bead loop
                 for (int bead = 0; bead < 9; bead++)
                 {
                     float ang = bead * 0.5f - 1.1f;
@@ -23687,7 +23687,7 @@ for (int i = 0; i < density; i++)
                     else DrawMetalBead(bp, bead % 2 == 0 ? 3f : 2.2f, bead % 2 == 0 ? slate : bone);
                 }
                 break;
-            case 30: // War Paint — fierce face markings
+            case 30: // War Paint - fierce face markings
             {
                 Vector2 face = rig.At(0.12f, 0f);
                 Vector2 fl = face - rig.Left * r * 0.35f;
@@ -23700,7 +23700,7 @@ for (int i = 0; i < density; i++)
                 Raylib.DrawLineEx(face - rig.Left * r * 0.22f + rig.Forward * r * 0.06f, face + rig.Left * r * 0.22f + rig.Forward * r * 0.06f, 2.5f, war);
                 break;
             }
-            case 31: // Crown Fragments — shattered gold crown
+            case 31: // Crown Fragments - shattered gold crown
                 WithAccessoryRigRotation(rig, () =>
                 {
                     DrawGlow(new Vector2(0f, -r * 0.7f), r * 0.8f, gold, 0.04f);
@@ -23713,7 +23713,7 @@ for (int i = 0; i < density; i++)
                     }
                 });
                 break;
-            case 32: // Bastion Wings — steel angel wings
+            case 32: // Bastion Wings - steel angel wings
                 WithAccessoryRigRotation(rig, () =>
                 {
                     float flap = MathF.Sin(time * 2f) * r * 0.06f;
@@ -23735,7 +23735,7 @@ for (int i = 0; i < density; i++)
                     }
                 });
                 break;
-            case 33: // Crypt Lantern — spectral lantern
+            case 33: // Crypt Lantern - spectral lantern
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Vector2 lantern = new Vector2(-r * 0.55f, -r * 0.25f);
@@ -23748,7 +23748,7 @@ for (int i = 0; i < density; i++)
                     Raylib.DrawRectangleRoundedLines(frame, 0.18f, 3, WithAlpha(new Color(140, 200, 160, 255), 0.5f));
                 });
                 break;
-            case 34: // Throne Chain — gold chain with pendant
+            case 34: // Throne Chain - gold chain with pendant
                 WithAccessoryRigRotation(rig, () =>
                 {
                     for (int link = 0; link < 6; link++)
@@ -23765,7 +23765,7 @@ for (int i = 0; i < density; i++)
                     DrawTrinketGem(pend, 3f, amethyst, time);
                 });
                 break;
-            case 35: // Last Oath — sealed vow scroll
+            case 35: // Last Oath - sealed vow scroll
                 WithAccessoryRigRotation(rig, () =>
                 {
                     var scroll = new Rectangle(-r * 0.13f, -r * 0.75f, r * 0.26f, r * 0.95f);
@@ -23781,10 +23781,10 @@ for (int i = 0; i < density; i++)
                     Raylib.DrawCircleV(seal, 1.6f, crimsonHi);
                 });
                 break;
-            case 36: // Cursor Crown — secret regal diadem
+            case 36: // Cursor Crown - secret regal diadem
                 DrawCursorCrown(rig, time, r);
                 break;
-            case 37: // Storm Glass — crystalline foresight orb
+            case 37: // Storm Glass - crystalline foresight orb
                 WithAccessoryRigRotation(rig, () =>
                 {
                     Vector2 orb = new Vector2(r * 0.42f, -r * 0.08f);
@@ -24759,7 +24759,7 @@ for (int i = 0; i < density; i++)
             {
                 float dist = Vector2.Distance(playerPos, beacon);
                 Raylib.DrawLineEx(playerPos, beacon, 1.2f, WithAlpha(safeEdge, 0.14f + pulse * 0.08f));
-                string hint = SafeZoneRushHint() + "  ·  " + dist.ToString("0") + "u";
+                string hint = SafeZoneRushHint() + "  �  " + dist.ToString("0") + "u";
                 ShadowTextCentered(hint, WindowWidth / 2, WindowHeight - 58, 13, WithAlpha(safeEdge, 0.72f), 1f);
             }
         }
@@ -25119,12 +25119,12 @@ for (int i = 0; i < density; i++)
                 "Tip: Stay on solid tiles. Wind Step can leap gaps in a pinch."),
             DeathCause.FloorGaveWay => (
                 "The floor collapsed beneath you.",
-                "Tip: Keep moving—worn tiles crumble. Seek fresh, sturdy ground."),
+                "Tip: Keep moving-worn tiles crumble. Seek fresh, sturdy ground."),
             DeathCause.EnemyGrasp => (
                 string.IsNullOrEmpty(lastDeathDetail)
                     ? "A foe caught you."
                     : lastDeathDetail + " struck you down.",
-                "Tip: Wind Step grants brief invulnerability—dash through danger."),
+                "Tip: Wind Step grants brief invulnerability-dash through danger."),
             DeathCause.SafeZoneFailed => (
                 "You missed the safe zone.",
                 "Tip: Watch the glowing band and reach it before the timer hits zero."),
@@ -25486,7 +25486,7 @@ for (int i = 0; i < density; i++)
         if (ability == AbilityType.OathOfTheBailey && oathUsedThisRun) subLabel = "SPENT";
         else if (ability == AbilityType.Verdict && verdictHaltTimer > 0f) subLabel = "HALTING " + Math.Ceiling(verdictHaltTimer).ToString("0") + "s";
         else if (ability == AbilityType.Verdict && !IsVerdictUnlocked()) subLabel = runKillCount + "/" + VerdictUnlockKills + " KILLS";
-        else if (!ready) subLabel = keyLabel + "  ·  COOLDOWN";
+        else if (!ready) subLabel = keyLabel + "  �  COOLDOWN";
 
         Color subCol = ability == AbilityType.OathOfTheBailey && oathUsedThisRun
             ? WithAlpha(Color.White, 0.42f)
@@ -25551,7 +25551,7 @@ for (int i = 0; i < density; i++)
         Color ammoCol = reloading ? Gold : ammoInMag <= mag / 4 ? Danger : WithAlpha(UiAccent, 0.95f);
         Raylib.DrawText(ammoText, (int)panel.X + 50, (int)panel.Y + 26, 12, ammoCol);
 
-        string mode = autoFire ? "AUTO-FIRE" : "LMB · RMB reload";
+        string mode = autoFire ? "AUTO-FIRE" : "LMB � RMB reload";
         Raylib.DrawText(mode, (int)panel.X + 50, (int)panel.Y + 40, 10, WithAlpha(Color.White, 0.5f));
 
         float ammoFill = mag > 0 ? ammoInMag / (float)mag : 0f;
@@ -25804,7 +25804,7 @@ for (int i = 0; i < density; i++)
         if (rdi >= 0 && rdi < difficultyRecords.Length)
         {
             ref DifficultyRecord rec = ref difficultyRecords[rdi];
-            string recLine = $"Your best — wave {rec.BestWave} · {rec.BestScore:N0} pts";
+            string recLine = $"Your best - wave {rec.BestWave} � {rec.BestScore:N0} pts";
             DrawTextTruncated(recLine, (int)(panel.X + 12f), (int)recordsY, (int)meterW, 10, WithAlpha(profile.Accent, 0.72f));
         }
 
@@ -25894,7 +25894,7 @@ for (int i = 0; i < density; i++)
         BlessingType.SwiftMarch => ("Swift March", "+5% movement speed for the rest of the run.", MossLight),
         BlessingType.DeepPockets => ("Deep Pockets", "+12% fables from every source.", Gold),
         BlessingType.Stonecraft => ("Stonecraft", "Tiles underfoot wear down more slowly.", new Color(148, 142, 132, 255)),
-        BlessingType.LongFuse => ("Long Fuse", "+0.5s on event telegraphs — read the floor.", new Color(120, 170, 220, 255)),
+        BlessingType.LongFuse => ("Long Fuse", "+0.5s on event telegraphs - read the floor.", new Color(120, 170, 220, 255)),
         BlessingType.ThornVolley => ("Thorn Volley", "Extra projectile splinter on each shot.", Danger),
         BlessingType.LuckySigil => ("Lucky Sigil", "+8% fables and brighter fortune.", new Color(220, 190, 90, 255)),
         BlessingType.IronSoles => ("Iron Soles", "Reduced durability loss while moving.", UiBorderLight),
@@ -25974,7 +25974,7 @@ for (int i = 0; i < density; i++)
         DrawPulseFrame(frame, Gold, 0.1f, 2.5f, 0.15f + pulse * 0.12f);
 
         ShadowTextCentered("A BLESSING DESCENDS", cx, (int)(frame.Y + 28f), 32, Gold);
-        string sub = $"Wave {waveNumber} cleared  ·  choose one boon for the siege ahead";
+        string sub = $"Wave {waveNumber} cleared  �  choose one boon for the siege ahead";
         ShadowTextCentered(sub, cx, (int)(frame.Y + 66f), 13, WithAlpha(Color.White, 0.62f));
         DrawMedievalDivider(cx, frame.Y + 88f, 420f);
 
@@ -26005,7 +26005,7 @@ for (int i = 0; i < density; i++)
             }
         }
 
-        DrawUiHintBar("1 · 2 · 3 quick pick", "Click a card to claim", "Blessings stack up to 6");
+        DrawUiHintBar("1 � 2 � 3 quick pick", "Click a card to claim", "Blessings stack up to 6");
     }
 
     static void DrawDifficultySelect()
@@ -26070,7 +26070,7 @@ for (int i = 0; i < density; i++)
             state = GameState.MainMenu;
         }
 
-        DrawUiHintBar("Click a trial · ↑↓ move", "Q E H N oaths · click chips", "ENTER begin · ESC back");
+        DrawUiHintBar("Click a trial � ?? move", "Q E H N oaths � click chips", "ENTER begin � ESC back");
     }
 
     static bool DrawDifficultyCard(Rectangle card, in DifficultyProfile profile, bool selected, bool nightmare, float time, int rank)
@@ -26181,7 +26181,7 @@ for (int i = 0; i < density; i++)
         float chipX = cx - chipsTotal / 2f;
         DrawUiStatChip(new Rectangle(chipX, yStart, chipW, chipH), "RANK", playerLevel.ToString(), UiAccent, ghost: true);
         DrawUiStatChip(new Rectangle(chipX + chipW + chipGap, yStart, chipW, chipH), "FABLES", fables.ToString("N0"), Gold, ghost: true);
-        string bestVal = highScore > 0 ? highScore.ToString("N0") : "—";
+        string bestVal = highScore > 0 ? highScore.ToString("N0") : "-";
         DrawUiStatChip(new Rectangle(chipX + (chipW + chipGap) * 2f, yStart, chipW, chipH), "BEST", bestVal, MossLight, ghost: true);
         yStart += (int)chipH + gap;
 
@@ -26217,7 +26217,7 @@ for (int i = 0; i < density; i++)
         string diffLabel = "Last run: " + GetDifficultyProfile(runDifficulty).Title;
         ShadowTextCentered(diffLabel, cx, (int)(rowY + 48f), 11, WithAlpha(MossLight, 0.62f));
 
-        DrawUiHintBar("WASD move", "LMB fire · RMB reload", "F3 fps");
+        DrawUiHintBar("WASD move", "LMB fire � RMB reload", "F3 fps");
     }
 
     static int DrawMedievalMenuTitle(int cx, int y, float time)
@@ -26372,7 +26372,7 @@ for (int i = 0; i < density; i++)
         DrawRichPanel(card, UiPanel, UiBorder, 0.15f, accentStripe: true);
         ShadowTextCentered("PAUSED", cx, 242, 38, UiAccent);
         DrawMedievalDivider(cx, 288f, 300f);
-        ShadowTextCentered("Run in progress — resume when ready.", cx, 302, 12, WithAlpha(Color.White, 0.58f));
+        ShadowTextCentered("Run in progress - resume when ready.", cx, 302, 12, WithAlpha(Color.White, 0.58f));
 
         float sx = cx - 204f;
         float sy = 332f;
@@ -26682,9 +26682,9 @@ for (int i = 0; i < density; i++)
         EnemyBehavior.Splitter => "Splitter",
         EnemyBehavior.Sapper => "Sapper",
         EnemyBehavior.Lurker => "Lurker",
-        EnemyBehavior.BossBlight => "Boss · Blight",
-        EnemyBehavior.BossDash => "Boss · Dash",
-        EnemyBehavior.BossSmash => "Boss · Smash",
+        EnemyBehavior.BossBlight => "Boss � Blight",
+        EnemyBehavior.BossDash => "Boss � Dash",
+        EnemyBehavior.BossSmash => "Boss � Smash",
         _ => behavior.ToString(),
     };
 
@@ -26914,7 +26914,7 @@ for (int i = 0; i < density; i++)
         Raylib.EndScissorMode();
         DrawArmoryScrollBar(viewportH);
 
-        string scrollHint = ArmoryScrollMax() > 1f ? "Scroll wheel · more below" : "Click to equip or unlock";
+        string scrollHint = ArmoryScrollMax() > 1f ? "Scroll wheel � more below" : "Click to equip or unlock";
         DrawUiHintBar(scrollHint, CustomizeTabTitle(), "ESC back");
 
         if (Button(new Rectangle(30f, UiBackButtonY, 180f, 40f), "BACK  [ESC]", 20, true, UiBorder))
@@ -27350,7 +27350,7 @@ for (int i = 0; i < density; i++)
         if (di >= 0 && di < difficultyRecords.Length)
         {
             ref DifficultyRecord rec = ref difficultyRecords[di];
-            string recs = activeDifficulty.Title + ": wave " + rec.BestWave + " · " + rec.BestKills + " kills";
+            string recs = activeDifficulty.Title + ": wave " + rec.BestWave + " � " + rec.BestKills + " kills";
             DrawTextTruncated(recs, (int)card.X + 12, (int)(chipY + (string.IsNullOrEmpty(motto) ? 48f : 64f)), (int)card.Width - 24, 10, WithAlpha(MossLight, 0.72f));
         }
 
@@ -27381,7 +27381,7 @@ for (int i = 0; i < density; i++)
         Color border = isCurrent ? Gold : isPast ? WithAlpha(UiBorder, 0.55f) : UiBorder;
         DrawRichPanel(card, WithAlpha(UiPanel, isPast ? 0.72f : 0.9f), border, 0.18f, accentStripe: isCurrent);
 
-        string title = isCurrent ? $"RANK {level}  ·  YOU ARE HERE" : isPast ? $"RANK {level}  ·  COMPLETE" : $"RANK {level}  ·  NEXT";
+        string title = isCurrent ? $"RANK {level}  �  YOU ARE HERE" : isPast ? $"RANK {level}  �  COMPLETE" : $"RANK {level}  �  NEXT";
         Color titleCol = isCurrent ? Gold : isPast ? WithAlpha(UiAccent, 0.85f) : WithAlpha(Color.White, 0.82f);
         Raylib.DrawText(title, (int)card.X + 12, (int)card.Y + 8, isCurrent ? 14 : 13, titleCol);
 
@@ -27466,7 +27466,7 @@ for (int i = 0; i < density; i++)
 
             DrawGunIcon(i, new Vector2(row.X + 34f, row.Y + 25f), 10f, time, owned ? 1f : waveMet ? 0.7f : 0.4f);
             DrawTextTruncated(g.Name, (int)row.X + 56, (int)row.Y + 8, textW, 14, owned ? UiAccent : Color.White);
-            string req = $"Requires wave {g.WaveReq} cleared  ·  {g.FableCost:N0} fables";
+            string req = $"Requires wave {g.WaveReq} cleared  �  {g.FableCost:N0} fables";
             DrawTextTruncated(req, (int)row.X + 56, (int)row.Y + 28, textW, 11,
                 WithAlpha(Gold, waveMet ? 0.9f : 0.45f));
 
@@ -27721,11 +27721,11 @@ for (int i = 0; i < density; i++)
             {
                 var slot1Btn = new Rectangle(r.X + cardW - 252f, r.Y + cardH - 44f, 116f, 34f);
                 var slot2Btn = new Rectangle(r.X + cardW - 126f, r.Y + cardH - 44f, 116f, 34f);
-                if (Button(slot1Btn, inSlot1 ? "SLOT 1 ✓" : "SLOT 1", 13, true, inSlot1 ? UiAccent : UiBorder))
+                if (Button(slot1Btn, inSlot1 ? "SLOT 1 ?" : "SLOT 1", 13, true, inSlot1 ? UiAccent : UiBorder))
                 {
                     AssignAbilityToSlot(0, ability);
                 }
-                if (Button(slot2Btn, inSlot2 ? "SLOT 2 ✓" : "SLOT 2", 13, true, inSlot2 ? UiAccent : UiBorder))
+                if (Button(slot2Btn, inSlot2 ? "SLOT 2 ?" : "SLOT 2", 13, true, inSlot2 ? UiAccent : UiBorder))
                 {
                     AssignAbilityToSlot(1, ability);
                 }
@@ -28067,7 +28067,7 @@ for (int i = 0; i < density; i++)
             DrawRichPanel(banner, WithAlpha(UiPanel, a * 0.95f), WithAlpha(Gold, a), 0.2f, accentStripe: true);
             DrawPulseFrame(banner, Gold, 0.14f, 3f, 0.12f * a);
             ShadowTextCentered("CURSOR CROWN UNLOCKED", bannerCx, 108, 22, Gold, a);
-            ShadowTextCentered("Equip it in the Armory · Look tab", bannerCx, 134, 12, WithAlpha(Color.White, 0.72f), a);
+            ShadowTextCentered("Equip it in the Armory � Look tab", bannerCx, 134, 12, WithAlpha(Color.White, 0.72f), a);
             var iconCenter = new Vector2(bannerCx, banner.Y + banner.Height + 38f);
             DrawAccessory(iconCenter, 28f, frameTime, AccessoryCursorCrown, AccessoryPreviewForward);
         }
