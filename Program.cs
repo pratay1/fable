@@ -14651,6 +14651,7 @@ class Program
     {
         int skyH = (int)(WindowHeight * 0.58f);
 
+<<<<<<< HEAD
         // Obsidian night: true black zenith, charcoal horizon — zero blue cast.
         Color zenith = new Color(0, 0, 0, 255);
         Color upperDeep = new Color(2, 2, 2, 255);
@@ -14667,6 +14668,19 @@ class Program
         Raylib.DrawRectangleGradientV(0, skyH * 3 / 4, WindowWidth, skyH / 4, midSky, lowerSky);
         Raylib.DrawRectangleGradientV(0, skyH - 140, WindowWidth, 100, WithAlpha(lowerSky, 0f), WithAlpha(horizon, 0.92f));
         Raylib.DrawRectangleGradientV(0, skyH - 48, WindowWidth, 48, WithAlpha(horizon, 0f), WithAlpha(groundHaze, 0.88f));
+=======
+        // Near-black zenith with a faint cool tint; horizon stays neutral charcoal
+        // so the castle wall below reads dark grey rather than blue.
+        Color skyTop = new Color(1, 2, 8, 255);
+        Color skyUpper = new Color(4, 5, 16, 255);
+        Color skyMid = new Color(7, 7, 12, 255);
+        Color skyHorizon = new Color(6, 5, 7, 255);
+
+        Raylib.DrawRectangleGradientV(0, 0, WindowWidth, skyH / 2, skyTop, skyUpper);
+        Raylib.DrawRectangleGradientV(0, skyH / 2, WindowWidth, skyH / 2, skyUpper, skyMid);
+        Raylib.DrawRectangleGradientV(0, skyH - 120, WindowWidth, 120, WithAlpha(skyMid, 0f), WithAlpha(skyHorizon, 0.92f));
+        Raylib.DrawRectangleGradientV(0, skyH - 36, WindowWidth, 36, WithAlpha(skyHorizon, 0f), WithAlpha(new Color(4, 4, 5, 255), 0.88f));
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
 
         DrawMenuCastleSkyAtmosphereLayers(time, skyH);
         DrawMenuCastleSkyNebula(time, skyH);
@@ -14759,6 +14773,7 @@ class Program
 
     static void DrawMenuCastleSkyNebula(float time, int skyH)
     {
+<<<<<<< HEAD
         float pulse = 0.88f + MathF.Sin(time * 0.16f) * 0.12f;
         DrawEllipticalGlow(new Vector2(WindowWidth * 0.32f, skyH * 0.16f), WindowWidth * 0.34f, 72f, -18f,
             new Color(14, 12, 12, 255), 0.012f * pulse, 4);
@@ -14768,6 +14783,15 @@ class Program
             new Color(8, 8, 7, 255), 0.007f * pulse, 2);
         DrawEllipticalGlow(new Vector2(WindowWidth * 0.78f, skyH * 0.11f), 110f, 28f, 14f,
             new Color(12, 11, 10, 255), 0.008f * pulse, 2);
+=======
+        float pulse = 0.88f + MathF.Sin(time * 0.12f) * 0.08f;
+        DrawEllipticalGlow(new Vector2(WindowWidth * 0.32f, skyH * 0.16f), WindowWidth * 0.34f, 72f, -18f,
+            new Color(28, 24, 42, 255), 0.009f * pulse, 4);
+        DrawEllipticalGlow(new Vector2(WindowWidth * 0.58f, skyH * 0.24f), WindowWidth * 0.26f, 48f, 10f,
+            new Color(20, 26, 44, 255), 0.006f * pulse, 3);
+        DrawEllipticalGlow(new Vector2(WindowWidth * 0.12f, skyH * 0.30f), 90f, 36f, -32f,
+            new Color(16, 18, 34, 255), 0.004f * pulse, 2);
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
     }
 
     static void DrawMenuCastleMoonSkyScatter(float time)
@@ -14777,13 +14801,20 @@ class Program
         Color silver = new Color(156, 154, 148, 255);
         Color ash = new Color(72, 70, 66, 255);
         DrawEllipticalGlow(new Vector2(moon.X, moon.Y + 36f), 130f, 82f, 0f,
+<<<<<<< HEAD
             silver, 0.022f + pulse * 0.006f, 5);
         DrawEllipticalGlow(new Vector2(moon.X - 55f, moon.Y + 72f), 200f, 44f, -10f,
             ash, 0.009f, 3);
+=======
+            new Color(120, 128, 148, 255), 0.014f + pulse * 0.004f, 5);
+        DrawEllipticalGlow(new Vector2(moon.X - 55f, moon.Y + 72f), 200f, 44f, -10f,
+            new Color(72, 78, 92, 255), 0.005f, 3);
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
     }
 
     static void DrawMenuCastleStarField(float time)
     {
+<<<<<<< HEAD
         float horizonFadeStart = WindowHeight * 0.34f;
         float horizonFadeEnd = WindowHeight * 0.50f;
 
@@ -14828,12 +14859,68 @@ class Program
                 float spark = 1.2f + Hash(i * 73) * 1.8f;
                 Raylib.DrawLine((int)sx - (int)spark, (int)sy, (int)sx + (int)spark, (int)sy, WithAlpha(starCol, alpha * 0.55f));
                 Raylib.DrawLine((int)sx, (int)sy - (int)spark, (int)sx, (int)sy + (int)spark, WithAlpha(starCol, alpha * 0.55f));
+=======
+        float skyLimit = WindowHeight * 0.50f;
+
+        // Deep field — many near-invisible points (realistic magnitude tail)
+        const int deepCount = 260;
+        for (int i = 0; i < deepCount; i++)
+        {
+            float sx = Hash(i * 41 + 7) * WindowWidth;
+            float sy = Hash(i * 19 + 3) * skyLimit;
+            float altitude = 1f - sy / skyLimit;
+            float extinction = 0.35f + altitude * 0.65f;
+            float twinkle = MathF.Sin(time * (0.25f + Hash(i * 5) * 0.6f) + i * 0.9f) * 0.5f + 0.5f;
+            float alpha = (0.015f + twinkle * (0.02f + Hash(i * 31) * 0.03f)) * extinction;
+            Raylib.DrawCircleV(new Vector2(sx, sy), 0.35f + Hash(i * 11) * 0.35f, WithAlpha(new Color(190, 196, 210, 255), alpha));
+        }
+
+        // Far field — tiny, dense, slow twinkle
+        const int farCount = 200;
+        for (int i = 0; i < farCount; i++)
+        {
+            float sx = Hash(i * 47 + 9) * WindowWidth;
+            float sy = Hash(i * 23 + 1) * skyLimit;
+            float altitude = 1f - sy / skyLimit;
+            float extinction = 0.4f + altitude * 0.6f;
+            float twinkle = MathF.Sin(time * (0.35f + Hash(i * 5) * 0.9f) + i * 0.9f) * 0.5f + 0.5f;
+            float alpha = (0.025f + twinkle * (0.04f + Hash(i * 31) * 0.06f)) * extinction;
+            Raylib.DrawCircleV(new Vector2(sx, sy), 0.45f + Hash(i * 11) * 0.5f, WithAlpha(new Color(200, 206, 220, 255), alpha));
+        }
+
+        // Mid field — varied color temperature with atmospheric extinction
+        const int midCount = 84;
+        for (int i = 0; i < midCount; i++)
+        {
+            float sx = Hash(i * 53 + 11) * WindowWidth;
+            float sy = Hash(i * 29 + 5) * skyLimit * 0.96f;
+            float altitude = 1f - sy / skyLimit;
+            float extinction = 0.45f + altitude * 0.55f;
+            float temp = Hash(i * 37);
+            Color starCol = temp < 0.14f
+                ? new Color(168, 184, 255, 255)
+                : temp < 0.38f
+                    ? new Color(196, 202, 220, 255)
+                    : temp < 0.72f
+                        ? new Color(220, 218, 226, 255)
+                        : new Color(255, 236, 208, 255);
+            float twinkle = MathF.Sin(time * (0.7f + Hash(i * 7) * 1.6f) + i * 1.1f) * 0.5f + 0.5f;
+            float r = 0.55f + Hash(i * 13) * 0.95f;
+            float alpha = (0.05f + twinkle * (0.08f + Hash(i * 43) * 0.12f)) * extinction;
+            Raylib.DrawCircleV(new Vector2(sx, sy), r, WithAlpha(starCol, alpha));
+            if (Hash(i * 71) > 0.92f && twinkle > 0.78f)
+            {
+                float spark = 1.2f + Hash(i * 73) * 1.4f;
+                Raylib.DrawLine((int)sx - (int)spark, (int)sy, (int)sx + (int)spark, (int)sy, WithAlpha(starCol, alpha * 0.5f));
+                Raylib.DrawLine((int)sx, (int)sy - (int)spark, (int)sx, (int)sy + (int)spark, WithAlpha(starCol, alpha * 0.5f));
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
             }
         }
 
         // Bright anchors — prominent stars with soft neutral halos
         ReadOnlySpan<(float x, float y, float size, float phase)> anchors =
         [
+<<<<<<< HEAD
             (0.14f, 0.08f, 1.8f, 0.0f),
             (0.31f, 0.18f, 1.5f, 1.2f),
             (0.48f, 0.06f, 2.0f, 2.4f),
@@ -14843,33 +14930,63 @@ class Program
             (0.91f, 0.09f, 1.7f, 2.7f),
             (0.55f, 0.11f, 1.2f, 4.2f),
             (0.08f, 0.19f, 1.1f, 1.4f),
+=======
+            (0.14f, 0.08f, 1.5f, 0.0f),
+            (0.31f, 0.18f, 1.2f, 1.2f),
+            (0.48f, 0.06f, 1.6f, 2.4f),
+            (0.67f, 0.14f, 1.3f, 0.8f),
+            (0.84f, 0.22f, 1.1f, 3.1f),
+            (0.22f, 0.28f, 1.0f, 1.9f),
+            (0.91f, 0.09f, 1.4f, 2.7f),
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
         ];
         for (int a = 0; a < anchors.Length; a++)
         {
             var (nx, ny, size, phase) = anchors[a];
             Vector2 pos = new Vector2(WindowWidth * nx, WindowHeight * ny);
+<<<<<<< HEAD
             float tw = MathF.Sin(time * 1.4f + phase) * 0.5f + 0.5f;
             Color col = new Color(236, 234, 228, 255);
             Raylib.DrawCircleV(pos, size, WithAlpha(col, 0.20f + tw * 0.16f));
             DrawEllipticalGlow(pos, size * 3.2f, size * 2.8f, 0f, col, 0.009f + tw * 0.006f, 2);
+=======
+            float tw = MathF.Sin(time * 1.1f + phase) * 0.5f + 0.5f;
+            Color col = new Color(220, 228, 248, 255);
+            Raylib.DrawCircleV(pos, size, WithAlpha(col, 0.14f + tw * 0.12f));
+            DrawEllipticalGlow(pos, size * 3f, size * 2.5f, 0f, col, 0.006f + tw * 0.004f, 2);
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
         }
     }
 
     static void DrawMenuCastleMilkyWay(float time)
     {
+<<<<<<< HEAD
         float pulse = 0.90f + MathF.Sin(time * 0.12f) * 0.10f;
         const int segments = 20;
+=======
+        float pulse = 0.92f + MathF.Sin(time * 0.1f) * 0.06f;
+        const int segments = 22;
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
         for (int s = 0; s < segments; s++)
         {
             float t = s / (float)(segments - 1);
             float cx = WindowWidth * (0.04f + t * 0.82f);
             float cy = WindowHeight * (0.04f + t * 0.26f) + MathF.Sin(t * MathF.PI) * 18f;
+<<<<<<< HEAD
             float rx = 92f + Hash(s * 53) * 52f;
             float ry = 14f + Hash(s * 59) * 10f;
             float rot = -32f + t * 12f;
             float envelope = 0.50f + MathF.Sin(t * MathF.PI) * 0.50f;
             float inten = (0.006f + Hash(s * 61) * 0.009f) * pulse * envelope;
             Color band = LerpColor(new Color(88, 86, 82, 255), new Color(132, 130, 124, 255), Hash(s * 67));
+=======
+            float rx = 72f + Hash(s * 53) * 56f;
+            float ry = 12f + Hash(s * 59) * 10f;
+            float rot = -32f + t * 12f + Hash(s * 71) * 6f - 3f;
+            float envelope = 0.4f + MathF.Sin(t * MathF.PI) * 0.6f;
+            float inten = (0.004f + Hash(s * 61) * 0.007f) * pulse * envelope;
+            Color band = LerpColor(new Color(72, 76, 96, 255), new Color(118, 116, 138, 255), Hash(s * 67));
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
             DrawEllipticalGlow(new Vector2(cx, cy), rx, ry, rot, band, inten, 4);
         }
     }
@@ -14896,9 +15013,15 @@ class Program
 
     static void DrawMenuCastleDistantMountains(float time)
     {
+<<<<<<< HEAD
         Color ridge = new Color(4, 4, 4, 255);
         Color ridgeHi = new Color(8, 7, 7, 255);
         Color ridgeMoon = new Color(14, 13, 12, 255);
+=======
+        Color ridge = new Color(5, 4, 7, 255);
+        Color ridgeHi = new Color(10, 9, 13, 255);
+        Color ridgeMoon = new Color(16, 16, 20, 255);
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
         int baseY = (int)(WindowHeight * 0.48f);
         float moonX = WindowWidth * 0.76f;
         for (int m = 0; m < 9; m++)
@@ -14920,15 +15043,24 @@ class Program
 
         // Soft ground haze where mountains meet the sky
         Raylib.DrawRectangleGradientV(0, baseY - 8, WindowWidth, 48,
+<<<<<<< HEAD
             WithAlpha(new Color(6, 5, 5, 255), 0f), WithAlpha(new Color(6, 5, 5, 255), 0.32f));
+=======
+            WithAlpha(new Color(8, 7, 9, 255), 0f), WithAlpha(new Color(8, 7, 9, 255), 0.28f));
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
     }
 
     static void DrawMenuCastleCloudWisps(float time)
     {
         Vector2 moon = MenuCastleMoonPosition;
+<<<<<<< HEAD
         Color silver = new Color(28, 27, 26, 255);
         Color shadow = new Color(8, 7, 7, 255);
         Color rim = new Color(42, 40, 38, 255);
+=======
+        Color silver = new Color(132, 138, 152, 255);
+        Color shadow = new Color(42, 44, 50, 255);
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
         for (int c = 0; c < 10; c++)
         {
             float drift = time * (4f + c * 1.8f);
@@ -14943,10 +15075,15 @@ class Program
                 float rx = 34f + w * 10f + c * 3f;
                 float ry = 9f + w * 2.5f;
                 float rot = Hash(c + w) * 14f - 7f;
+<<<<<<< HEAD
                 DrawEllipticalGlow(new Vector2(wx, wy + 2f), rx * 1.05f, ry * 1.1f, rot, shadow, 0.010f * moonLit, 2);
                 DrawEllipticalGlow(new Vector2(wx, wy), rx, ry, rot, silver, 0.012f * moonLit, 3);
                 if (moonLit > 0.55f)
                     DrawEllipticalGlow(new Vector2(wx, wy - 1f), rx * 0.72f, ry * 0.55f, rot, rim, 0.006f * moonLit, 2);
+=======
+                DrawEllipticalGlow(new Vector2(wx, wy + 2f), rx * 1.05f, ry * 1.1f, rot, shadow, 0.004f * moonLit, 2);
+                DrawEllipticalGlow(new Vector2(wx, wy), rx, ry, rot, silver, 0.008f * moonLit, 3);
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
             }
         }
     }
@@ -15980,9 +16117,15 @@ for (int i = 0; i < density; i++)
             float ang = Hash(seed + i * 13) * MathF.PI * 2f;
             float dist = Hash(seed + i * 17) * radius;
             Vector2 pos = new Vector2(center.X + MathF.Cos(ang) * dist, center.Y + MathF.Sin(ang) * dist);
+<<<<<<< HEAD
             float tw = MathF.Sin(time * 2f + i + seed) * 0.5f + 0.5f;
             Color sc = LerpColor(new Color(196, 194, 188, 255), new Color(255, 236, 210, 255), Hash(seed + i * 23));
             Raylib.DrawCircleV(pos, 0.8f + Hash(seed + i * 29), WithAlpha(sc, 0.1f + tw * 0.2f));
+=======
+            float tw = MathF.Sin(time * 1.6f + i + seed) * 0.5f + 0.5f;
+            Color sc = LerpColor(new Color(176, 188, 228, 255), new Color(228, 218, 196, 255), Hash(seed + i * 23));
+            Raylib.DrawCircleV(pos, 0.6f + Hash(seed + i * 29) * 0.6f, WithAlpha(sc, 0.05f + tw * 0.1f));
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
         }
     }
 
@@ -16003,7 +16146,11 @@ for (int i = 0; i < density; i++)
         // Faint atmospheric band just above the horizon — warm charcoal, not blue.
         int bandY = (int)(WindowHeight * 0.46f);
         Raylib.DrawRectangleGradientV(0, bandY - 20, WindowWidth, 40,
+<<<<<<< HEAD
             WithAlpha(new Color(6, 5, 5, 255), 0f), WithAlpha(new Color(10, 9, 8, 255), 0.22f));
+=======
+            WithAlpha(new Color(10, 9, 11, 255), 0f), WithAlpha(new Color(10, 9, 11, 255), 0.2f));
+>>>>>>> c117ff94d6e3b073f0b42f7f9f8a838798df3fde
     }
 
     static void DrawMenuCastleDrawbridgeShadow(float gateX, float gateW, float gateY, float gateH, MenuCastlePalette p)
