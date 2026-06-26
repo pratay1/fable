@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -736,7 +736,7 @@ class Program
     static readonly string[] BodyNames =
     {
         "Ash", "Slate", "Iron", "Parchment", "Marble", "Charcoal", "Silver", "Basalt", "Obsidian", "Ivory",
-        "Gules", "Azure", "Vert", "Or", "Purpure", "Sanguine", "Celeste", "Tenné", "Murrey", "Sable", "Bronze", "Cendrée",
+        "Gules", "Azure", "Vert", "Or", "Purpure", "Sanguine", "Celeste", "Tennï¿½", "Murrey", "Sable", "Bronze", "Cendrï¿½e",
     };
     static readonly int[] BodyFableCost = { 0, 0, 0, 80, 0, 140, 0, 200, 0, 260, 0, 300, 0, 340, 0, 380, 0, 420, 0, 460, 0, 500 };
     static readonly int[] BodyLevelReq = { 0, 0, 0, 0, 5, 0, 12, 0, 20, 0, 28, 0, 32, 0, 36, 0, 40, 0, 44, 0, 48, 0 };
@@ -1051,32 +1051,32 @@ class Program
     static readonly DifficultyProfile[] DifficultyProfiles =
     {
         new("TOTAL BEGINNER", "Learn the stones in peace.",
-            "Fewer foes · gentle swarms · catastrophes arrive very late and stay mild.",
+            "Fewer foes ï¿½ gentle swarms ï¿½ catastrophes arrive very late and stay mild.",
             new Color(118, 176, 138, 255), new Color(168, 220, 182, 255),
             0.52f, 0.68f, 0.45f, 0.55f,
             6, 0f, 10f, 15f, 0.55f, 1.55f, 1.45f, 0f, 0f, true, 4),
         new("SQUIRE", "A forgiving tour of the siege.",
-            "Reduced pressure · slower catastrophes · room to learn your kit.",
+            "Reduced pressure ï¿½ slower catastrophes ï¿½ room to learn your kit.",
             new Color(132, 158, 196, 255), new Color(178, 204, 236, 255),
             0.72f, 0.82f, 0.65f, 0.75f,
             5, 0f, 8f, 14f, 0.72f, 1.25f, 1.2f, 0f, 0f, false, 2),
         new("KNIGHT", "The siege as it was meant to be felt.",
-            "Balanced waves · standard arena rhythm · fair but unforgiving.",
+            "Balanced waves ï¿½ standard arena rhythm ï¿½ fair but unforgiving.",
             new Color(196, 168, 108, 255), new Color(228, 206, 156, 255),
             1f, 1f, 1f, 1f,
             4, 0f, FloorEventCooldownMin, FloorEventCooldownMax, 1f, 1f, 1f, 0f, 0f, false, 0),
         new("CHAMPION", "The walls remember every mistake.",
-            "Heavier swarms · faster catastrophes · elite foes arrive sooner.",
+            "Heavier swarms ï¿½ faster catastrophes ï¿½ elite foes arrive sooner.",
             new Color(196, 128, 72, 255), new Color(236, 176, 108, 255),
             1.22f, 1.12f, 1.28f, 1.22f,
             3, 0f, 4f, 10f, 1.22f, 0.82f, 0.82f, 0.15f, 0.18f, false, -1),
         new("FABLE (NIGHTMARE)", "The story ends in blood and falling stone.",
-            "Events from the first breath · catastrophes stack · the arena never rests.",
+            "Events from the first breath ï¿½ catastrophes stack ï¿½ the arena never rests.",
             new Color(132, 10, 22, 255), new Color(210, 34, 48, 255),
             1.58f, 1.38f, 1.65f, 1.5f,
             0, 0f, 2f, 6f, 1.65f, 0.58f, 0.62f, 0.42f, 0.35f, false, -3),
         new("PRACTICE HALL", "Learn catastrophes without the swarm.",
-            "No grunts · gentle event timers · scores stay off the record.",
+            "No grunts ï¿½ gentle event timers ï¿½ scores stay off the record.",
             new Color(148, 168, 196, 255), new Color(196, 214, 236, 255),
             0f, 0f, 0f, 0f,
             0, 2f, 6f, 12f, 0.45f, 2f, 2.5f, 0f, 0f, true, 99),
@@ -1906,7 +1906,7 @@ class Program
     {
         ref readonly Gun g = ref Guns[i];
         if (g.LevelReq > 0) return $"RANK {g.LevelReq}";
-        if (g.WaveReq > 0 && g.FableCost > 0) return $"WAVE {g.WaveReq}  ·  {g.FableCost}";
+        if (g.WaveReq > 0 && g.FableCost > 0) return $"WAVE {g.WaveReq}  ï¿½  {g.FableCost}";
         if (g.FableCost > 0) return g.FableCost.ToString();
         return "LOCKED";
     }
@@ -1914,7 +1914,7 @@ class Program
     static string CosmeticLockLabel(int fableCost, int levelReq, int waveReq)
     {
         if (levelReq > 0 && fableCost == 0 && waveReq == 0) return $"RANK {levelReq}";
-        if (waveReq > 0 && fableCost > 0) return $"W{waveReq} · {fableCost}";
+        if (waveReq > 0 && fableCost > 0) return $"W{waveReq} ï¿½ {fableCost}";
         if (fableCost > 0) return fableCost.ToString();
         if (waveReq > 0) return $"WAVE {waveReq}";
         return "";
@@ -7474,6 +7474,7 @@ class Program
                     autoPausedForFocus = true;
                     break;
                 }
+                PollAbilityHotkeys();
                 if (ProcessHitStop(dt))
                 {
                     break;
@@ -7710,7 +7711,7 @@ class Program
                     if (tile.Durability >= MaxDurability * 0.6f) tile.State = 0;
                 }
 
-                if (floorRotTimer > 0f && IsTileInMossRotZone(x))
+                if (floorRotTimer > 0f && !EventsHaltedByVerdict() && IsTileInMossRotZone(x))
                 {
                     if (!IsTileInBannerZone(x, y))
                     {
@@ -9363,6 +9364,8 @@ class Program
 
     static void StartFloorEvent(FloorEventType ev)
     {
+        if (EventsHaltedByVerdict()) return;
+
         PushFloorEventHistory(ev);
         activeEvent = ev;
         eventTimer = 0f;
@@ -10534,7 +10537,7 @@ class Program
 
     static void UpdateActiveFloorEvent(float dt)
     {
-        if (BannerFreezesEvents()) dt = 0f;
+        if (BannerFreezesEvents() || EventsHaltedByVerdict()) dt = 0f;
         UpdateEventVfx(dt);
         Color accent = EventAccentColor(activeEvent);
         float urgency = eventStartCountdown > 0.01f
@@ -11340,22 +11343,29 @@ class Program
         }
     }
 
-    static void EndFloorEvent()
+    static void EndFloorEvent(bool fromVerdict = false)
     {
         activeEvent = FloorEventType.None;
         eventTimer = 0f;
         eventPhase = 0;
         eventActionTimer = 0f;
         eventSurgeTimer = 0f;
+        eventCountdown = 0f;
+        eventStartCountdown = 0f;
+        eventBlightBoltTimer = 0f;
+        eventStep = 0;
+        markedStrikeCount = 0;
         eventTileQueue.Clear();
         eventShockwaves.Clear();
         eventSkyBeams.Clear();
         playerInEventSafeZone = false;
+        eventSafeRect = default;
+        eventDangerRect = default;
         emberFuryTileIdx = -1;
         emberFuryStandTimer = 0f;
         ClearEventMarks();
 
-        if (activeDifficulty.EventStackChance > 0f && Rng.NextSingle() < activeDifficulty.EventStackChance)
+        if (!fromVerdict && activeDifficulty.EventStackChance > 0f && Rng.NextSingle() < activeDifficulty.EventStackChance)
         {
             nextFloorEventTimer = Math.Max(0f, nextFloorEventCooldown - 2.2f);
         }
@@ -12797,6 +12807,8 @@ class Program
     static bool BannerFreezesEvents() =>
         bannerActive && bannerTimer > 0f && IsInBannerZone(playerPos);
 
+    static bool EventsHaltedByVerdict() => verdictHaltTimer > 0f;
+
     static float AbilityReadiness(AbilityType ability)
     {
         return ability switch
@@ -12854,12 +12866,19 @@ class Program
         return true;
     }
 
+    static void PollAbilityHotkeys()
+    {
+        if (state != GameState.Playing) return;
+
+        if (Raylib.IsKeyPressed(abilityKey1)) TryUseAbility(abilitySlot1, blockDash: true);
+        if (Raylib.IsKeyPressed(abilityKey2)) TryUseAbility(abilitySlot2, blockDash: false);
+    }
+
     static void UpdateAbilities(float dt)
     {
         dashBlockedThisFrame = false;
         paralyzeCooldown = Math.Max(0f, paralyzeCooldown - dt);
         verdictCooldown = Math.Max(0f, verdictCooldown - dt);
-        if (verdictHaltTimer > 0f) verdictHaltTimer = Math.Max(0f, verdictHaltTimer - dt);
         bannerCooldown = Math.Max(0f, bannerCooldown - dt);
         abilityIFrameTimer = Math.Max(0f, abilityIFrameTimer - dt);
         oathRescueFlashTimer = Math.Max(0f, oathRescueFlashTimer - dt);
@@ -12882,9 +12901,6 @@ class Program
 
         SyncAbilitySlotHud(0);
         SyncAbilitySlotHud(1);
-
-        if (Raylib.IsKeyPressed(abilityKey1)) TryUseAbility(abilitySlot1, blockDash: true);
-        if (Raylib.IsKeyPressed(abilityKey2)) TryUseAbility(abilitySlot2, blockDash: false);
 
         if (aiPilotEnabled)
         {
@@ -13015,8 +13031,24 @@ class Program
     static void TryVerdict()
     {
         if (verdictCooldown > 0f || verdictHaltTimer > 0f) return;
-        if (OathBlocksVerdict()) return;
-        if (!IsVerdictUnlocked() || !HasEquippedAbility(AbilityType.Verdict)) return;
+        if (!HasEquippedAbility(AbilityType.Verdict)) return;
+        if (OathBlocksVerdict())
+        {
+            SpawnFloatingText(playerPos + new Vector2(0, -34f), "OATH FORBIDS VERDICT", Danger, 16);
+            return;
+        }
+
+        if (!IsVerdictUnlocked())
+        {
+            if (runKillCount < VerdictUnlockKills)
+            {
+                SpawnFloatingText(playerPos + new Vector2(0, -34f), runKillCount + "/" + VerdictUnlockKills + " KILLS", Gold, 15);
+                return;
+            }
+
+            abilityUnlocked[(int)AbilityType.Verdict] = true;
+            SaveGame();
+        }
 
         verdictCooldown = VerdictCooldown;
         verdictHaltTimer = VerdictHaltDuration;
@@ -13024,11 +13056,10 @@ class Program
         verdictWaveOrigin = playerPos;
         verdictWaveTimer = VerdictWaveTime;
 
-        if (activeEvent != FloorEventType.None) EndFloorEvent();
+        EndFloorEvent(fromVerdict: true);
         floorRotTimer = 0f;
         floorRotSide = 0f;
-        eventCountdown = 0f;
-        eventPhase = 0;
+        nextFloorEventTimer = 0f;
 
         SpawnVerdictVfx(playerPos);
         SpawnFloatingText(playerPos + new Vector2(0, -40f), "VERDICT", AbilityAccent(AbilityType.Verdict), 24);
@@ -13427,7 +13458,7 @@ class Program
         Raylib.DrawRectangleLinesEx(new Rectangle(8f, 8f, WindowWidth - 16f, WindowHeight - 16f), 2f, WithAlpha(gold, 0.22f + pulse * 0.18f));
 
         int cx = WindowWidth / 2;
-        string label = "VERDICT  ·  EVENTS HALTED  " + Math.Ceiling(verdictHaltTimer).ToString("0") + "s";
+        string label = "VERDICT  ï¿½  EVENTS HALTED  " + Math.Ceiling(verdictHaltTimer).ToString("0") + "s";
         int lw = Raylib.MeasureText(label, 14);
         var banner = new Rectangle(cx - lw / 2f - 16f, 18f, lw + 32f, 28f);
         DrawRichPanel(banner, WithAlpha(UiPanel, 0.88f), gold, 0.2f, accentStripe: true);
@@ -24759,7 +24790,7 @@ for (int i = 0; i < density; i++)
             {
                 float dist = Vector2.Distance(playerPos, beacon);
                 Raylib.DrawLineEx(playerPos, beacon, 1.2f, WithAlpha(safeEdge, 0.14f + pulse * 0.08f));
-                string hint = SafeZoneRushHint() + "  ·  " + dist.ToString("0") + "u";
+                string hint = SafeZoneRushHint() + "  ï¿½  " + dist.ToString("0") + "u";
                 ShadowTextCentered(hint, WindowWidth / 2, WindowHeight - 58, 13, WithAlpha(safeEdge, 0.72f), 1f);
             }
         }
@@ -25486,7 +25517,7 @@ for (int i = 0; i < density; i++)
         if (ability == AbilityType.OathOfTheBailey && oathUsedThisRun) subLabel = "SPENT";
         else if (ability == AbilityType.Verdict && verdictHaltTimer > 0f) subLabel = "HALTING " + Math.Ceiling(verdictHaltTimer).ToString("0") + "s";
         else if (ability == AbilityType.Verdict && !IsVerdictUnlocked()) subLabel = runKillCount + "/" + VerdictUnlockKills + " KILLS";
-        else if (!ready) subLabel = keyLabel + "  ·  COOLDOWN";
+        else if (!ready) subLabel = keyLabel + "  ï¿½  COOLDOWN";
 
         Color subCol = ability == AbilityType.OathOfTheBailey && oathUsedThisRun
             ? WithAlpha(Color.White, 0.42f)
@@ -25551,7 +25582,7 @@ for (int i = 0; i < density; i++)
         Color ammoCol = reloading ? Gold : ammoInMag <= mag / 4 ? Danger : WithAlpha(UiAccent, 0.95f);
         Raylib.DrawText(ammoText, (int)panel.X + 50, (int)panel.Y + 26, 12, ammoCol);
 
-        string mode = autoFire ? "AUTO-FIRE" : "LMB · RMB reload";
+        string mode = autoFire ? "AUTO-FIRE" : "LMB ï¿½ RMB reload";
         Raylib.DrawText(mode, (int)panel.X + 50, (int)panel.Y + 40, 10, WithAlpha(Color.White, 0.5f));
 
         float ammoFill = mag > 0 ? ammoInMag / (float)mag : 0f;
@@ -25804,7 +25835,7 @@ for (int i = 0; i < density; i++)
         if (rdi >= 0 && rdi < difficultyRecords.Length)
         {
             ref DifficultyRecord rec = ref difficultyRecords[rdi];
-            string recLine = $"Your best - wave {rec.BestWave} · {rec.BestScore:N0} pts";
+            string recLine = $"Your best - wave {rec.BestWave} ï¿½ {rec.BestScore:N0} pts";
             DrawTextTruncated(recLine, (int)(panel.X + 12f), (int)recordsY, (int)meterW, 10, WithAlpha(profile.Accent, 0.72f));
         }
 
@@ -25974,7 +26005,7 @@ for (int i = 0; i < density; i++)
         DrawPulseFrame(frame, Gold, 0.1f, 2.5f, 0.15f + pulse * 0.12f);
 
         ShadowTextCentered("A BLESSING DESCENDS", cx, (int)(frame.Y + 28f), 32, Gold);
-        string sub = $"Wave {waveNumber} cleared  ·  choose one boon for the siege ahead";
+        string sub = $"Wave {waveNumber} cleared  ï¿½  choose one boon for the siege ahead";
         ShadowTextCentered(sub, cx, (int)(frame.Y + 66f), 13, WithAlpha(Color.White, 0.62f));
         DrawMedievalDivider(cx, frame.Y + 88f, 420f);
 
@@ -26005,7 +26036,7 @@ for (int i = 0; i < density; i++)
             }
         }
 
-        DrawUiHintBar("1 · 2 · 3 quick pick", "Click a card to claim", "Blessings stack up to 6");
+        DrawUiHintBar("1 ï¿½ 2 ï¿½ 3 quick pick", "Click a card to claim", "Blessings stack up to 6");
     }
 
     static void DrawDifficultySelect()
@@ -26070,7 +26101,7 @@ for (int i = 0; i < density; i++)
             state = GameState.MainMenu;
         }
 
-        DrawUiHintBar("Click a trial · ?? move", "Q E H N oaths · click chips", "ENTER begin · ESC back");
+        DrawUiHintBar("Click a trial ï¿½ ?? move", "Q E H N oaths ï¿½ click chips", "ENTER begin ï¿½ ESC back");
     }
 
     static bool DrawDifficultyCard(Rectangle card, in DifficultyProfile profile, bool selected, bool nightmare, float time, int rank)
@@ -26217,7 +26248,7 @@ for (int i = 0; i < density; i++)
         string diffLabel = "Last run: " + GetDifficultyProfile(runDifficulty).Title;
         ShadowTextCentered(diffLabel, cx, (int)(rowY + 48f), 11, WithAlpha(MossLight, 0.62f));
 
-        DrawUiHintBar("WASD move", "LMB fire · RMB reload", "F3 fps");
+        DrawUiHintBar("WASD move", "LMB fire ï¿½ RMB reload", "F3 fps");
     }
 
     static int DrawMedievalMenuTitle(int cx, int y, float time)
@@ -26465,27 +26496,24 @@ for (int i = 0; i < density; i++)
     const float ArmoryTabY = 132f;
     const float ArmoryBannerY = 226f;
     const float ArmoryContentTop = 260f;
-    const float ArmoryCosmeticsPinnedH = 204f; // fallback; use ArmoryCosmeticsPinnedHeight() when layout matters
+    const float LookPreviewX = 24f;
+    const float LookPreviewW = 92f;
+    const float LookPreviewH = 104f;
+
+    static float HeraldryGridStartX() => LookPreviewX + LookPreviewW + 12f;
+    static float HeraldryGridWidth() => WindowWidth - HeraldryGridStartX() - 22f;
 
     static void ComputeHeraldryGrid(out float padX, out float gap, out int cols, out float cell, out float rowH)
     {
-        padX = 28f;
-        gap = 6f;
-        const float labelGap = 12f;
-        int count = BodyPalette.Length;
-        float gridW = WindowWidth - padX * 2f;
-        cols = Math.Clamp((count + 1) / 2, 8, count);
-        cell = (gridW - (cols - 1) * gap) / cols;
-        rowH = cell + labelGap;
+        padX = HeraldryGridStartX();
+        gap = 3f;
+        cols = 11;
+        float gridW = HeraldryGridWidth();
+        cell = MathF.Min(26f, (gridW - (cols - 1) * gap) / cols);
+        rowH = cell;
     }
 
-    static float ArmoryCosmeticsPinnedHeight()
-    {
-        ComputeHeraldryGrid(out _, out _, out int cols, out _, out float rowH);
-        int rows = (BodyPalette.Length + cols - 1) / cols;
-        const float previewH = 92f;
-        return previewH + 10f + 22f + rows * rowH + 10f;
-    }
+    static float ArmoryCosmeticsPinnedHeight() => LookPreviewH + 14f;
     static float ArmoryContentBottom => UiFooterTop;
     static float ArmoryViewportHeight => ArmoryContentBottom - ArmoryContentTop;
 
@@ -26601,7 +26629,7 @@ for (int i = 0; i < density; i++)
             {
                 ComputeTrinketGrid(out _, out _, out int acols, out _, out float rowH);
                 int rows = (ArmoryAccessoryCount() + acols - 1) / acols;
-                float trinketH = 34f + rows * rowH;
+                float trinketH = 38f + rows * rowH;
                 float trinketViewport = ArmoryViewportHeight - ArmoryCosmeticsPinnedHeight();
                 return Math.Max(0f, trinketH - trinketViewport);
             }
@@ -26682,9 +26710,9 @@ for (int i = 0; i < density; i++)
         EnemyBehavior.Splitter => "Splitter",
         EnemyBehavior.Sapper => "Sapper",
         EnemyBehavior.Lurker => "Lurker",
-        EnemyBehavior.BossBlight => "Boss · Blight",
-        EnemyBehavior.BossDash => "Boss · Dash",
-        EnemyBehavior.BossSmash => "Boss · Smash",
+        EnemyBehavior.BossBlight => "Boss ï¿½ Blight",
+        EnemyBehavior.BossDash => "Boss ï¿½ Dash",
+        EnemyBehavior.BossSmash => "Boss ï¿½ Smash",
         _ => behavior.ToString(),
     };
 
@@ -26914,7 +26942,7 @@ for (int i = 0; i < density; i++)
         Raylib.EndScissorMode();
         DrawArmoryScrollBar(viewportH);
 
-        string scrollHint = ArmoryScrollMax() > 1f ? "Scroll wheel · more below" : "Click to equip or unlock";
+        string scrollHint = ArmoryScrollMax() > 1f ? "Scroll wheel ï¿½ more below" : "Click to equip or unlock";
         DrawUiHintBar(scrollHint, CustomizeTabTitle(), "ESC back");
 
         if (Button(new Rectangle(30f, UiBackButtonY, 180f, 40f), "BACK  [ESC]", 20, true, UiBorder))
@@ -26965,58 +26993,73 @@ for (int i = 0; i < density; i++)
         float y = ArmoryContentTop;
         customizeScroll = Math.Clamp(customizeScroll, 0f, ArmoryScrollMax());
         float pinnedHeaderH = ArmoryCosmeticsPinnedHeight();
-        const float previewPadX = 28f;
 
-        var preview = new Rectangle(previewPadX, y, 112f, 92f);
-        DrawRichPanel(preview, WithAlpha(UiPanel, 0.9f), UiAccent, 0.22f, accentStripe: true);
-        DrawGlow(new Vector2(preview.X + preview.Width / 2f, preview.Y + preview.Height / 2f), 44f, BodyColor(), 0.14f);
-        Vector2 pv = new Vector2(preview.X + preview.Width / 2f, preview.Y + preview.Height / 2f + 6f);
-        Raylib.DrawCircleV(pv, 24f, BodyColor());
-        Raylib.DrawCircleLinesV(pv, 24f, WithAlpha(BodyBright(), 0.9f));
-        Vector2 iris = pv + new Vector2(0, 1) * 7f;
-        Raylib.DrawCircleV(iris, 8f, BodyBright());
-        Raylib.DrawCircleV(iris, 3.5f, Color.White);
-        DrawAccessory(pv, 24f, time, accessoryIndex, AccessoryPreviewForward);
-        ShadowText("KNIGHT", (int)preview.X + 10, (int)preview.Y + 8, 10, WithAlpha(Color.White, 0.55f));
-        DrawTextTruncated(AccessoryNames[accessoryIndex], (int)preview.X + 10, (int)(preview.Y + preview.Height - 16), (int)preview.Width - 16, 9, Gold);
+        var preview = new Rectangle(LookPreviewX, y, LookPreviewW, LookPreviewH);
+        DrawRichPanel(preview, WithAlpha(UiPanel, 0.94f), UiAccent, 0.24f, accentStripe: true);
+        DrawGlow(new Vector2(preview.X + preview.Width / 2f, preview.Y + preview.Height / 2f), 40f, BodyColor(), 0.16f);
+        Vector2 pv = new Vector2(preview.X + preview.Width / 2f, preview.Y + preview.Height / 2f + 4f);
+        Raylib.DrawCircleV(pv, 26f, BodyColor());
+        Raylib.DrawCircleLinesV(pv, 26f, WithAlpha(BodyBright(), 0.95f));
+        Vector2 iris = pv + new Vector2(0, 1) * 8f;
+        Raylib.DrawCircleV(iris, 9f, BodyBright());
+        Raylib.DrawCircleV(iris, 4f, Color.White);
+        DrawAccessory(pv, 26f, time, accessoryIndex, AccessoryPreviewForward);
+        ShadowText("PREVIEW", (int)preview.X + 8, (int)preview.Y + 6, 9, WithAlpha(Color.White, 0.5f));
+        DrawTextTruncated(BodyNames[bodyColorIndex], (int)preview.X + 8, (int)(preview.Y + preview.Height - 28), (int)preview.Width - 14, 10, UiAccent);
+        DrawTextTruncated(AccessoryNames[accessoryIndex], (int)preview.X + 8, (int)(preview.Y + preview.Height - 14), (int)preview.Width - 14, 9, WithAlpha(Gold, 0.9f));
 
         ComputeHeraldryGrid(out float heraldryPadX, out float hgap, out int hcols, out float hcell, out float hrowH);
-        float heraldryY = y + preview.Height + 10f;
-        DrawUiSectionLabel("HERALDRY", heraldryPadX, heraldryY, UiAccent);
-        float gridY = heraldryY + 22f;
+        float heraldryY = y + 4f;
+        Raylib.DrawText("COLORS", (int)heraldryPadX, (int)heraldryY, 10, WithAlpha(Color.White, 0.42f));
+        float gridY = heraldryY + 14f;
+        int heraldryHover = -1;
         for (int i = 0; i < BodyPalette.Length; i++)
         {
             int col = i % hcols;
             int row = i / hcols;
-            var r = new Rectangle(heraldryPadX + col * (hcell + hgap), gridY + row * hrowH, hcell, hcell);
+            var r = new Rectangle(heraldryPadX + col * (hcell + hgap), gridY + row * (hrowH + hgap), hcell, hcell);
             bool unlocked = bodyUnlocked[i];
             bool sel = bodyColorIndex == i;
             string lockText = CosmeticLockLabel(BodyFableCost[i], BodyLevelReq[i], BodyWaveReq[i]);
             bool ready = CanPurchaseBody(i);
-            if (Swatch(r, BodyPalette[i], sel, unlocked, lockText, ready))
+            if (Raylib.CheckCollisionPointRec(Raylib.GetMousePosition(), r)) heraldryHover = i;
+            if (DrawCompactHeraldrySwatch(r, BodyPalette[i], sel, unlocked, lockText, ready))
             {
                 if (runLockedBodyIndex >= 0 && state == GameState.Playing) { }
                 else if (unlocked) { bodyColorIndex = i; SaveGame(); }
                 else if (TryUnlockBody(i)) { bodyColorIndex = i; SaveGame(); }
             }
-
-            int labelW = (int)hcell + 4;
-            DrawTextTruncated(BodyNames[i], (int)(r.X + hcell / 2 - labelW / 2), (int)(r.Y + hcell + 2), labelW, 9, WithAlpha(Color.White, 0.55f));
         }
+
+        if (heraldryHover >= 0)
+        {
+            string colorLabel = BodyNames[heraldryHover];
+            Raylib.DrawText(colorLabel, (int)(heraldryPadX + 52f), (int)heraldryY, 10, WithAlpha(Color.White, 0.72f));
+        }
+        else
+        {
+            Raylib.DrawText(BodyNames[bodyColorIndex], (int)(heraldryPadX + 52f), (int)heraldryY, 10, WithAlpha(UiAccent, 0.85f));
+        }
+
+        float dividerY = y + pinnedHeaderH - 2f;
+        Raylib.DrawLineEx(new Vector2(18f, dividerY), new Vector2(WindowWidth - 18f, dividerY), 1f, WithAlpha(UiBorder, 0.45f));
 
         float trinketClipTop = y + pinnedHeaderH;
         float trinketClipH = Math.Max(0f, ArmoryContentBottom - trinketClipTop);
-        var trinketClip = new Rectangle(16f, trinketClipTop, WindowWidth - 32f, trinketClipH);
+        var trinketClip = new Rectangle(14f, trinketClipTop, WindowWidth - 28f, trinketClipH);
+        var trinketBg = new Rectangle(trinketClip.X, trinketClip.Y, trinketClip.Width, trinketClip.Height);
+        DrawRichPanel(trinketBg, WithAlpha(UiPanelDeep, 0.42f), WithAlpha(UiBorder, 0.28f), 0.2f);
         Raylib.BeginScissorMode((int)trinketClip.X, (int)trinketClip.Y, (int)trinketClip.Width, (int)trinketClip.Height);
 
         ComputeTrinketGrid(out float padX, out float tgap, out int acols, out float cell, out float rowH);
         float gridW = WindowWidth - padX * 2f;
 
-        float trinketY = trinketClipTop - customizeScroll;
+        float trinketY = trinketClipTop + 8f - customizeScroll;
         DrawUiSectionLabel("TRINKETS", padX, trinketY, MossLight);
-        Raylib.DrawLine((int)padX, (int)(trinketY + 22f), (int)(padX + gridW), (int)(trinketY + 22f), WithAlpha(UiBorder, 0.35f));
+        Raylib.DrawText("Tap to equip or unlock", (int)(padX + 92f), (int)(trinketY + 1f), 10, WithAlpha(Color.White, 0.38f));
+        Raylib.DrawLine((int)padX, (int)(trinketY + 22f), (int)(padX + gridW), (int)(trinketY + 22f), WithAlpha(MossLight, 0.22f));
 
-        float gridStartY = trinketY + 34f;
+        float gridStartY = trinketY + 30f;
         int display = 0;
         for (int i = 0; i < AccessoryNames.Length; i++)
         {
@@ -27033,15 +27076,15 @@ for (int i = 0; i < density; i++)
             bool sel = accessoryIndex == i;
             string lockText = CosmeticLockLabel(AccessoryFableCost[i], AccessoryLevelReq[i], AccessoryWaveReq[i]);
             bool ready = CanPurchaseAccessory(i);
-            bool trinketVisible = r.Y + r.Height + 16f >= trinketClipTop && r.Y <= trinketClipTop + trinketClipH;
+            bool trinketVisible = r.Y + r.Height + 20f >= trinketClipTop && r.Y <= trinketClipTop + trinketClipH;
             if (DrawTrinketTile(r, time, i, sel, unlocked, lockText, ready) && trinketVisible)
             {
                 if (unlocked) { accessoryIndex = i; SaveGame(); }
                 else if (TryUnlockAccessory(i)) { accessoryIndex = i; SaveGame(); }
             }
 
-            DrawTextTruncated(AccessoryNames[i], (int)tx, (int)(ty + cell + 4f), (int)cell, 10,
-                WithAlpha(Color.White, unlocked ? 0.72f : 0.42f));
+            DrawTextTruncated(AccessoryNames[i], (int)tx, (int)(ty + cell + 5f), (int)cell, 11,
+                WithAlpha(Color.White, unlocked ? 0.88f : 0.48f));
             if (i == AccessoryKeepBanner && accessoryIndex == AccessoryKeepBanner && upgradeLevels[UpLockstep] > 0)
                 ShadowText("SYNERGY", (int)tx, (int)(ty - 1), 8, Gold);
             if (i == AccessoryStormGlass && accessoryIndex == AccessoryStormGlass && upgradeLevels[UpPierce] > 0)
@@ -27049,6 +27092,43 @@ for (int i = 0; i < density; i++)
         }
 
         Raylib.EndScissorMode();
+    }
+
+    static bool DrawCompactHeraldrySwatch(Rectangle r, Color color, bool selected, bool unlocked, string lockText, bool readyToBuy)
+    {
+        Vector2 m = Raylib.GetMousePosition();
+        bool hover = Raylib.CheckCollisionPointRec(m, r);
+        bool clicked = UiClickAllowed() && hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
+
+        Color border = selected ? Gold : hover ? UiAccent : WithAlpha(UiBorder, 0.5f);
+        Color fill = unlocked ? color : Darken(color, 0.58f);
+        Raylib.DrawRectangleRounded(r, 0.32f, 4, fill);
+        Raylib.DrawRectangleRoundedLines(r, 0.32f, 4, border);
+
+        if (!unlocked)
+        {
+            Raylib.DrawRectangleRounded(r, 0.32f, 4, WithAlpha(ForestShadow, 0.52f));
+            if (readyToBuy)
+            {
+                DrawPulseFrame(new Rectangle(r.X, r.Y, r.Width, r.Height), Gold, 0.18f, 5f, 0.14f);
+            }
+            else
+            {
+                Raylib.DrawCircleV(new Vector2(r.X + r.Width / 2f, r.Y + r.Height / 2f), r.Width * 0.12f, WithAlpha(Color.White, 0.55f));
+            }
+        }
+        else if (selected)
+        {
+            Raylib.DrawRectangle((int)(r.X + 2f), (int)(r.Y + r.Height - 3f), (int)r.Width - 4, 2, Color.White);
+        }
+
+        if (unlocked) DrawHeraldryHatch(r, color, (int)(r.X + r.Y));
+        if (hover)
+        {
+            DrawGlow(new Vector2(r.X + r.Width / 2f, r.Y + r.Height / 2f), r.Width * 0.9f, selected ? Gold : UiAccent, 0.035f);
+        }
+
+        return clicked;
     }
 
     static bool UiClickAllowed() => uiInputBlockFrames <= 0;
@@ -27072,12 +27152,12 @@ for (int i = 0; i < density; i++)
 
     static void ComputeTrinketGrid(out float padX, out float gap, out int cols, out float cell, out float rowH)
     {
-        padX = 20f;
-        gap = 10f;
-        const float labelGap = 18f;
+        padX = 18f;
+        gap = 12f;
+        const float labelGap = 20f;
         float gridW = WindowWidth - padX * 2f;
-        const float minCell = 84f;
-        cols = Math.Clamp((int)MathF.Floor((gridW + gap) / (minCell + gap)), 5, 10);
+        const float minCell = 96f;
+        cols = Math.Clamp((int)MathF.Floor((gridW + gap) / (minCell + gap)), 4, 7);
         cell = (gridW - (cols - 1) * gap) / cols;
         rowH = cell + labelGap;
     }
@@ -27102,10 +27182,10 @@ for (int i = 0; i < density; i++)
         bool clicked = UiClickAllowed() && hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
 
         Color border = selected ? UiBorderLight : hover ? UiAccent : UiBorder;
-        DrawRichPanel(r, WithAlpha(UiPanel, 0.94f), border, 0.24f, accentStripe: selected || readyToBuy);
+        DrawRichPanel(r, WithAlpha(UiPanel, 0.97f), border, 0.26f, accentStripe: selected || readyToBuy);
 
-        var iconArea = new Rectangle(r.X + 7f, r.Y + 7f, r.Width - 14f, r.Height - 14f);
-        DrawRichPanel(iconArea, WithAlpha(UiPanelDeep, 0.72f), WithAlpha(UiBorder, 0.4f), 0.16f);
+        var iconArea = new Rectangle(r.X + 8f, r.Y + 8f, r.Width - 16f, r.Height - 16f);
+        DrawRichPanel(iconArea, WithAlpha(UiPanelDeep, 0.78f), WithAlpha(UiBorder, 0.5f), 0.18f);
 
         float iconR = MathF.Min(iconArea.Width, iconArea.Height) * 0.34f;
         Vector2 iconCenter = new Vector2(iconArea.X + iconArea.Width / 2f, iconArea.Y + iconArea.Height * 0.46f);
@@ -27350,7 +27430,7 @@ for (int i = 0; i < density; i++)
         if (di >= 0 && di < difficultyRecords.Length)
         {
             ref DifficultyRecord rec = ref difficultyRecords[di];
-            string recs = activeDifficulty.Title + ": wave " + rec.BestWave + " · " + rec.BestKills + " kills";
+            string recs = activeDifficulty.Title + ": wave " + rec.BestWave + " ï¿½ " + rec.BestKills + " kills";
             DrawTextTruncated(recs, (int)card.X + 12, (int)(chipY + (string.IsNullOrEmpty(motto) ? 48f : 64f)), (int)card.Width - 24, 10, WithAlpha(MossLight, 0.72f));
         }
 
@@ -27381,7 +27461,7 @@ for (int i = 0; i < density; i++)
         Color border = isCurrent ? Gold : isPast ? WithAlpha(UiBorder, 0.55f) : UiBorder;
         DrawRichPanel(card, WithAlpha(UiPanel, isPast ? 0.72f : 0.9f), border, 0.18f, accentStripe: isCurrent);
 
-        string title = isCurrent ? $"RANK {level}  ·  YOU ARE HERE" : isPast ? $"RANK {level}  ·  COMPLETE" : $"RANK {level}  ·  NEXT";
+        string title = isCurrent ? $"RANK {level}  ï¿½  YOU ARE HERE" : isPast ? $"RANK {level}  ï¿½  COMPLETE" : $"RANK {level}  ï¿½  NEXT";
         Color titleCol = isCurrent ? Gold : isPast ? WithAlpha(UiAccent, 0.85f) : WithAlpha(Color.White, 0.82f);
         Raylib.DrawText(title, (int)card.X + 12, (int)card.Y + 8, isCurrent ? 14 : 13, titleCol);
 
@@ -27466,7 +27546,7 @@ for (int i = 0; i < density; i++)
 
             DrawGunIcon(i, new Vector2(row.X + 34f, row.Y + 25f), 10f, time, owned ? 1f : waveMet ? 0.7f : 0.4f);
             DrawTextTruncated(g.Name, (int)row.X + 56, (int)row.Y + 8, textW, 14, owned ? UiAccent : Color.White);
-            string req = $"Requires wave {g.WaveReq} cleared  ·  {g.FableCost:N0} fables";
+            string req = $"Requires wave {g.WaveReq} cleared  ï¿½  {g.FableCost:N0} fables";
             DrawTextTruncated(req, (int)row.X + 56, (int)row.Y + 28, textW, 11,
                 WithAlpha(Gold, waveMet ? 0.9f : 0.45f));
 
@@ -28067,7 +28147,7 @@ for (int i = 0; i < density; i++)
             DrawRichPanel(banner, WithAlpha(UiPanel, a * 0.95f), WithAlpha(Gold, a), 0.2f, accentStripe: true);
             DrawPulseFrame(banner, Gold, 0.14f, 3f, 0.12f * a);
             ShadowTextCentered("CURSOR CROWN UNLOCKED", bannerCx, 108, 22, Gold, a);
-            ShadowTextCentered("Equip it in the Armory · Look tab", bannerCx, 134, 12, WithAlpha(Color.White, 0.72f), a);
+            ShadowTextCentered("Equip it in the Armory ï¿½ Look tab", bannerCx, 134, 12, WithAlpha(Color.White, 0.72f), a);
             var iconCenter = new Vector2(bannerCx, banner.Y + banner.Height + 38f);
             DrawAccessory(iconCenter, 28f, frameTime, AccessoryCursorCrown, AccessoryPreviewForward);
         }
@@ -28167,7 +28247,7 @@ for (int i = 0; i < density; i++)
 
     static string CustomizeTabShortHint() => customizeTab switch
     {
-        CustomizeTab.Cosmetics => "Click swatches to preview, unlock, and equip.",
+        CustomizeTab.Cosmetics => "Trinkets are the main pick â€” scroll the grid. Tap a color chip to re-tint your knight.",
         CustomizeTab.Weapons => "Click an arm to equip or purchase it.",
         CustomizeTab.Upgrades => "Spend fables on permanent stat boosts.",
         CustomizeTab.Abilities => "Click a card to assign battle skills.",
@@ -28179,7 +28259,7 @@ for (int i = 0; i < density; i++)
 
     static string CustomizeTabSubtitle() => customizeTab switch
     {
-        CustomizeTab.Cosmetics => "Pick heraldry and trinkets. Locked swatches show what you need to unlock them.",
+        CustomizeTab.Cosmetics => "Pick trinkets below. Color chips beside the preview are optional heraldry.",
         CustomizeTab.Weapons => "Click an unlocked arm to equip it. Spend fables on locked siege weapons.",
         CustomizeTab.Upgrades => "Permanent stat boosts bought with fables between runs.",
         CustomizeTab.Abilities => "Choose two skills for your battle loadout. Click a card to assign a slot.",
