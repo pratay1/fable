@@ -14283,6 +14283,9 @@ class Program
         public Color Moss { get; init; }
         public Color Lichen { get; init; }
         public Color WetSheen { get; init; }
+        public Color HeraldRed { get; init; }
+        public Color HeraldRedLight { get; init; }
+        public Color HeraldRedDeep { get; init; }
 
         public static MenuCastlePalette Default => new()
         {
@@ -14299,6 +14302,9 @@ class Program
             Moss = new Color(54, 58, 48, 255),
             Lichen = new Color(68, 74, 58, 255),
             WetSheen = new Color(82, 80, 74, 255),
+            HeraldRed = new Color(118, 36, 34, 255),
+            HeraldRedLight = new Color(148, 52, 44, 255),
+            HeraldRedDeep = new Color(78, 24, 26, 255),
         };
     }
 
@@ -15298,7 +15304,9 @@ for (int i = 0; i < density; i++)
     {
         float pulse = MathF.Sin(time * 1.8f) * 0.5f + 0.5f;
         var shield = new Rectangle(center.X - 18f, center.Y - 22f, 36f, 40f);
-        Raylib.DrawRectangleRounded(shield, 0.35f, 6, WithAlpha(Darken(p.StoneLight, 0.25f), 0.68f));
+        Raylib.DrawRectangleRounded(shield, 0.35f, 6, WithAlpha(p.HeraldRedDeep, 0.72f));
+        Raylib.DrawRectangleRounded(new Rectangle(shield.X + 2f, shield.Y + 2f, shield.Width - 4f, shield.Height * 0.42f),
+            0.32f, 4, WithAlpha(p.HeraldRed, 0.58f));
         Raylib.DrawRectangleRoundedLines(shield, 0.35f, 6, WithAlpha(Gold, 0.35f + pulse * 0.15f));
         Raylib.DrawRectangleRoundedLines(new Rectangle(shield.X + 3f, shield.Y + 3f, shield.Width - 6f, shield.Height - 6f),
             0.32f, 4, WithAlpha(p.StoneHi, 0.25f));
@@ -15314,25 +15322,26 @@ for (int i = 0; i < density; i++)
         Raylib.DrawCircleV(new Vector2(lionHead.X - 2f, lionHead.Y - 1f), 1.2f, WithAlpha(p.StoneDeep, 0.6f));
         Raylib.DrawCircleV(new Vector2(lionHead.X + 2f, lionHead.Y - 1f), 1.2f, WithAlpha(p.StoneDeep, 0.6f));
         Raylib.DrawTriangle(new Vector2(lionHead.X, lionHead.Y + 2f), new Vector2(lionHead.X - 3f, lionHead.Y + 6f), new Vector2(lionHead.X + 3f, lionHead.Y + 6f), WithAlpha(p.StoneMid, 0.5f));
-        DrawEllipticalGlow(center, 22f, 26f, 0f, Gold, 0.012f + pulse * 0.008f, 2);
+        DrawEllipticalGlow(center, 22f, 26f, 0f, p.HeraldRedLight, 0.008f + pulse * 0.005f, 2);
     }
 
     static void DrawMenuCastleBanner(Vector2 top, float time, float phase, MenuCastlePalette p)
     {
         float wave = MathF.Sin(time * 2.4f + phase) * 5f;
         float fold = MathF.Sin(time * 3.3f + phase * 1.2f) * 0.5f + 0.5f;
-        var banner = new Rectangle(top.X - 6f, top.Y, 12f, 30f + wave * 0.15f);
-        Raylib.DrawRectangleRounded(banner, 0.2f, 3, WithAlpha(Darken(p.StoneLight, 0.35f), 0.55f));
-        Raylib.DrawRectangleRounded(banner, 0.2f, 3, WithAlpha(Darken(p.StoneLight, 0.2f), 0.68f));
+        var banner = new Rectangle(top.X - 7f, top.Y, 14f, 32f + wave * 0.15f);
+        Raylib.DrawRectangleRounded(banner, 0.2f, 3, WithAlpha(p.HeraldRedDeep, 0.82f));
+        Raylib.DrawRectangleRounded(banner, 0.2f, 3, WithAlpha(LerpColor(p.HeraldRed, p.HeraldRedLight, fold), 0.78f));
         for (int foldIdx = 0; foldIdx < 4; foldIdx++)
         {
-            float fx = top.X - 4f + foldIdx * 2.5f;
-            Color foldCol = LerpColor(p.StoneHi, p.StoneLight, foldIdx / 3f);
+            float fx = top.X - 5f + foldIdx * 2.8f;
+            Color foldCol = LerpColor(p.HeraldRedDeep, p.HeraldRedLight, foldIdx / 3f);
             Raylib.DrawLineEx(new Vector2(fx, top.Y), new Vector2(fx + wave * 0.05f + fold * 0.5f, top.Y + banner.Height),
-                1f, WithAlpha(foldCol, 0.18f + fold * 0.1f));
+                1f, WithAlpha(foldCol, 0.22f + fold * 0.12f));
         }
+        Raylib.DrawRectangleRoundedLines(banner, 0.2f, 3, WithAlpha(Gold, 0.28f + fold * 0.1f));
         Raylib.DrawLineEx(top, new Vector2(top.X, top.Y - 16f), 1.5f, WithAlpha(p.StoneLight, 0.7f));
-        Raylib.DrawCircleV(new Vector2(top.X, top.Y - 16f), 2f, WithAlpha(p.StoneHi, 0.45f));
+        Raylib.DrawCircleV(new Vector2(top.X, top.Y - 16f), 2f, WithAlpha(Gold, 0.42f));
     }
 
     static void DrawMenuCastlePennant(Vector2 anchor, float time, MenuCastlePalette p)
@@ -15558,6 +15567,36 @@ for (int i = 0; i < density; i++)
     // Main menu castle framing
     // -------------------------------------------------------------------------
 
+    static void DrawMenuCastleHeraldicAccents(float time, MenuCastleLayout L, MenuCastlePalette p)
+    {
+        float pulse = MathF.Sin(time * 1.6f) * 0.5f + 0.5f;
+        var gatehouse = L.GatehouseRect;
+
+        // Thin crimson band beneath the gatehouse battlements
+        Raylib.DrawRectangle((int)(gatehouse.X + 6f), (int)(L.BattlementsY + 26f), (int)(gatehouse.Width - 12f), 3,
+            WithAlpha(p.HeraldRed, 0.42f + pulse * 0.08f));
+        Raylib.DrawLineEx(new Vector2(gatehouse.X + 8f, L.BattlementsY + 25f),
+            new Vector2(gatehouse.X + gatehouse.Width - 8f, L.BattlementsY + 25f), 1f, WithAlpha(Gold, 0.18f));
+
+        // Small tower pennons
+        ReadOnlySpan<(float x, float phase)> pennons = [(0.06f, 0f), (0.94f, 1.4f)];
+        for (int i = 0; i < pennons.Length; i++)
+        {
+            var (nx, phase) = pennons[i];
+            float wave = MathF.Sin(time * 2.6f + phase) * 4f;
+            Vector2 pole = new Vector2(WindowWidth * nx, L.ParapetY - 18f);
+            Vector2 tip = pole + new Vector2(14f + wave, 10f);
+            Raylib.DrawLineEx(pole, new Vector2(pole.X, pole.Y - 12f), 1.2f, WithAlpha(p.StoneLight, 0.55f));
+            Raylib.DrawTriangle(pole, new Vector2(pole.X + 1f, pole.Y + 14f), tip, WithAlpha(p.HeraldRed, 0.72f));
+            Raylib.DrawLineEx(pole, tip, 1f, WithAlpha(Gold, 0.22f));
+        }
+
+        // Warm torch wash on stone near the gate — ties red banners to the masonry
+        var heraldWash = new Rectangle(L.GateX - 28f, L.GateY - 18f, L.GateW + 56f, L.GateH * 0.35f);
+        DrawGradientWash(heraldWash, WithAlpha(p.HeraldRedLight, 0.03f + pulse * 0.015f), WithAlpha(p.StoneDeep, 0f),
+            new Vector2(0.5f, 0.2f), 1.8f);
+    }
+
     static void DrawMenuCastleAmbientMoonlight(float wallY, float wallH, MenuCastlePalette p)
     {
         Raylib.DrawRectangleGradientH(0, (int)wallY, WindowWidth, (int)wallH,
@@ -15603,6 +15642,7 @@ for (int i = 0; i < density; i++)
         DrawMenuCastleBanner(new Vector2(L.GatehouseX + 10f, L.BattlementsY + 8f), time, 0f, p);
         DrawMenuCastleBanner(new Vector2(L.GatehouseX + L.GatehouseW - 10f, L.BattlementsY + 8f), time, 1.4f, p);
         DrawMenuCastleRichPennant(new Vector2(L.CenterX, L.BattlementsY + 4f), time, p);
+        DrawMenuCastleHeraldicAccents(time, L, p);
 
         float gateFlicker = MathF.Sin(time * 4.6f) * 0.5f + 0.5f;
         Vector2 gateGlow = new Vector2(L.GateX + L.GateW / 2f, L.GateY + L.GateH * 0.55f);
@@ -20938,6 +20978,7 @@ for (int i = 0; i < density; i++)
     static void DrawMenuCastleProductionColorGrade(float time, MenuCastlePalette p)
     {
         float pulse = 0.94f + MathF.Sin(time * 0.12f) * 0.03f;
+        MenuCastleLayout L = MenuCastleLayoutCurrent;
         Raylib.DrawRectangleGradientV(0, 0, WindowWidth, (int)(WindowHeight * 0.18f),
             WithAlpha(new Color(12, 10, 14, 255), 0.18f * pulse), WithAlpha(new Color(12, 10, 14, 255), 0f));
         Raylib.DrawRectangleGradientV(0, (int)(WindowHeight * 0.82f), WindowWidth, (int)(WindowHeight * 0.18f),
@@ -20947,6 +20988,8 @@ for (int i = 0; i < density; i++)
         Raylib.DrawRectangleGradientH((int)(WindowWidth * 0.92f), 0, (int)(WindowWidth * 0.08f), WindowHeight,
             WithAlpha(new Color(8, 8, 10, 255), 0f), WithAlpha(new Color(8, 8, 10, 255), 0.12f));
         Raylib.DrawRectangle(0, 0, WindowWidth, WindowHeight, WithAlpha(new Color(58, 52, 46, 255), 0.018f));
+        Raylib.DrawRectangleGradientV((int)L.WallY, (int)L.WallY, WindowWidth, (int)(L.WallH * 0.72f),
+            WithAlpha(p.HeraldRedDeep, 0f), WithAlpha(p.HeraldRedDeep, 0.028f * pulse));
     }
 
     static void DrawMenuCastleInnerCurtainWings(MenuCastleLayout L, MenuCastlePalette p, float time)
@@ -21256,20 +21299,21 @@ for (int i = 0; i < density; i++)
         float fold = MathF.Sin(time * 3.4f + 0.6f) * 0.5f + 0.5f;
         Vector2 tip = new Vector2(anchor.X + 52f + wave, anchor.Y + 34f + fold * 4f);
         Vector2 mid = new Vector2(anchor.X + 28f + wave * 0.5f, anchor.Y + 42f);
-        Raylib.DrawTriangle(anchor, new Vector2(anchor.X + 2f, anchor.Y + 48f), tip + new Vector2(3f, 2f), WithAlpha(p.StoneDeep, 0.55f));
-        Raylib.DrawTriangle(anchor, mid, tip, WithAlpha(new Color(118, 42, 38, 255), 0.82f));
-        Raylib.DrawTriangle(anchor, new Vector2(anchor.X, anchor.Y + 46f), mid, WithAlpha(new Color(148, 58, 48, 255), 0.75f));
+        Raylib.DrawTriangle(anchor, new Vector2(anchor.X + 2f, anchor.Y + 48f), tip + new Vector2(3f, 2f), WithAlpha(p.HeraldRedDeep, 0.62f));
+        Raylib.DrawTriangle(anchor, mid, tip, WithAlpha(p.HeraldRed, 0.86f));
+        Raylib.DrawTriangle(anchor, new Vector2(anchor.X, anchor.Y + 46f), mid, WithAlpha(p.HeraldRedLight, 0.8f));
         for (int stripe = 0; stripe < 5; stripe++)
         {
             float sy = anchor.Y + 6f + stripe * 7f;
             Raylib.DrawLineEx(new Vector2(anchor.X + 4f + wave * 0.1f * stripe, sy),
                 new Vector2(tip.X - 8f + stripe * 3f, sy + 8f + stripe * 2f), 1.2f,
-                WithAlpha(Gold, 0.18f + fold * 0.12f));
+                WithAlpha(Gold, 0.22f + fold * 0.14f));
         }
         Raylib.DrawLineEx(anchor, new Vector2(anchor.X, anchor.Y + 52f), 2.5f, WithAlpha(p.StoneHi, 0.85f));
         Raylib.DrawCircleV(new Vector2(anchor.X, anchor.Y - 4f), 3f, WithAlpha(Gold, 0.55f));
         for (int tassel = 0; tassel < 4; tassel++)
             Raylib.DrawCircleV(new Vector2(tip.X - tassel * 5f, tip.Y + tassel * 2.5f), 1.8f, WithAlpha(Gold, 0.5f));
+        DrawEllipticalGlow(new Vector2(anchor.X + 24f, anchor.Y + 24f), 28f, 18f, -8f, p.HeraldRedLight, 0.006f + fold * 0.004f, 2);
     }
 
     static void DrawMenuCastleEpicCobbles(Rectangle region, MenuCastlePalette p, float time, float gateCenterX, float gateW)
