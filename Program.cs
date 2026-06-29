@@ -26264,9 +26264,8 @@ for (int i = 0; i < density; i++)
         DrawLevelBar(levelRect, true, ghost: true);
         yStart += 44;
 
-        float btnY = yStart + 4f;
-        ComputeMainMenuButtonLayout(cx, yStart, out _, out float rowY, out float halfW, out float halfGap, out float btnH);
-        bool playClick = MenuTextButton(cx, btnY, "Play", "enter", true, primary: true);
+        ComputeMainMenuButtonLayout(cx, yStart, out float playY, out float rowY, out float halfW, out float halfGap, out float btnH);
+        bool playClick = MenuTextButton(cx, playY, "Play", "enter", true, primary: true);
         var armoryRect = new Rectangle(cx - halfGap / 2f - halfW, rowY, halfW, btnH);
         var settingsRect = new Rectangle(cx + halfGap / 2f, rowY, halfW, btnH);
         bool armoryClick = MenuTextButton(armoryRect, "Armory", "c", true);
@@ -27187,7 +27186,8 @@ for (int i = 0; i < density; i++)
 
     static void ComputeMainMenuButtonLayout(int cx, int yStart, out float playY, out float rowY, out float halfW, out float halfGap, out float btnH)
     {
-        playY = yStart + 4f;
+        const float menuButtonDrop = 22f;
+        playY = yStart + 4f + menuButtonDrop;
         rowY = playY + 52f;
         halfW = 252f;
         halfGap = 12f;
