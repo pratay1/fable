@@ -26241,7 +26241,7 @@ for (int i = 0; i < density; i++)
         string subtitle = "Stand the stones. Outlast the siege.";
         int fsSubtitle = 15;
         int twSubtitle = Raylib.MeasureText(subtitle, fsSubtitle);
-        ShadowText(subtitle, cx - twSubtitle / 2, yStart, fsSubtitle, WithAlpha(new Color(196, 192, 184, 255), 0.78f));
+        ShadowText(subtitle, cx - twSubtitle / 2, yStart, fsSubtitle, WithAlpha(new Color(148, 144, 138, 255), 0.62f));
         yStart += fsSubtitle + gap;
 
         DrawMedievalMenuDivider(cx, yStart);
@@ -26294,18 +26294,18 @@ for (int i = 0; i < density; i++)
     {
         const string title = "FABLE";
         const int fs = 82;
-        MenuCastlePalette herald = MenuPalette;
+        MenuCastlePalette p = MenuPalette;
         int tw = Raylib.MeasureText(title, fs);
         int x = cx - tw / 2;
 
-        Color stoneDeep = new Color(16, 14, 12, 255);
-        Color stoneMid = new Color(68, 64, 58, 255);
-        Color stoneHi = new Color(172, 164, 148, 255);
-        Color gold = new Color(208, 184, 128, 255);
-        Color goldHi = new Color(248, 228, 178, 255);
-        Color mortar = new Color(24, 22, 20, 255);
-        Color crimson = herald.HeraldRedLight;
-        Color crimsonDeep = herald.HeraldRedDeep;
+        Color stoneDeep = p.StoneDeep;
+        Color stoneMid = p.StoneMid;
+        Color stoneDark = p.StoneDark;
+        Color stoneHi = p.StoneHi;
+        Color moon = p.MoonGlow;
+        Color mortar = p.Mortar;
+        Color crimson = p.HeraldRed;
+        Color crimsonDeep = p.HeraldRedDeep;
 
         float pulse = MathF.Sin(time * 1.15f) * 0.5f + 0.5f;
         float shimmer = MathF.Sin(time * 2.7f) * 0.5f + 0.5f;
@@ -26316,13 +26316,13 @@ for (int i = 0; i < density; i++)
         var cartouche = new Rectangle(cx - tw / 2f - framePadX, y - framePadTop, tw + framePadX * 2f, fs + framePadTop + framePadBot);
 
         DrawEllipticalGlow(new Vector2(cx, cartouche.Y + cartouche.Height * 0.48f), cartouche.Width * 0.44f, cartouche.Height * 0.4f, 0f,
-            crimson, 0.014f + pulse * 0.007f, 3);
+            crimsonDeep, 0.005f + pulse * 0.003f, 2);
         DrawEllipticalGlow(new Vector2(cx, cartouche.Y + cartouche.Height * 0.42f), cartouche.Width * 0.52f, cartouche.Height * 0.48f, 0f,
-            gold, 0.009f + shimmer * 0.005f, 2);
+            moon, 0.004f + shimmer * 0.002f, 2);
 
-        DrawRichPanel(cartouche, WithAlpha(stoneMid, 0.62f), WithAlpha(gold, 0.42f + pulse * 0.14f), 0.14f, accentStripe: true);
-        DrawStoneMasonry(cartouche, new Color(40, 38, 36, 255), mortar, 3, 15, 0.36f);
-        DrawQuoinStripes(cartouche, stoneHi, crimson);
+        DrawRichPanel(cartouche, WithAlpha(stoneDark, 0.48f), WithAlpha(stoneHi, 0.18f + pulse * 0.05f), 0.14f, accentStripe: true);
+        DrawStoneMasonry(cartouche, stoneDeep, mortar, 3, 15, 0.36f);
+        DrawQuoinStripes(cartouche, stoneHi, crimsonDeep);
 
         int merlons = 11;
         float battW = cartouche.Width * 0.9f;
@@ -26332,9 +26332,9 @@ for (int i = 0; i < density; i++)
         for (int m = 0; m < merlons; m++)
         {
             float mx = battX + m * merlonW * 2f;
-            Raylib.DrawRectangle((int)mx, (int)battY, (int)merlonW, 9, WithAlpha(stoneMid, 0.9f));
-            Raylib.DrawLine((int)mx, (int)battY, (int)(mx + merlonW), (int)battY, WithAlpha(gold, 0.38f + pulse * 0.1f));
-            Raylib.DrawLine((int)mx, (int)(battY + 8f), (int)(mx + merlonW), (int)(battY + 8f), WithAlpha(stoneDeep, 0.35f));
+            Raylib.DrawRectangle((int)mx, (int)battY, (int)merlonW, 9, WithAlpha(stoneDark, 0.82f));
+            Raylib.DrawLine((int)mx, (int)battY, (int)(mx + merlonW), (int)battY, WithAlpha(moon, 0.12f + pulse * 0.05f));
+            Raylib.DrawLine((int)mx, (int)(battY + 8f), (int)(mx + merlonW), (int)(battY + 8f), WithAlpha(stoneDeep, 0.45f));
         }
 
         for (int side = 0; side < 2; side++)
@@ -26342,15 +26342,15 @@ for (int i = 0; i < density; i++)
             float px = side == 0 ? cartouche.X + 10f : cartouche.X + cartouche.Width - 10f;
             float wave = MathF.Sin(time * 2.5f + side * 1.8f) * 3.5f;
             Vector2 tip = new Vector2(px + (side == 0 ? -20f : 20f) + wave, cartouche.Y + 30f);
-            Raylib.DrawTriangle(new Vector2(px, cartouche.Y + 8f), new Vector2(px, cartouche.Y + 34f), tip, WithAlpha(herald.HeraldRed, 0.8f));
-            Raylib.DrawLineEx(new Vector2(px, cartouche.Y + 8f), tip, 1.2f, WithAlpha(gold, 0.32f));
-            Raylib.DrawCircleV(new Vector2(px, cartouche.Y + 4f), 2.5f, WithAlpha(gold, 0.5f + pulse * 0.15f));
+            Raylib.DrawTriangle(new Vector2(px, cartouche.Y + 8f), new Vector2(px, cartouche.Y + 34f), tip, WithAlpha(crimson, 0.58f));
+            Raylib.DrawLineEx(new Vector2(px, cartouche.Y + 8f), tip, 1f, WithAlpha(stoneHi, 0.18f));
+            Raylib.DrawCircleV(new Vector2(px, cartouche.Y + 4f), 2f, WithAlpha(moon, 0.22f + pulse * 0.08f));
         }
 
         var inner = new Rectangle(cartouche.X + 14f, cartouche.Y + 12f, cartouche.Width - 28f, cartouche.Height - 22f);
-        Raylib.DrawRectangleLinesEx(inner, 1f, WithAlpha(gold, 0.24f + pulse * 0.1f));
+        Raylib.DrawRectangleLinesEx(inner, 1f, WithAlpha(stoneHi, 0.14f + pulse * 0.05f));
         Raylib.DrawRectangleLinesEx(new Rectangle(inner.X + 3f, inner.Y + 3f, inner.Width - 6f, inner.Height - 6f),
-            1f, WithAlpha(crimsonDeep, 0.18f + pulse * 0.08f));
+            1f, WithAlpha(crimsonDeep, 0.1f + pulse * 0.04f));
 
         ReadOnlySpan<Vector2> rivets =
         [
@@ -26361,12 +26361,12 @@ for (int i = 0; i < density; i++)
         ];
         for (int r = 0; r < rivets.Length; r++)
         {
-            Raylib.DrawCircleV(rivets[r], 3f, WithAlpha(gold, 0.45f + Hash(r * 7) * 0.15f));
-            Raylib.DrawCircleV(rivets[r], 1.4f, WithAlpha(goldHi, 0.35f + pulse * 0.2f));
+            Raylib.DrawCircleV(rivets[r], 2.5f, WithAlpha(stoneMid, 0.55f));
+            Raylib.DrawCircleV(rivets[r], 1.2f, WithAlpha(moon, 0.12f + pulse * 0.08f));
         }
 
-        Raylib.DrawText(title, x + 5, y + 6, fs, WithAlpha(stoneDeep, 0.96f));
-        Raylib.DrawText(title, x + 3, y + 4, fs, WithAlpha(new Color(30, 26, 22, 255), 0.92f));
+        Raylib.DrawText(title, x + 5, y + 6, fs, WithAlpha(stoneDeep, 0.98f));
+        Raylib.DrawText(title, x + 3, y + 4, fs, WithAlpha(new Color(18, 16, 14, 255), 0.94f));
         for (int ox = -3; ox <= 3; ox++)
         {
             for (int oy = -3; oy <= 3; oy++)
@@ -26374,45 +26374,41 @@ for (int i = 0; i < density; i++)
                 if (ox == 0 && oy == 0) continue;
                 float dist = MathF.Sqrt(ox * ox + oy * oy);
                 if (dist > 3.1f) continue;
-                Raylib.DrawText(title, x + ox, y + oy, fs, WithAlpha(stoneDeep, 0.16f / Math.Max(dist, 0.8f)));
+                Raylib.DrawText(title, x + ox, y + oy, fs, WithAlpha(stoneDeep, 0.14f / Math.Max(dist, 0.8f)));
             }
         }
 
-        Raylib.DrawText(title, x - 1, y + 1, fs, WithAlpha(crimson, 0.14f + pulse * 0.07f));
-        Color face = LerpColor(stoneMid, stoneHi, 0.38f + pulse * 0.16f);
+        Raylib.DrawText(title, x - 1, y + 1, fs, WithAlpha(crimsonDeep, 0.07f + pulse * 0.03f));
+        Color face = LerpColor(stoneDark, stoneMid, 0.42f + pulse * 0.1f);
         Raylib.DrawText(title, x, y, fs, face);
-        Raylib.DrawText(title, x - 1, y - 2, fs, WithAlpha(goldHi, 0.32f + shimmer * 0.16f));
-        Raylib.DrawText(title, x, y - 1, fs, WithAlpha(gold, 0.2f + pulse * 0.1f));
+        Raylib.DrawText(title, x - 1, y - 2, fs, WithAlpha(moon, 0.1f + shimmer * 0.05f));
+        Raylib.DrawText(title, x, y - 1, fs, WithAlpha(stoneHi, 0.08f + pulse * 0.04f));
 
         float sweepX = cx - tw / 2f - 12f + (tw + 48f) * ((time * 0.16f) % 1f);
-        Raylib.DrawLineEx(new Vector2(sweepX, y - 2f), new Vector2(sweepX + 22f, y + fs + 6f), 2.2f, WithAlpha(goldHi, 0.1f * shimmer));
-        DrawGlow(new Vector2(cx, y + fs * 0.42f), tw * 0.55f, gold, 0.018f + pulse * 0.01f);
+        Raylib.DrawLineEx(new Vector2(sweepX, y - 2f), new Vector2(sweepX + 22f, y + fs + 6f), 1.6f, WithAlpha(moon, 0.035f * shimmer));
 
         float ruleY = y + fs + 16f;
         float wing = tw * 0.55f + 58f;
-        Color ruleLo = WithAlpha(stoneHi, 0.32f);
-        Raylib.DrawLineEx(new Vector2(cx - wing, ruleY), new Vector2(cx - 22f, ruleY), 2f, ruleLo);
-        Raylib.DrawLineEx(new Vector2(cx + 22f, ruleY), new Vector2(cx + wing, ruleY), 2f, ruleLo);
-        Raylib.DrawLineEx(new Vector2(cx - wing, ruleY + 1f), new Vector2(cx - 22f, ruleY + 1f), 1f, WithAlpha(stoneDeep, 0.4f));
-        Raylib.DrawLineEx(new Vector2(cx + 22f, ruleY + 1f), new Vector2(cx + wing, ruleY + 1f), 1f, WithAlpha(stoneDeep, 0.4f));
-        Raylib.DrawLineEx(new Vector2(cx - wing, ruleY - 2f), new Vector2(cx + wing, ruleY - 2f), 0.8f, WithAlpha(crimsonDeep, 0.22f));
+        Raylib.DrawLineEx(new Vector2(cx - wing, ruleY), new Vector2(cx - 22f, ruleY), 2f, WithAlpha(stoneHi, 0.18f));
+        Raylib.DrawLineEx(new Vector2(cx + 22f, ruleY), new Vector2(cx + wing, ruleY), 2f, WithAlpha(stoneHi, 0.18f));
+        Raylib.DrawLineEx(new Vector2(cx - wing, ruleY + 1f), new Vector2(cx - 22f, ruleY + 1f), 1f, WithAlpha(stoneDeep, 0.45f));
+        Raylib.DrawLineEx(new Vector2(cx + 22f, ruleY + 1f), new Vector2(cx + wing, ruleY + 1f), 1f, WithAlpha(stoneDeep, 0.45f));
+        Raylib.DrawLineEx(new Vector2(cx - wing, ruleY - 2f), new Vector2(cx + wing, ruleY - 2f), 0.8f, WithAlpha(crimsonDeep, 0.12f));
 
         Vector2 gemTop = new Vector2(cx, ruleY - 9f);
         Vector2 gemLeft = new Vector2(cx - 8f, ruleY + 2f);
         Vector2 gemRight = new Vector2(cx + 8f, ruleY + 2f);
-        Raylib.DrawTriangle(gemTop, gemLeft, gemRight, WithAlpha(crimson, 0.82f + pulse * 0.12f));
-        Raylib.DrawTriangle(gemTop, gemLeft, gemRight, WithAlpha(gold, 0.28f));
-        Raylib.DrawLineEx(gemTop, gemLeft, 1.2f, WithAlpha(goldHi, 0.55f));
-        Raylib.DrawLineEx(gemTop, gemRight, 1.2f, WithAlpha(goldHi, 0.55f));
-        Raylib.DrawLineEx(gemLeft, gemRight, 1f, WithAlpha(stoneDeep, 0.5f));
-        DrawGlow(gemTop, 12f, crimson, 0.04f + pulse * 0.02f);
+        Raylib.DrawTriangle(gemTop, gemLeft, gemRight, WithAlpha(crimsonDeep, 0.62f + pulse * 0.08f));
+        Raylib.DrawLineEx(gemTop, gemLeft, 1f, WithAlpha(stoneHi, 0.22f));
+        Raylib.DrawLineEx(gemTop, gemRight, 1f, WithAlpha(stoneHi, 0.22f));
+        Raylib.DrawLineEx(gemLeft, gemRight, 1f, WithAlpha(stoneDeep, 0.55f));
 
         for (int i = 0; i < 7; i++)
         {
             float tx = cx - wing * 0.62f + i * (wing * 1.24f / 6f);
             float tickH = 4f + Hash(i * 11) * 4f;
             Raylib.DrawLineEx(new Vector2(tx, ruleY + 3f), new Vector2(tx, ruleY + 3f + tickH), 1.2f,
-                WithAlpha(i % 3 == 0 ? gold : stoneHi, 0.22f + Hash(i * 9) * 0.18f));
+                WithAlpha(i % 3 == 0 ? moon : stoneHi, 0.1f + Hash(i * 9) * 0.1f));
         }
 
         return (int)(ruleY + 14f - y);
@@ -26443,11 +26439,10 @@ for (int i = 0; i < density; i++)
 
     static void DrawMedievalMenuDivider(int cx, int y)
     {
-        Color hi = new Color(128, 126, 120, 255);
-        Raylib.DrawLine(cx - 120, y, cx - 24, y, WithAlpha(hi, 0.35f));
-        Raylib.DrawLine(cx + 24, y, cx + 120, y, WithAlpha(hi, 0.35f));
-        Raylib.DrawCircleV(new Vector2(cx, y), 3f, WithAlpha(MossLight, 0.55f));
-        DrawGlow(new Vector2(cx, y), 14f, MossLight, 0.04f);
+        Color hi = new Color(88, 86, 82, 255);
+        Raylib.DrawLine(cx - 120, y, cx - 24, y, WithAlpha(hi, 0.22f));
+        Raylib.DrawLine(cx + 24, y, cx + 120, y, WithAlpha(hi, 0.22f));
+        Raylib.DrawCircleV(new Vector2(cx, y), 2.5f, WithAlpha(MenuPalette.StoneHi, 0.35f));
     }
 
     static bool MenuTextButton(int cx, float y, string label, string key, bool medieval = false, bool primary = false)
@@ -26476,19 +26471,25 @@ for (int i = 0; i < density; i++)
         bool hover = Raylib.CheckCollisionPointRec(mouse, hit);
         bool click = UiClickAllowed() && hover && Raylib.IsMouseButtonPressed(MouseButton.Left);
 
-        Color text = hover ? Color.White : medieval ? new Color(196, 192, 184, 255) : new Color(210, 220, 205, 255);
-        Color hintColor = WithAlpha(primary ? Gold : Color.White, hover ? 0.75f : 0.42f);
+        Color text = hover
+            ? new Color(220, 218, 212, 255)
+            : medieval ? new Color(156, 152, 146, 255) : new Color(210, 220, 205, 255);
+        Color hintColor = WithAlpha(primary ? Gold : Color.White, hover ? 0.65f : medieval ? 0.32f : 0.42f);
         Color panelFill = primary
-            ? (hover ? LerpColor(new Color(48, 46, 44, 255), UiAccent, medieval ? 0.14f : 0.18f) : WithAlpha(new Color(38, 36, 34, 255), medieval ? 0.38f : 1f))
-            : (hover ? WithAlpha(new Color(48, 46, 44, 255), medieval ? 0.42f : 0.55f) : WithAlpha(new Color(32, 30, 28, 255), medieval ? 0.24f : 0.35f));
+            ? (hover ? LerpColor(MenuPalette.StoneDeep, UiAccent, medieval ? 0.1f : 0.18f) : WithAlpha(MenuPalette.StoneDeep, medieval ? 0.32f : 1f))
+            : (hover ? WithAlpha(MenuPalette.StoneDark, medieval ? 0.34f : 0.55f) : WithAlpha(MenuPalette.StoneDeep, medieval ? 0.2f : 0.35f));
         Color panelBorder = primary
-            ? (hover ? UiAccent : WithAlpha(MossLight, medieval ? 0.45f : 0.55f))
-            : (hover ? WithAlpha(MossLight, medieval ? 0.3f : 0.35f) : WithAlpha(new Color(98, 96, 92, 255), medieval ? 0.22f : 0.25f));
+            ? (hover ? WithAlpha(MenuPalette.StoneHi, medieval ? 0.28f : 0.55f) : WithAlpha(MenuPalette.StoneHi, medieval ? 0.16f : 0.55f))
+            : (hover ? WithAlpha(MenuPalette.StoneHi, medieval ? 0.2f : 0.35f) : WithAlpha(MenuPalette.StoneMid, medieval ? 0.14f : 0.25f));
 
         DrawRichPanel(hit, panelFill, panelBorder, 0.28f, accentStripe: primary || hover);
-        if (hover)
+        if (hover && !medieval)
         {
             DrawGlow(new Vector2(cx, hit.Y + hit.Height / 2f), primary ? 64f : 48f, primary ? UiAccent : MossLight, primary ? 0.04f : 0.03f);
+        }
+        else if (hover && medieval)
+        {
+            DrawGlow(new Vector2(cx, hit.Y + hit.Height / 2f), primary ? 52f : 40f, MenuPalette.MoonGlow, primary ? 0.018f : 0.012f);
         }
 
         int textY = (int)(hit.Y + (hit.Height - size) / 2f);
